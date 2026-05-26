@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Entorno virtual
+venv/
+.env
+
+# Datos y modelos pesados
+data/vectorstore/*
+!data/vectorstore/.gitkeep
+*.bin
+*.gguf
+*.onnx
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

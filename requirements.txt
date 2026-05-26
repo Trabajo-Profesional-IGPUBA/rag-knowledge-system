@@ -1,0 +1,16 @@
+# ETL y OCR
+# pytesseract
+# pdfplumber
+# python-docx
+
+# Embeddings
+# sentence-transformers
+
+# Base de datos vectorial
+# chromadb
+
+# LLM
+# llama-cpp-python
+
+# Utilidades
+python-dotenv
