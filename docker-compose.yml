@@ -25,3 +25,10 @@ services:
     volumes:
       - .:/app
     working_dir: /app
+    
+  test:
+    build: .
+    command: pytest -q
+    volumes:
+      - .:/app
+    working_dir: /app
