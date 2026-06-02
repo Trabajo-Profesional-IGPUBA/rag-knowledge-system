@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 from src.etl.models import PageData, ProcessedDoc
-from src.etl.writer import append_manifest, save_doc
+from src.etl.writer import append_manifest_batch, save_doc
 
 # ── Fixture base ──────────────────────────────────────────────────────────────
 
@@ -88,19 +88,19 @@ class TestSaveDoc:
         assert isinstance(out, Path)
 
 
-# ── Tests de append_manifest ──────────────────────────────────────────────────
+# ── Tests de append_manifest_batch ──────────────────────────────────────────────────
 
 
 class TestAppendManifest:
     def test_creates_manifest_file(self, tmp_path):
         manifest = tmp_path / "manifest.jsonl"
-        append_manifest(_doc(), manifest)
+        append_manifest_batch(_doc(), manifest)
         assert manifest.exists()
 
     def test_each_line_is_valid_json(self, tmp_path):
         manifest = tmp_path / "manifest.jsonl"
-        append_manifest(_doc("ewrs/A"), manifest)
-        append_manifest(_doc("ewrs/B"), manifest)
+        append_manifest_batch(_doc("ewrs/A"), manifest)
+        append_manifest_batch(_doc("ewrs/B"), manifest)
 
         lines = manifest.read_text(encoding="utf-8").strip().splitlines()
         assert len(lines) == 2
@@ -110,7 +110,7 @@ class TestAppendManifest:
 
     def test_manifest_excludes_text_and_pages(self, tmp_path):
         manifest = tmp_path / "manifest.jsonl"
-        append_manifest(_doc(), manifest)
+        append_manifest_batch(_doc(), manifest)
 
         data = json.loads(manifest.read_text(encoding="utf-8").strip())
         assert "text" not in data
@@ -118,7 +118,7 @@ class TestAppendManifest:
 
     def test_manifest_includes_metadata_fields(self, tmp_path):
         manifest = tmp_path / "manifest.jsonl"
-        append_manifest(_doc(), manifest)
+        append_manifest_batch(_doc(), manifest)
 
         data = json.loads(manifest.read_text(encoding="utf-8").strip())
         for field in (
@@ -134,12 +134,12 @@ class TestAppendManifest:
     def test_appends_multiple_docs(self, tmp_path):
         manifest = tmp_path / "manifest.jsonl"
         for i in range(5):
-            append_manifest(_doc(f"ewrs/DOC_{i}"), manifest)
+            append_manifest_batch(_doc(f"ewrs/DOC_{i}"), manifest)
 
         lines = manifest.read_text(encoding="utf-8").strip().splitlines()
         assert len(lines) == 5
 
     def test_creates_parent_dirs(self, tmp_path):
         manifest = tmp_path / "subdir" / "manifest.jsonl"
-        append_manifest(_doc(), manifest)
+        append_manifest_batch(_doc(), manifest)
         assert manifest.exists()

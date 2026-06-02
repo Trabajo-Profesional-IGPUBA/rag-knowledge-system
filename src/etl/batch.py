@@ -1,17 +1,15 @@
 import logging
 import time
-from concurrent.futures import ProcessPoolExecutor, as_completed
+import os
+from concurrent.futures import ProcessPoolExecutor, wait, FIRST_COMPLETED
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Iterator
 
-from .models import ProcessedDoc
 from .reader import extract
-from .writer import append_manifest, save_doc
+from .writer import save_doc, append_manifest_batch, _to_dict, _EXCLUDE
 
 log = logging.getLogger(__name__)
-
-
-# Resultado del run
 
 
 @dataclass
@@ -23,132 +21,93 @@ class BatchResult:
     elapsed_sec: float = 0.0
     errors: list[tuple[str, str]] = field(default_factory=list)
 
-    @property
-    def total_processed(self) -> int:
-        return self.total_ok + self.total_errors
+
+def discover_stream(raw_dir: Path) -> Iterator[Path]:
+    yield from raw_dir.rglob("*.pdf")
 
 
-def discover(
-    raw_dir: Path,
-    processed_dir: Path,
-    incremental: bool = True,
-) -> tuple[list[Path], int]:
-    all_pdfs = sorted(raw_dir.rglob("*.pdf"))
-    if not incremental:
-        return all_pdfs, 0
-
-    pending = []
-    skipped = 0
-    for p in all_pdfs:
-        rel = p.relative_to(raw_dir).with_suffix("")
-        output = processed_dir / f"{rel}.json"
-        if output.exists():
-            skipped += 1
-        else:
-            pending.append(p)
-
-    return pending, skipped
+def is_processed(pdf: Path, raw_dir: Path, processed_dir: Path) -> bool:
+    rel = pdf.relative_to(raw_dir).with_suffix("")
+    return (processed_dir / f"{rel}.json").exists()
 
 
-# Helper para workers
-
-
-def _worker(args: tuple[Path, Path]) -> ProcessedDoc:
-    pdf_path, raw_dir = args
-    return extract(pdf_path, raw_dir)
-
-
-# Orquestador principal
+def _worker(pdf: Path, raw_dir: Path):
+    doc = extract(pdf, raw_dir)
+    return pdf, doc
 
 
 def run(
     raw_dir: Path,
     processed_dir: Path,
     manifest_path: Path,
-    batch_size: int = 16,
     max_workers: int | None = None,
     incremental: bool = True,
-    dry_run: bool = False,
+    manifest_buffer_size: int = 500,
+    in_flight: int | None = None,
 ) -> BatchResult:
 
     result = BatchResult()
     t0 = time.monotonic()
 
-    pending, skipped = discover(raw_dir, processed_dir, incremental)
+    manifest_buffer: list[dict] = []
 
-    result.total_found = len(pending) + skipped
-    result.total_skipped = skipped
+    max_workers = max_workers or os.cpu_count()
+    in_flight = in_flight or max_workers * 2
 
-    log.info(f"PDFs encontrados : {result.total_found}")
-    log.info(f"Ya procesados    : {skipped}")
-    log.info(f"Pendientes       : {len(pending)}")
-    log.info(f"Batch size       : {batch_size} | Workers: {max_workers or 'auto'}")
+    active = set()
+    pdf_iter = discover_stream(raw_dir)
 
-    if dry_run:
-        log.info("── DRY RUN ── solo listado, no se procesa nada")
-        for p in pending:
-            log.info(f"  pendiente: {p.relative_to(raw_dir)}")
-        result.elapsed_sec = time.monotonic() - t0
-        return result
+    def submit_next():
+        for pdf in pdf_iter:
+            result.total_found += 1
 
-    if not pending:
-        log.info("Nada que procesar.")
-        result.elapsed_sec = time.monotonic() - t0
-        return result
+            if incremental and is_processed(pdf, raw_dir, processed_dir):
+                result.total_skipped += 1
+                continue
 
-    batches = _chunks(pending, batch_size)
-    total_batches = len(batches)
+            fut = executor.submit(_worker, pdf, raw_dir)
+            active.add(fut)
+            return True
 
-    for batch_num, batch in enumerate(batches, start=1):
-        log.info(f"── Batch {batch_num}/{total_batches} ({len(batch)} PDFs) ──")
-        t_batch = time.monotonic()
+        return False
 
-        args = [(pdf, raw_dir) for pdf in batch]
+    def flush_manifest():
+        nonlocal manifest_buffer
+        if manifest_buffer:
+            append_manifest_batch(manifest_buffer, manifest_path)
+            manifest_buffer.clear()
 
-        with ProcessPoolExecutor(max_workers=max_workers) as executor:
-            futures = {executor.submit(_worker, a): a[0] for a in args}
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
 
-            for future in as_completed(futures):
-                pdf_path = futures[future]
+        for _ in range(in_flight):
+            if not submit_next():
+                break
 
-                try:
-                    doc = future.result()
-                except Exception as exc:
-                    msg = f"{type(exc).__name__}: {exc}"
-                    log.error(f"  CRASH  {pdf_path.name}: {msg}")
-                    result.total_errors += 1
-                    result.errors.append((str(pdf_path), msg))
-                    continue
+        while active:
+
+            done, active = wait(active, return_when=FIRST_COMPLETED)
+
+            for fut in done:
+                pdf, doc = fut.result()
 
                 if not doc.ok():
-                    log.error(f"  ERROR  {doc.source_path}: {doc.error}")
                     result.total_errors += 1
-                    result.errors.append((doc.source_path, doc.error or ""))
+                    result.errors.append((str(pdf), str(doc.error or "")))
                 else:
                     save_doc(doc, processed_dir)
-                    append_manifest(doc, manifest_path)
-                    log.info(
-                        f"  OK  {doc.source_path}"
-                        f" | {doc.page_count}p | {doc.char_count:,} chars"
-                    )
+
+                    meta = {k: v for k, v in _to_dict(doc).items() if k not in _EXCLUDE}
+
+                    manifest_buffer.append(meta)
+
+                    if len(manifest_buffer) >= manifest_buffer_size:
+                        flush_manifest()
+
                     result.total_ok += 1
 
-        log.info(f"  Batch {batch_num} en {time.monotonic() - t_batch:.1f}s")
+                submit_next()
+
+        flush_manifest()
 
     result.elapsed_sec = time.monotonic() - t0
-
-    log.info("═" * 52)
-    log.info(
-        f"OK: {result.total_ok}  |  Errores: {result.total_errors}"
-        f"  |  Tiempo: {result.elapsed_sec:.1f}s"
-    )
-    log.info("═" * 52)
-
     return result
-
-
-# Utilidades
-
-
-def _chunks(lst: list, size: int) -> list[list]:
-    return [lst[i : i + size] for i in range(0, len(lst), size)]

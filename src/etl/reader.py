@@ -1,12 +1,11 @@
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-
 import pdfplumber
 
 from .models import PageData, ProcessedDoc
 
-DOC_TYPE_MAP: dict[str, str] = {
+DOC_TYPE_MAP = {
     "ewrs": "end_of_well_report",
     "partes_diarios": "parte_diario",
     "workovers": "workover_report",
@@ -27,14 +26,12 @@ def _now_iso() -> str:
 
 
 def _make_skeleton(pdf_path: Path, raw_dir: Path, ts: str) -> ProcessedDoc:
-    """Construye un ProcessedDoc vacío con la metadata de ruta."""
     rel = pdf_path.relative_to(raw_dir)
     folder = rel.parts[0]
     doc_type = DOC_TYPE_MAP.get(folder, "desconocido")
-    doc_id = str(rel.with_suffix(""))
 
     return ProcessedDoc(
-        doc_id=doc_id,
+        doc_id=str(rel.with_suffix("")),
         source_path=str(rel),
         doc_type=doc_type,
         filename=pdf_path.stem,
@@ -52,15 +49,16 @@ def extract(pdf_path: Path, raw_dir: Path) -> ProcessedDoc:
     doc = _make_skeleton(pdf_path, raw_dir, ts)
 
     try:
-        pages_data: list[PageData] = []
-        chunks: list[str] = []
+        pages_data = []
+        chunks = []
 
         with pdfplumber.open(pdf_path) as pdf:
             doc.page_count = len(pdf.pages)
+
             for i, page in enumerate(pdf.pages, start=1):
                 raw = page.extract_text() or ""
                 clean = _clean(raw)
-                pages_data.append(PageData(page_num=i, text=clean))
+                pages_data.append(PageData(i, clean))
                 chunks.append(clean)
 
         doc.pages = pages_data

@@ -1,7 +1,7 @@
-from .batch import BatchResult, discover, run
+from .batch import BatchResult, run
 from .models import PageData, ProcessedDoc
 from .reader import extract
-from .writer import append_manifest, save_doc
+from .writer import append_manifest_batch, save_doc
 
 __all__ = [
     # modelos
@@ -11,7 +11,7 @@ __all__ = [
     "extract",
     # writer
     "save_doc",
-    "append_manifest",
+    "append_manifest_batch",
     # batch
     "discover",
     "run",

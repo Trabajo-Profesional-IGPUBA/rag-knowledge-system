@@ -27,39 +27,25 @@ def setup_logging(log_dir: Path) -> None:
             logging.StreamHandler(sys.stdout),
         ],
     )
-    logging.getLogger(__name__).info(f"Log: {log_file}")
-
-
-# ── CLI ───────────────────────────────────────────────────────────────────────
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Pipeline ETL: lee PDFs de data/raw/ y los procesa a data/processed/"
-    )
-    parser.add_argument(
-        "--batch-size", type=int, default=16, help="PDFs por batch (default: 16)"
-    )
+    parser = argparse.ArgumentParser(description="ETL PDF pipeline")
+
     parser.add_argument(
         "--workers",
         type=int,
         default=None,
-        help="Workers paralelos (default: nro de CPUs disponibles)",
+        help="Número de workers (default CPU cores)",
     )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Lista los PDFs pendientes sin procesar nada",
-    )
+
     parser.add_argument(
         "--full",
         action="store_true",
-        help="Reprocesa todos los PDFs aunque ya existan los .json",
+        help="Reprocesar todo ignorando incremental",
     )
+
     return parser.parse_args()
-
-
-# ── Main ──────────────────────────────────────────────────────────────────────
 
 
 def main() -> int:
@@ -67,36 +53,34 @@ def main() -> int:
     setup_logging(LOG_DIR)
 
     log = logging.getLogger(__name__)
+
     log.info("═" * 52)
     log.info("Iniciando pipeline ETL")
-    log.info(f"  raw_dir      : {RAW_DIR}")
-    log.info(f"  processed_dir: {PROCESSED_DIR}")
-    log.info(f"  manifest     : {MANIFEST_PATH}")
-    log.info(f"  batch_size   : {args.batch_size}")
-    log.info(f"  workers      : {args.workers or 'auto'}")
-    log.info(f"  incremental  : {not args.full}")
-    log.info(f"  dry_run      : {args.dry_run}")
+    log.info(f"raw_dir      : {RAW_DIR}")
+    log.info(f"processed_dir: {PROCESSED_DIR}")
+    log.info(f"manifest     : {MANIFEST_PATH}")
+    log.info(f"workers      : {args.workers or 'auto'}")
+    log.info(f"incremental  : {not args.full}")
     log.info("═" * 52)
 
     if not RAW_DIR.exists():
-        log.error(
-            f"No existe data/raw/ en {RAW_DIR}. Creá la carpeta y colocá los PDFs."
-        )
+        log.error(f"No existe {RAW_DIR}")
         return 1
 
     result: BatchResult = run(
         raw_dir=RAW_DIR,
         processed_dir=PROCESSED_DIR,
         manifest_path=MANIFEST_PATH,
-        batch_size=args.batch_size,
         max_workers=args.workers,
         incremental=not args.full,
-        dry_run=args.dry_run,
     )
 
-    if result.total_errors > 0:
-        log.warning(f"{result.total_errors} PDFs fallaron. Revisá los logs.")
-        return 1
+    log.info(
+        f"FIN → OK={result.total_ok} "
+        f"ERR={result.total_errors} "
+        f"SKIP={result.total_skipped} "
+        f"TIME={result.elapsed_sec:.2f}s"
+    )
 
     return 0
 
