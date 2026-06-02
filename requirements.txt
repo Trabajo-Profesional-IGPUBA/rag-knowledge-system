@@ -14,3 +14,7 @@
 
 # Utilidades
 python-dotenv
+
+pdfplumber
+fpdf2
+pytest

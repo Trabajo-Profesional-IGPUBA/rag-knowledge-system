@@ -13,14 +13,15 @@ log = logging.getLogger(__name__)
 
 # Resultado del run
 
+
 @dataclass
 class BatchResult:
-    total_found:   int = 0
-    total_skipped: int = 0   
-    total_ok:      int = 0
-    total_errors:  int = 0
-    elapsed_sec:   float = 0.0
-    errors:        list[tuple[str, str]] = field(default_factory=list) 
+    total_found: int = 0
+    total_skipped: int = 0
+    total_ok: int = 0
+    total_errors: int = 0
+    elapsed_sec: float = 0.0
+    errors: list[tuple[str, str]] = field(default_factory=list)
 
     @property
     def total_processed(self) -> int:
@@ -36,10 +37,10 @@ def discover(
     if not incremental:
         return all_pdfs, 0
 
-    pending  = []
-    skipped  = 0
+    pending = []
+    skipped = 0
     for p in all_pdfs:
-        rel    = p.relative_to(raw_dir).with_suffix("")
+        rel = p.relative_to(raw_dir).with_suffix("")
         output = processed_dir / f"{rel}.json"
         if output.exists():
             skipped += 1
@@ -51,6 +52,7 @@ def discover(
 
 # Helper para workers
 
+
 def _worker(args: tuple[Path, Path]) -> ProcessedDoc:
     pdf_path, raw_dir = args
     return extract(pdf_path, raw_dir)
@@ -58,22 +60,23 @@ def _worker(args: tuple[Path, Path]) -> ProcessedDoc:
 
 # Orquestador principal
 
+
 def run(
     raw_dir: Path,
     processed_dir: Path,
     manifest_path: Path,
-    batch_size: int      = 16,
+    batch_size: int = 16,
     max_workers: int | None = None,
-    incremental: bool    = True,
-    dry_run: bool        = False,
+    incremental: bool = True,
+    dry_run: bool = False,
 ) -> BatchResult:
 
     result = BatchResult()
-    t0     = time.monotonic()
+    t0 = time.monotonic()
 
     pending, skipped = discover(raw_dir, processed_dir, incremental)
 
-    result.total_found   = len(pending) + skipped
+    result.total_found = len(pending) + skipped
     result.total_skipped = skipped
 
     log.info(f"PDFs encontrados : {result.total_found}")
@@ -135,14 +138,17 @@ def run(
     result.elapsed_sec = time.monotonic() - t0
 
     log.info("═" * 52)
-    log.info(f"OK: {result.total_ok}  |  Errores: {result.total_errors}"
-             f"  |  Tiempo: {result.elapsed_sec:.1f}s")
+    log.info(
+        f"OK: {result.total_ok}  |  Errores: {result.total_errors}"
+        f"  |  Tiempo: {result.elapsed_sec:.1f}s"
+    )
     log.info("═" * 52)
 
     return result
 
 
-# Utilidades 
+# Utilidades
+
 
 def _chunks(lst: list, size: int) -> list[list]:
     return [lst[i : i + size] for i in range(0, len(lst), size)]

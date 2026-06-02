@@ -1,12 +1,11 @@
 from pathlib import Path
 
-import pytest
 from fpdf import FPDF
 
 from src.etl.batch import discover, run
 
-
 # ── Helper para crear PDFs de prueba ─────────────────────────────────────────
+
 
 def _make_pdf(path: Path, text: str = "Texto de prueba."):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -18,7 +17,7 @@ def _make_pdf(path: Path, text: str = "Texto de prueba."):
 
 
 def _setup_raw(tmp_path: Path, filenames: list[str]) -> tuple[Path, Path, Path]:
-    raw  = tmp_path / "raw"
+    raw = tmp_path / "raw"
     proc = tmp_path / "processed"
     mani = tmp_path / "manifest.jsonl"
     for name in filenames:
@@ -28,11 +27,12 @@ def _setup_raw(tmp_path: Path, filenames: list[str]) -> tuple[Path, Path, Path]:
 
 # ── Tests de discover ─────────────────────────────────────────────────────────
 
+
 class TestDiscover:
     def test_returns_all_pdfs_when_none_processed(self, tmp_path):
-        raw, proc, _ = _setup_raw(tmp_path, [
-            "ewrs/A.pdf", "ewrs/B.pdf", "partes_diarios/C.pdf"
-        ])
+        raw, proc, _ = _setup_raw(
+            tmp_path, ["ewrs/A.pdf", "ewrs/B.pdf", "partes_diarios/C.pdf"]
+        )
         pending, skipped = discover(raw, proc, incremental=True)
         assert len(pending) == 3
         assert skipped == 0
@@ -59,7 +59,7 @@ class TestDiscover:
         assert skipped == 0
 
     def test_empty_raw_dir(self, tmp_path):
-        raw  = tmp_path / "raw"
+        raw = tmp_path / "raw"
         raw.mkdir()
         proc = tmp_path / "processed"
         pending, skipped = discover(raw, proc)
@@ -69,20 +69,20 @@ class TestDiscover:
 
 # ── Tests de run ──────────────────────────────────────────────────────────────
 
+
 class TestRun:
     def test_processes_all_pdfs(self, tmp_path):
-        raw, proc, mani = _setup_raw(tmp_path, [
-            "ewrs/EWR_A.pdf", "partes_diarios/PD_B.pdf", "fallas_bes/DIFA_C.pdf"
-        ])
+        raw, proc, mani = _setup_raw(
+            tmp_path,
+            ["ewrs/EWR_A.pdf", "partes_diarios/PD_B.pdf", "fallas_bes/DIFA_C.pdf"],
+        )
         result = run(raw, proc, mani, batch_size=2)
 
         assert result.total_ok == 3
         assert result.total_errors == 0
 
     def test_creates_json_for_each_pdf(self, tmp_path):
-        raw, proc, mani = _setup_raw(tmp_path, [
-            "ewrs/EWR_A.pdf", "ewrs/EWR_B.pdf"
-        ])
+        raw, proc, mani = _setup_raw(tmp_path, ["ewrs/EWR_A.pdf", "ewrs/EWR_B.pdf"])
         run(raw, proc, mani)
 
         assert (proc / "ewrs" / "EWR_A.json").exists()
@@ -95,11 +95,11 @@ class TestRun:
         assert mani.stat().st_size > 0
 
     def test_manifest_has_one_line_per_doc(self, tmp_path):
-        raw, proc, mani = _setup_raw(tmp_path, [
-            "ewrs/A.pdf", "ewrs/B.pdf", "ewrs/C.pdf"
-        ])
+        raw, proc, mani = _setup_raw(
+            tmp_path, ["ewrs/A.pdf", "ewrs/B.pdf", "ewrs/C.pdf"]
+        )
         run(raw, proc, mani)
-        lines = [l for l in mani.read_text().splitlines() if l.strip()]
+        lines = [line for line in mani.read_text().splitlines() if line.strip()]
         assert len(lines) == 3
 
     def test_incremental_skips_existing(self, tmp_path):
@@ -110,8 +110,8 @@ class TestRun:
         already.write_text('{"doc_id": "ewrs/A"}')
 
         result = run(raw, proc, mani, incremental=True)
-        assert result.total_ok == 1        # solo B
-        assert result.total_skipped == 1   # A ya existía
+        assert result.total_ok == 1  # solo B
+        assert result.total_skipped == 1  # A ya existía
 
     def test_dry_run_does_not_write_files(self, tmp_path):
         raw, proc, mani = _setup_raw(tmp_path, ["ewrs/A.pdf"])
@@ -120,9 +120,9 @@ class TestRun:
         assert not mani.exists()
 
     def test_corrupt_pdf_counted_as_error(self, tmp_path):
-        raw  = tmp_path / "raw" / "ewrs"
+        raw = tmp_path / "raw" / "ewrs"
         raw.mkdir(parents=True)
-        bad  = raw / "corrupt.pdf"
+        bad = raw / "corrupt.pdf"
         bad.write_bytes(b"no soy un pdf valido %%%")
 
         proc = tmp_path / "processed"
@@ -139,14 +139,14 @@ class TestRun:
 
     def test_batch_size_respected(self, tmp_path):
         """Con batch_size=1 debe procesar de a un PDF y terminar igual."""
-        raw, proc, mani = _setup_raw(tmp_path, [
-            "ewrs/A.pdf", "ewrs/B.pdf", "ewrs/C.pdf"
-        ])
+        raw, proc, mani = _setup_raw(
+            tmp_path, ["ewrs/A.pdf", "ewrs/B.pdf", "ewrs/C.pdf"]
+        )
         result = run(raw, proc, mani, batch_size=1)
         assert result.total_ok == 3
 
     def test_empty_raw_returns_zero(self, tmp_path):
-        raw  = tmp_path / "raw"
+        raw = tmp_path / "raw"
         raw.mkdir()
         proc = tmp_path / "processed"
         mani = tmp_path / "manifest.jsonl"

@@ -1,13 +1,11 @@
-import io
 from pathlib import Path
 
-import pytest
 from fpdf import FPDF
 
 from src.etl.reader import extract, _clean
 
-
 # ── Fixtures ──────────────────────────────────────────────────────────────────
+
 
 def _write_pdf(tmp_path: Path, subfolder: str, filename: str, text: str) -> Path:
     folder = tmp_path / subfolder
@@ -24,6 +22,7 @@ def _write_pdf(tmp_path: Path, subfolder: str, filename: str, text: str) -> Path
 
 # ── Tests de _clean ───────────────────────────────────────────────────────────
 
+
 class TestClean:
     def test_collapses_multiple_newlines(self):
         result = _clean("a\n\n\n\nb")
@@ -38,11 +37,14 @@ class TestClean:
 
 # ── Tests de extract ──────────────────────────────────────────────────────────
 
+
 class TestExtract:
     def test_extracts_text_from_valid_pdf(self, tmp_path):
         pdf_path = _write_pdf(
-            tmp_path, "ewrs", "EWR_PM104_2012.pdf",
-            "Pérdida de circulación severa en Quintuco a 2.450 metros."
+            tmp_path,
+            "ewrs",
+            "EWR_PM104_2012.pdf",
+            "Pérdida de circulación severa en Quintuco a 2.450 metros.",
         )
         doc = extract(pdf_path, tmp_path)
 
