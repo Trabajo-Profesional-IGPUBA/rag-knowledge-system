@@ -22,4 +22,4 @@ jobs:
 
       - name: Run tests
         run: |
-          python -m pytest tests/etl/
+          python -m pytest tests/
