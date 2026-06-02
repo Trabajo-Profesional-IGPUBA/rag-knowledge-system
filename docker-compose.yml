@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+
+  app:
+    build: .
+    container_name: rag-app
+    command: python main.py
+    volumes:
+      - .:/app
+    working_dir: /app
+
+  lint:
+    build: .
+    container_name: rag-lint
+    command: ruff check . --fix
+    volumes:
+      - .:/app
+    working_dir: /app
+
+  format:
+    build: .
+    container_name: rag-format
+    command: black .
+    volumes:
+      - .:/app
+    working_dir: /app
