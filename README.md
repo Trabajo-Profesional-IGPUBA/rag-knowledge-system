@@ -33,6 +33,39 @@ source venv/bin/activate  # En Windows: venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env
 ```
+## Docker
+
+### Levantar la aplicación
+
+```bash
+docker compose up app
+```
+
+Inicia el contenedor de la aplicación y sus dependencias.
+
+### Ejecutar los tests
+
+```bash
+docker compose run test
+```
+
+Ejecuta las pruebas del proyecto dentro de un contenedor.
+
+### Formatear el código
+
+```bash
+docker compose run format
+```
+
+Aplica automáticamente las reglas de formato configuradas en el proyecto.
+
+### Verificar el estilo del código (lint)
+
+```bash
+docker compose run lint
+```
+
+Analiza el código para detectar errores de estilo, problemas de calidad o incumplimientos de las reglas definidas por el linter y las corrige.
 
 ## Equipo
 
