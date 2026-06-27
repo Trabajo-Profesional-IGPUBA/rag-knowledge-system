@@ -1,19 +1,15 @@
-from .batch import BatchResult, run
-from .models import PageData, ProcessedDoc
+from .batch import run, BatchResult
 from .reader import extract
-from .writer import append_manifest_batch, save_doc
+from .models import PageData, ProcessedDoc
+from .cleaner import normalize, extract_metadata_hints
+from .chunker import split, Chunk
+from .ocr import extract_text_from_page, needs_ocr
 
 __all__ = [
-    # modelos
-    "PageData",
-    "ProcessedDoc",
-    # reader
+    "run", "BatchResult",
     "extract",
-    # writer
-    "save_doc",
-    "append_manifest_batch",
-    # batch
-    "discover",
-    "run",
-    "BatchResult",
+    "PageData", "ProcessedDoc",
+    "normalize", "extract_metadata_hints",
+    "split", "Chunk",
+    "extract_text_from_page", "needs_ocr",
 ]

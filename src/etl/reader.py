@@ -1,9 +1,14 @@
 import re
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 import pdfplumber
 
 from .models import PageData, ProcessedDoc
+from .ocr import extract_text_from_page
+from .cleaner import normalize
+
+log = logging.getLogger(__name__)
 
 DOC_TYPE_MAP = {
     "ewrs": "end_of_well_report",
@@ -51,15 +56,22 @@ def extract(pdf_path: Path, raw_dir: Path) -> ProcessedDoc:
     try:
         pages_data = []
         chunks = []
+        ocr_pages = 0
 
         with pdfplumber.open(pdf_path) as pdf:
             doc.page_count = len(pdf.pages)
 
             for i, page in enumerate(pdf.pages, start=1):
-                raw = page.extract_text() or ""
-                clean = _clean(raw)
+                raw, used_ocr = extract_text_from_page(page)
+                if used_ocr:
+                    ocr_pages += 1
+                    log.debug("%s página %d procesada con OCR", pdf_path.name, i)
+                clean = normalize(raw)
                 pages_data.append(PageData(i, clean))
                 chunks.append(clean)
+
+        if ocr_pages:
+            log.info("%s: %d/%d páginas procesadas con OCR", pdf_path.name, ocr_pages, doc.page_count)
 
         doc.pages = pages_data
         doc.text = "\n\n".join(chunks)
