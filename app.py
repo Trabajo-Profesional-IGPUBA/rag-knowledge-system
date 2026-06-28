@@ -39,7 +39,7 @@ def load_pipeline():
     vectorstore = VectorStore(VECTORSTORE_DIR)
     retriever = Retriever(embedder, vectorstore)
 
-    llm_client = LLMClient(LLMConfig(model="llama3:8b"))
+    llm_client = LLMClient(LLMConfig(model="llama3:8b", timeout=600))
     pipeline = RAGPipeline(
         retriever=retriever,
         llm_client=llm_client,

@@ -126,3 +126,14 @@ def run_pipeline(
 
     metrics.log_summary()
     return metrics
+
+if __name__ == "__main__":
+    import logging
+    logging.basicConfig(level=logging.INFO)
+    run_pipeline(
+        raw_dir=Path("data/raw"),
+        processed_dir=Path("data/processed"),
+        vectorstore_dir=Path("data/vectorstore"),
+        manifest_path=Path("data/manifest.jsonl"),
+        incremental=False,
+    )
