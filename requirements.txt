@@ -1,20 +1,21 @@
-# ETL y OCR
-# pytesseract
-# pdfplumber
-# python-docx
+# ETL y procesamiento de documentos
+pdfplumber>=0.11.0
+fpdf2>=2.7.0
+
+# OCR (opcional — solo necesario para PDFs escaneados)
+# pytesseract>=0.3.10
+# Pillow>=10.0.0
+# pdf2image>=1.16.3
 
 # Embeddings
-# sentence-transformers
+sentence-transformers>=3.0.0
 
 # Base de datos vectorial
-# chromadb
+chromadb>=0.5.0
 
-# LLM
-# llama-cpp-python
+# Testing
+pytest>=8.0.0
+pytest-cov>=5.0.0
 
 # Utilidades
-python-dotenv
-
-pdfplumber
-fpdf2
-pytest
+python-dotenv>=1.0.0
