@@ -67,6 +67,17 @@ docker compose run lint
 
 Analiza el código para detectar errores de estilo, problemas de calidad o incumplimientos de las reglas definidas por el linter y las corrige.
 
+### Ejecucion del indexer 
+```bash
+python -m src.indexer
+```
+
+### Ejecucion de la interfaz web
+```bash
+streamlit run app.py --server.fileWatcherType none 
+```
+
+
 ## Equipo
 
 | Integrante | Padrón |
