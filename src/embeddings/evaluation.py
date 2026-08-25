@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+import statistics
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Optional
@@ -102,28 +103,38 @@ def evaluate_candidate_model(
     model_name: str,
     test_texts: list[str],
     evaluation_queries: list[dict],
+    n_repeticiones: int = 5,
 ) -> ModelEvaluationResult:
     log.info("=== Evaluando modelo: %s ===", model_name)
     ram_antes = _current_ram_mb()
- 
+
     try:
         t0 = time.perf_counter()
         model = SentenceTransformer(model_name)
         load_time = time.perf_counter() - t0
- 
-        t0 = time.perf_counter()
-        vectors = model.encode(test_texts, convert_to_numpy=True)
-        encode_time = time.perf_counter() - t0
- 
+
+        # Warmup: no se mide, solo "calienta" el modelo (carga de kernels,
+        # threads de PyTorch, cachés internas)
+        model.encode(test_texts, convert_to_numpy=True)
+
+        # Corridas medidas
+        tiempos = []
+        for _ in range(n_repeticiones):
+            t0 = time.perf_counter()
+            vectors = model.encode(test_texts, convert_to_numpy=True)
+            tiempos.append(time.perf_counter() - t0)
+
+        encode_time = statistics.median(tiempos)
+
         ram_despues = _current_ram_mb()
         peak_ram = (
             round(ram_despues - ram_antes, 1)
             if ram_antes is not None and ram_despues is not None
             else None
         )
- 
+
         calidad = measure_quality(model, evaluation_queries)
- 
+
         result = ModelEvaluationResult(
             model_name=model_name,
             embedding_dim=int(vectors.shape[1]),
@@ -134,17 +145,13 @@ def evaluate_candidate_model(
             approx_disk_size_mb=APPROX_DISK_SIZE_MB.get(model_name),
             **calidad,
         )
- 
         log.info(
-            "Resultado %s: dim=%s, %.1f textos/s, accuracy=%s, ram=%s MB",
-            model_name,
-            result.embedding_dim,
-            result.texts_per_sec or 0,
-            result.retrieval_accuracy,
-            result.peak_ram_mb,
+            "Resultado %s (mediana de %d corridas): dim=%s, %.1f textos/s, accuracy=%s, ram=%s MB",
+            model_name, n_repeticiones, result.embedding_dim,
+            result.texts_per_sec or 0, result.retrieval_accuracy, result.peak_ram_mb,
         )
         return result
- 
+
     except Exception as e:
         log.exception("Error evaluando %s", model_name)
         return ModelEvaluationResult(model_name=model_name, ok=False, error=str(e))
