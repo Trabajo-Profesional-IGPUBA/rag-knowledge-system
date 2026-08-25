@@ -68,4 +68,58 @@ Un modelo pasa a "seleccionado" solo si cumple el umbral de calidad Y
 domina o empata en al menos uno de los otros criterios frente a las
 alternativas evaluadas.
 """
+
+
+CANDIDATE_MODELS = [
+    {
+        "name": "paraphrase-multilingual-MiniLM-L12-v2",
+        "notes": "Candidato actual: liviano, multilingüe.",
+    },
+    {
+        "name": "all-MiniLM-L6-v2",
+        "notes": "Solo inglés — se espera bajo desempeño en consultas en español.",
+    },
+    {
+        "name": "paraphrase-multilingual-mpnet-base-v2",
+        "notes": "Mayor calidad esperada, ~2x más pesado que el actual.",
+    },
+]
+ 
+# Tamaño en disco, ya que medirlo en runtime requiere acceso al cache dir y no es 100% portable.
+APPROX_DISK_SIZE_MB = {
+    "paraphrase-multilingual-MiniLM-L12-v2": 470,
+    "all-MiniLM-L6-v2": 90,
+    "paraphrase-multilingual-mpnet-base-v2": 970,
+}
+ 
+# Dataset query -> doc correcto / doc incorrecto, usado para medir calidad semántica
+# TODO: reemplazar/ampliar con 30-50 casos reales del dominio IGPUBA antes
+# de tomar la decisión final; con pocos casos el accuracy no es representativo.
+EVALUATION_QUERIES: list[dict] = [
+    {
+        "query": "¿Cómo se tramita una licencia de conducir?",
+        "doc_correcto": "Requisitos y pasos para obtener o renovar la licencia de conducir.",
+        "doc_incorrecto": "Cronograma de recolección de residuos por barrio.",
+    },
+    {
+        "query": "Requisitos para inscribirse en el padrón electoral",
+        "doc_correcto": "Documentación necesaria para el registro en el padrón de votantes.",
+        "doc_incorrecto": "Horarios de atención de las oficinas de turismo.",
+    },
+    {
+        "query": "¿Dónde reclamo por un bache en la calle?",
+        "doc_correcto": "Canal de reclamos por infraestructura vial y baches.",
+        "doc_incorrecto": "Formulario de inscripción a talleres culturales municipales.",
+    },
+    {
+        "query": "Certificado de discapacidad, cómo solicitarlo",
+        "doc_correcto": "Trámite y requisitos para obtener el certificado único de discapacidad.",
+        "doc_incorrecto": "Listado de ferias de emprendedores del mes.",
+    },
+    {
+        "query": "Pago de tasas municipales online",
+        "doc_correcto": "Plataforma de pago digital de tasas y contribuciones municipales.",
+        "doc_incorrecto": "Reglamento interno de uso de espacios verdes.",
+    },
+]
  

@@ -1,10 +1,10 @@
-
 """
 Evaluación y comparación de modelos de embeddings candidatos.
  
 Historia: "Pruebas de modelos candidatos"
   - evaluate_candidate_model(): genera embeddings de prueba, ejecuta las
     consultas de evaluación y registra los resultados de un modelo.
+  - evaluate_models(): corre todos los candidatos y persiste resultados.
  
 Historia: "Comparación y selección"
   - measure_quality(): comparación de calidad semántica.
@@ -24,7 +24,7 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
  
-from src.embeddings.criteria import APPROX_DISK_SIZE_MB
+from src.embeddings.criteria import APPROX_DISK_SIZE_MB, CANDIDATE_MODELS, EVALUATION_QUERIES
  
 try:
     import psutil
@@ -148,5 +148,33 @@ def evaluate_candidate_model(
     except Exception as e:
         log.exception("Error evaluando %s", model_name)
         return ModelEvaluationResult(model_name=model_name, ok=False, error=str(e))
+ 
+ 
+def evaluate_models(
+    test_texts: list[str],
+    evaluation_queries: Optional[list[dict]] = None,
+    candidates: Optional[list[str]] = None,
+    results_path: Optional[str] = "evaluation_results.json",
+) -> dict[str, ModelEvaluationResult]:
+    """
+    Evalúa todos los modelos candidatos sobre el mismo set de textos de
+    prueba y consultas de evaluación, y persiste los resultados en JSON
+    para trazabilidad (registro de resultados obtenidos).
+    """
+    evaluation_queries = evaluation_queries if evaluation_queries is not None else EVALUATION_QUERIES
+    candidate_names = candidates or [c["name"] for c in CANDIDATE_MODELS]
+ 
+    results: dict[str, ModelEvaluationResult] = {}
+    for model_name in candidate_names:
+        results[model_name] = evaluate_candidate_model(model_name, test_texts, evaluation_queries)
+ 
+    if results_path:
+        Path(results_path).write_text(
+            json.dumps({k: v.to_dict() for k, v in results.items()}, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        log.info("Resultados guardados en %s", results_path)
+ 
+    return results
  
  
