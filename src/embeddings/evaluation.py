@@ -1,0 +1,152 @@
+
+"""
+Evaluación y comparación de modelos de embeddings candidatos.
+ 
+Historia: "Pruebas de modelos candidatos"
+  - evaluate_candidate_model(): genera embeddings de prueba, ejecuta las
+    consultas de evaluación y registra los resultados de un modelo.
+ 
+Historia: "Comparación y selección"
+  - measure_quality(): comparación de calidad semántica.
+  - evaluate_candidate_model(): también mide velocidad y consumo de RAM.
+"""
+ 
+from __future__ import annotations
+ 
+import json
+import logging
+import time
+from dataclasses import dataclass, asdict
+from pathlib import Path
+from typing import Optional
+ 
+import numpy as np
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
+ 
+from src.embeddings.criteria import APPROX_DISK_SIZE_MB
+ 
+try:
+    import psutil
+    _HAS_PSUTIL = True
+except ImportError:  # medición de RAM es opcional, no bloquea el resto
+    _HAS_PSUTIL = False
+ 
+log = logging.getLogger(__name__)
+ 
+ 
+@dataclass
+class ModelEvaluationResult:
+    model_name: str
+    ok: bool = True
+    error: Optional[str] = None
+ 
+    # Rendimiento
+    embedding_dim: Optional[int] = None
+    load_time_sec: Optional[float] = None
+    encode_time_sec: Optional[float] = None
+    texts_per_sec: Optional[float] = None
+ 
+    # Recursos
+    peak_ram_mb: Optional[float] = None
+    approx_disk_size_mb: Optional[float] = None
+ 
+    # Calidad semántica
+    retrieval_accuracy: Optional[float] = None
+    avg_margin: Optional[float] = None
+    avg_similarity_correct: Optional[float] = None
+ 
+    def to_dict(self) -> dict:
+        return asdict(self)
+ 
+ 
+def _current_ram_mb() -> Optional[float]:
+    if not _HAS_PSUTIL:
+        return None
+    return psutil.Process().memory_info().rss / (1024 * 1024)
+
+def measure_quality(model: SentenceTransformer, evaluation_queries: list[dict]) -> dict:
+    """ 
+    Para cada consulta de evaluación, vectoriza query + doc correcto +
+    doc incorrecto y verifica si el modelo asigna mayor similitud al
+    documento correcto (acierto de retrieval).
+    """
+    if not evaluation_queries:
+        return {"retrieval_accuracy": None, "avg_margin": None, "avg_similarity_correct": None}
+ 
+    aciertos = 0
+    margenes = []
+    similitudes_correctas = []
+ 
+    for caso in evaluation_queries:
+        vs = model.encode(
+            [caso["query"], caso["doc_correcto"], caso["doc_incorrecto"]],
+            convert_to_numpy=True,
+        )
+        sim_ok = float(cosine_similarity([vs[0]], [vs[1]])[0][0])
+        sim_mal = float(cosine_similarity([vs[0]], [vs[2]])[0][0])
+ 
+        if sim_ok > sim_mal:
+            aciertos += 1
+        margenes.append(sim_ok - sim_mal)
+        similitudes_correctas.append(sim_ok)
+ 
+    n = len(evaluation_queries)
+    return {
+        "retrieval_accuracy": round(aciertos / n, 3),
+        "avg_margin": round(float(np.mean(margenes)), 4),
+        "avg_similarity_correct": round(float(np.mean(similitudes_correctas)), 4),
+    }
+ 
+def evaluate_candidate_model(
+    model_name: str,
+    test_texts: list[str],
+    evaluation_queries: list[dict],
+) -> ModelEvaluationResult:
+    log.info("=== Evaluando modelo: %s ===", model_name)
+    ram_antes = _current_ram_mb()
+ 
+    try:
+        t0 = time.perf_counter()
+        model = SentenceTransformer(model_name)
+        load_time = time.perf_counter() - t0
+ 
+        t0 = time.perf_counter()
+        vectors = model.encode(test_texts, convert_to_numpy=True)
+        encode_time = time.perf_counter() - t0
+ 
+        ram_despues = _current_ram_mb()
+        peak_ram = (
+            round(ram_despues - ram_antes, 1)
+            if ram_antes is not None and ram_despues is not None
+            else None
+        )
+ 
+        calidad = measure_quality(model, evaluation_queries)
+ 
+        result = ModelEvaluationResult(
+            model_name=model_name,
+            embedding_dim=int(vectors.shape[1]),
+            load_time_sec=round(load_time, 3),
+            encode_time_sec=round(encode_time, 3),
+            texts_per_sec=round(len(test_texts) / encode_time, 1) if encode_time > 0 else None,
+            peak_ram_mb=peak_ram,
+            approx_disk_size_mb=APPROX_DISK_SIZE_MB.get(model_name),
+            **calidad,
+        )
+ 
+        log.info(
+            "Resultado %s: dim=%s, %.1f textos/s, accuracy=%s, ram=%s MB",
+            model_name,
+            result.embedding_dim,
+            result.texts_per_sec or 0,
+            result.retrieval_accuracy,
+            result.peak_ram_mb,
+        )
+        return result
+ 
+    except Exception as e:
+        log.exception("Error evaluando %s", model_name)
+        return ModelEvaluationResult(model_name=model_name, ok=False, error=str(e))
+ 
+ 
