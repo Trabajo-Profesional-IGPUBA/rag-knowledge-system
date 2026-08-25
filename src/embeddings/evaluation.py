@@ -177,4 +177,65 @@ def evaluate_models(
  
     return results
  
+def generate_report(
+    results: dict[str, ModelEvaluationResult],
+    accuracy_threshold: float = 0.85,
+) -> str:
+    """ 
+    Genera un reporte en Markdown con la tabla comparativa y una
+    justificación automática basada en los umbrales definidos en
+    criteria.COMPARISON_CRITERIA.
+    """
+    lines = ["# Evaluación de modelos de embeddings — resultados\n"]
+    lines.append(
+        "| Modelo | Dim | Textos/s | RAM (MB) | Disco aprox (MB) | Accuracy | Margen prom. |"
+    )
+    lines.append("|---|---|---|---|---|---|---|")
+ 
+    for name, r in results.items():
+        if not r.ok:
+            lines.append(f"| {name} | ERROR: {r.error} | | | | | |")
+            continue
+        lines.append(
+            f"| {name} | {r.embedding_dim} | {r.texts_per_sec} | "
+            f"{r.peak_ram_mb} | {r.approx_disk_size_mb} | "
+            f"{r.retrieval_accuracy} | {r.avg_margin} |"
+        )
+ 
+    validos = {
+        k: v
+        for k, v in results.items()
+        if v.ok and v.retrieval_accuracy is not None and v.retrieval_accuracy >= accuracy_threshold
+    }
+ 
+    lines.append("\n## Justificación\n")
+    if not validos:
+        lines.append(
+            f"Ningún modelo alcanzó el umbral mínimo de calidad "
+            f"(retrieval_accuracy >= {accuracy_threshold}). Se recomienda "
+            f"ampliar el set de EVALUATION_QUERIES antes de decidir, ya que "
+            f"con pocos casos el resultado puede no ser representativo."
+        )
+    else:
+        seleccionado = max(validos.items(), key=lambda kv: kv[1].texts_per_sec or 0)
+        nombre, r = seleccionado
+        lines.append(
+            f"**Modelo seleccionado: `{nombre}`**\n\n"
+            f"- Cumple el umbral de calidad definido "
+            f"(accuracy={r.retrieval_accuracy} >= {accuracy_threshold}).\n"
+            f"- Entre los modelos que cumplen el umbral, es el de mayor "
+            f"velocidad de generación ({r.texts_per_sec} textos/s en CPU).\n"
+            f"- Consumo de RAM medido: {r.peak_ram_mb} MB. "
+            f"Tamaño en disco aproximado: {r.approx_disk_size_mb} MB.\n"
+        )
+        otros = [k for k in validos if k != nombre]
+        if otros:
+            lines.append(
+                f"- Otros modelos que también cumplieron el umbral de calidad "
+                f"({', '.join(otros)}) fueron descartados por menor velocidad "
+                f"y/o mayor consumo de recursos, sin ofrecer una mejora de "
+                f"calidad que lo justifique."
+            )
+ 
+    return "\n".join(lines)
  
