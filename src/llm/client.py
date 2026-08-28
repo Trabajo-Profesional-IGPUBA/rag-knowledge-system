@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import json
 import logging
 import time
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Iterator
 
 import requests
 
@@ -57,7 +58,7 @@ class LLMClient:
         try:
             r = requests.get(f"{self._base_url}/api/tags", timeout=5)
             return r.status_code == 200
-        except Exception:
+        except requests.exceptions.RequestException:
             return False
 
     def list_models(self) -> list[str]:
@@ -66,7 +67,7 @@ class LLMClient:
             r = requests.get(f"{self._base_url}/api/tags", timeout=10)
             r.raise_for_status()
             return [m["name"] for m in r.json().get("models", [])]
-        except Exception as e:
+        except (requests.exceptions.RequestException, ValueError, KeyError) as e:
             log.warning("No se pudieron listar modelos: %s", e)
             return []
 
@@ -83,7 +84,7 @@ class LLMClient:
             r.raise_for_status()
             log.info("Modelo %s descargado correctamente", model)
             return True
-        except Exception as e:
+        except (requests.exceptions.RequestException, json.JSONDecodeError) as e:
             log.error("Error descargando modelo %s: %s", model, e)
             return False
 
@@ -146,7 +147,11 @@ class LLMClient:
             log.error(msg)
             return LLMResponse(text="", model=model, ok=False, error=msg)
 
-        except Exception as e:
+        except (
+            requests.exceptions.RequestException,
+            json.JSONDecodeError,
+            KeyError,
+        ) as e:
             msg = str(e)
             log.error("Error en LLM generate: %s", msg)
             return LLMResponse(text="", model=model, ok=False, error=msg)
@@ -188,5 +193,5 @@ class LLMClient:
 
         except requests.exceptions.ConnectionError:
             yield "\n[Error: Ollama no disponible. Ejecutá: ollama serve]\n"
-        except Exception as e:
+        except requests.exceptions.RequestException as e:
             yield f"\n[Error: {e}]\n"

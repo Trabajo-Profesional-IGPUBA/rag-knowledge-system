@@ -1,4 +1,4 @@
-from src.etl.cleaner import normalize, extract_metadata_hints
+from src.etl.cleaner import extract_metadata_hints, normalize
 
 
 class TestNormalize:

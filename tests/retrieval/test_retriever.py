@@ -1,6 +1,8 @@
 from unittest.mock import MagicMock
+
 import pytest
-from src.retrieval.retriever import Retriever, RetrievalResult, evaluate_topk_accuracy
+
+from src.retrieval.retriever import RetrievalResult, Retriever, evaluate_topk_accuracy
 
 
 def _fake_embedding():

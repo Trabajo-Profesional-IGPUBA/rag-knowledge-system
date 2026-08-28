@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from fpdf import FPDF
 
 from src.etl.batch import run

@@ -12,11 +12,11 @@ import json
 import logging
 from pathlib import Path
 
+from src.embeddings.embedder import Embedder
 from src.etl.batch import run as etl_run
 from src.etl.chunker import split as chunk_split
-from src.embeddings.embedder import Embedder
-from src.retrieval.vectorstore import VectorStore
 from src.observability import PipelineMetrics, Timer
+from src.retrieval.vectorstore import VectorStore
 
 log = logging.getLogger(__name__)
 
@@ -88,7 +88,7 @@ def run_pipeline(
     for json_path in json_files:
         try:
             data = json.loads(json_path.read_text(encoding="utf-8"))
-        except Exception as e:
+        except (OSError, ValueError) as e:
             log.warning("No se pudo leer %s: %s", json_path, e)
             continue
 

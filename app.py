@@ -1,5 +1,6 @@
-import streamlit as st
 from pathlib import Path
+
+import streamlit as st
 
 st.set_page_config(
     page_title="IGPUBA — Consulta técnica",
@@ -29,13 +30,14 @@ st.divider()
 @st.cache_resource(show_spinner="Cargando sistema RAG...")
 def load_pipeline():
     import logging
-    from src.observability import setup_logging
+
     from src.embeddings.embedder import Embedder
-    from src.retrieval.vectorstore import VectorStore
-    from src.retrieval.retriever import Retriever
     from src.llm.client import LLMClient, LLMConfig
     from src.llm.prompt_builder import PromptBuilder
-    from src.llm.rag_pipeline import RAGPipeline, RAGConfig
+    from src.llm.rag_pipeline import RAGConfig, RAGPipeline
+    from src.observability import setup_logging
+    from src.retrieval.retriever import Retriever
+    from src.retrieval.vectorstore import VectorStore
 
     setup_logging(LOGS_DIR, level=logging.WARNING)
 
@@ -56,7 +58,7 @@ def load_pipeline():
 try:
     pipeline, llm_client = load_pipeline()
     ollama_ok = llm_client.is_available()
-except Exception as e:
+except Exception as e:  # noqa: BLE001 — falla de inicialización de la app: se muestra el error en la UI y se detiene la ejecución, no hay forma razonable de continuar
     st.error(f"Error al cargar el sistema: {e}")
     st.stop()
 

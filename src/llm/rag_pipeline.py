@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Any, Iterator
+from typing import Any
 
-from src.retrieval.retriever import Retriever, RetrievalResult
 from src.llm.client import LLMClient, LLMResponse
-from src.llm.prompt_builder import PromptBuilder, BuiltPrompt
+from src.llm.prompt_builder import BuiltPrompt, PromptBuilder
+from src.retrieval.retriever import RetrievalResult, Retriever
 
 log = logging.getLogger(__name__)
 

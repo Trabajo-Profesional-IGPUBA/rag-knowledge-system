@@ -1,6 +1,8 @@
 from unittest.mock import MagicMock, patch
+
 import pytest
-from src.embeddings.embedder import Embedder, EMBEDDING_DIM, DEFAULT_MODEL
+
+from src.embeddings.embedder import DEFAULT_MODEL, EMBEDDING_DIM, Embedder
 
 
 @pytest.fixture

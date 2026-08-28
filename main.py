@@ -3,7 +3,7 @@ import logging
 import sys
 from pathlib import Path
 
-from src.etl import run, BatchResult
+from src.etl import BatchResult, run
 
 ROOT_DIR = Path(__file__).parent
 RAW_DIR = ROOT_DIR / "data" / "raw"
@@ -17,7 +17,9 @@ def setup_logging(log_dir: Path) -> None:
 
     from datetime import datetime
 
-    log_file = log_dir / f"etl_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+    log_file = (
+        log_dir / f"etl_{datetime.now().astimezone().strftime('%Y%m%d_%H%M%S')}.log"
+    )
 
     logging.basicConfig(
         level=logging.INFO,

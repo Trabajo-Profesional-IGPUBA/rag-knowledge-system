@@ -2,7 +2,7 @@ from pathlib import Path
 
 from fpdf import FPDF
 
-from src.etl.reader import extract, _clean
+from src.etl.reader import _clean, extract
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 

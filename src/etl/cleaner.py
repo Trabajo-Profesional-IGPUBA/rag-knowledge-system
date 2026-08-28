@@ -70,10 +70,12 @@ def extract_metadata_hints(text: str) -> dict[str, str]:
     hints: dict[str, str] = {}
 
     patterns = {
-        "pozo": re.compile(r"(?:POZO|Pozo)[:\s]+([A-Z]{2,4}-\d{2,4})", re.I),
-        "año": re.compile(r"(?:AÑO|Año)[:\s]+(\d{4})", re.I),
-        "tipo": re.compile(r"(?:TIPO|Tipo)[:\s]+(.+?)(?:\n|$)", re.I),
-        "seccion": re.compile(r"(?:SECCIÓN|SECCION|Sección)[:\s]+(.+?)(?:\n|$)", re.I),
+        "pozo": re.compile(r"(?:POZO|Pozo)[:\s]+([A-Z]{2,4}-\d{2,4})", re.IGNORECASE),
+        "año": re.compile(r"(?:AÑO|Año)[:\s]+(\d{4})", re.IGNORECASE),
+        "tipo": re.compile(r"(?:TIPO|Tipo)[:\s]+(.+?)(?:\n|$)", re.IGNORECASE),
+        "seccion": re.compile(
+            r"(?:SECCIÓN|SECCION|Sección)[:\s]+(.+?)(?:\n|$)", re.IGNORECASE
+        ),
     }
 
     for key, pattern in patterns.items():

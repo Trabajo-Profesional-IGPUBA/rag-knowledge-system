@@ -15,11 +15,10 @@ from __future__ import annotations
 
 import json
 import logging
-import time
 import statistics
-from dataclasses import dataclass, asdict
+import time
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 from sentence_transformers import SentenceTransformer
@@ -45,28 +44,28 @@ log = logging.getLogger(__name__)
 class ModelEvaluationResult:
     model_name: str
     ok: bool = True
-    error: Optional[str] = None
+    error: str | None = None
 
     # Rendimiento
-    embedding_dim: Optional[int] = None
-    load_time_sec: Optional[float] = None
-    encode_time_sec: Optional[float] = None
-    texts_per_sec: Optional[float] = None
+    embedding_dim: int | None = None
+    load_time_sec: float | None = None
+    encode_time_sec: float | None = None
+    texts_per_sec: float | None = None
 
     # Recursos
-    peak_ram_mb: Optional[float] = None
-    approx_disk_size_mb: Optional[float] = None
+    peak_ram_mb: float | None = None
+    approx_disk_size_mb: float | None = None
 
     # Calidad semántica
-    retrieval_accuracy: Optional[float] = None
-    avg_margin: Optional[float] = None
-    avg_similarity_correct: Optional[float] = None
+    retrieval_accuracy: float | None = None
+    avg_margin: float | None = None
+    avg_similarity_correct: float | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
 
 
-def _current_ram_mb() -> Optional[float]:
+def _current_ram_mb() -> float | None:
     if not _HAS_PSUTIL:
         return None
     return psutil.Process().memory_info().rss / (1024 * 1024)
@@ -176,9 +175,9 @@ def evaluate_candidate_model(
 
 def evaluate_models(
     test_texts: list[str],
-    evaluation_queries: Optional[list[dict]] = None,
-    candidates: Optional[list[str]] = None,
-    results_path: Optional[str] = "evaluation_results.json",
+    evaluation_queries: list[dict] | None = None,
+    candidates: list[str] | None = None,
+    results_path: str | None = "evaluation_results.json",
 ) -> dict[str, ModelEvaluationResult]:
     """
     Evalúa todos los modelos candidatos sobre el mismo set de textos de

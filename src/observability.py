@@ -13,9 +13,10 @@ import json
 import logging
 import logging.handlers
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Self
 
 
 def setup_logging(
@@ -124,7 +125,7 @@ class Timer:
         self.elapsed: float = 0.0
         self._start: float = 0.0
 
-    def __enter__(self) -> "Timer":
+    def __enter__(self) -> Self:
         self._start = time.perf_counter()
         return self
 

@@ -1,16 +1,16 @@
 import logging
-import time
 import os
 import sqlite3
-from concurrent.futures import ProcessPoolExecutor, wait, FIRST_COMPLETED
-from dataclasses import dataclass, field
-from pathlib import Path
-from queue import Queue, Empty
 import threading
+import time
+from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
+from dataclasses import dataclass, field
 from multiprocessing import get_context
+from pathlib import Path
+from queue import Empty, Queue
 
 from .reader import extract
-from .writer import save_doc, append_manifest_batch, _to_dict, _EXCLUDE
+from .writer import _EXCLUDE, _to_dict, append_manifest_batch, save_doc
 
 log = logging.getLogger(__name__)
 
@@ -202,7 +202,7 @@ def run(
             for fut in done:
                 try:
                     pdf, doc = fut.result()
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 — un worker individual no debe interrumpir el procesamiento del resto del batch
                     log_error("unknown", str(e))
                     continue
 

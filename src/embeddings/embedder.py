@@ -117,7 +117,7 @@ def evaluate_models(texts: list[str]) -> dict[str, dict]:
                 elapsed,
                 len(texts) / elapsed,
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 — si un modelo de embeddings falla, se registra el error y se sigue evaluando el resto de los modelos candidatos
             results[model_name] = {"error": str(e)}
 
     return results

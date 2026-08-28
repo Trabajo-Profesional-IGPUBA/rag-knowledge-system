@@ -3,14 +3,14 @@ from __future__ import annotations
 import json
 import logging
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from src.llm.client import LLMClient, LLMConfig
 from src.llm.prompt_builder import PromptBuilder
-from src.llm.rag_pipeline import RAGPipeline, RAGConfig
+from src.llm.rag_pipeline import RAGConfig, RAGPipeline
 from src.retrieval.retriever import Retriever
 
 log = logging.getLogger(__name__)
@@ -173,7 +173,7 @@ def evaluate_models(
                     keyword_score=round(score, 4),
                 )
 
-            except Exception as e:
+            except Exception as e: # noqa: BLE001 — se captura todo para no interrumpir la evaluación de otros modelos/queries
                 result = ModelEvalResult(
                     model=model_name,
                     query_id=q["id"],

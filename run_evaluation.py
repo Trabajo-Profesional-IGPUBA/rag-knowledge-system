@@ -1,4 +1,5 @@
 import logging
+
 from src.embeddings.evaluation import evaluate_models, generate_report
 
 logging.basicConfig(level=logging.INFO)

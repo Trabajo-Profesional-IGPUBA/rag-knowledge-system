@@ -81,7 +81,7 @@ class Retriever:
 def evaluate_topk_accuracy(
     retriever: Retriever,
     queries_with_expected: list[tuple[str, list[str]]],
-    k_values: list[int] = [1, 3, 5],
+    k_values: list[int] | None = None,
 ) -> dict[str, float]:
     """
     Evalúa Top-K accuracy del sistema de recuperación.
@@ -94,6 +94,9 @@ def evaluate_topk_accuracy(
     Returns:
         Dict con accuracy para cada K. Ej: {"top_1": 0.6, "top_3": 0.8, "top_5": 1.0}
     """
+    if k_values is None:
+        k_values = [1, 3, 5]
+
     results: dict[str, list[bool]] = {f"top_{k}": [] for k in k_values}
 
     for query, expected_doc_ids in queries_with_expected:

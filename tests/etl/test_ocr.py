@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock, patch
-from src.etl.ocr import extract_text_from_page, needs_ocr, MIN_CHARS
+
+from src.etl.ocr import MIN_CHARS, extract_text_from_page, needs_ocr
 
 
 class TestExtractTextFromPage:
@@ -17,25 +18,25 @@ class TestExtractTextFromPage:
     def test_empty_page_triggers_ocr_attempt(self):
         page = self._mock_page("")
         with patch("src.etl.ocr._ocr_page", return_value="texto ocr") as mock_ocr:
-            text, used_ocr = extract_text_from_page(page)
+            _, used_ocr = extract_text_from_page(page)
             assert used_ocr is True
             mock_ocr.assert_called_once_with(page)
 
     def test_short_text_triggers_ocr(self):
         page = self._mock_page("abc")
         with patch("src.etl.ocr._ocr_page", return_value="texto largo via ocr"):
-            text, used_ocr = extract_text_from_page(page)
+            _, used_ocr = extract_text_from_page(page)
             assert used_ocr is True
 
     def test_exact_threshold_no_ocr(self):
         page = self._mock_page("x" * MIN_CHARS)
-        text, used_ocr = extract_text_from_page(page)
+        _, used_ocr = extract_text_from_page(page)
         assert used_ocr is False
 
     def test_returns_ocr_text_when_digital_empty(self):
         page = self._mock_page("")
         with patch("src.etl.ocr._ocr_page", return_value="resultado ocr"):
-            text, used_ocr = extract_text_from_page(page)
+            text, _ = extract_text_from_page(page)
             assert text == "resultado ocr"
 
 

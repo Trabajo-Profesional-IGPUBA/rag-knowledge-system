@@ -24,7 +24,7 @@ RENDER_DPI = 300
 OCR_LANG = "spa+eng"
 
 
-def _ocr_page(page: "pdfplumber.page.Page") -> str:
+def _ocr_page(page: pdfplumber.page.Page) -> str:
     """Aplica OCR a una página renderizada como imagen."""
     try:
         import pytesseract
@@ -38,12 +38,12 @@ def _ocr_page(page: "pdfplumber.page.Page") -> str:
     except ImportError:
         log.warning("pytesseract o Pillow no disponibles — página escaneada omitida")
         return ""
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — OCR best-effort por página: si falla (imagen corrupta, error de Tesseract, etc.) se omite esa página y se sigue con el resto del documento
         log.warning("OCR falló en página: %s", exc)
         return ""
 
 
-def extract_text_from_page(page: "pdfplumber.page.Page") -> tuple[str, bool]:
+def extract_text_from_page(page: pdfplumber.page.Page) -> tuple[str, bool]:
     """
     Extrae texto de una página.
 
@@ -74,5 +74,5 @@ def needs_ocr(pdf_path: Path, sample_pages: int = 3) -> bool:
                 if len((p.extract_text() or "").strip()) < MIN_CHARS
             )
             return scanned >= len(pages_to_check) / 2
-    except Exception:
+    except Exception:  # noqa: BLE001 — si falla la detección (PDF corrupto, formato inesperado, etc.) se asume que no requiere OCR y se sigue procesando
         return False
