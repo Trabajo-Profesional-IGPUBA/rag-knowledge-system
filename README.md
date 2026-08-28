@@ -77,6 +77,10 @@ python -m src.indexer
 streamlit run app.py --server.fileWatcherType none 
 ```
 
+### Evaluación de modelos de embeddings
+```bash
+docker compose run evaluate
+```
 
 ## Equipo
 
