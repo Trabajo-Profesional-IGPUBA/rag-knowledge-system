@@ -1,5 +1,5 @@
 import pytest
-from src.retrieval.vectorstore import VectorStore, COLLECTION_NAME
+from src.retrieval.vectorstore import VectorStore
 
 
 @pytest.fixture
@@ -44,16 +44,31 @@ class TestVectorStore:
     def test_upsert_does_not_duplicate(self, store):
         emb = _fake_embedding()
         store.add("doc1::chunk_0", "texto", emb, {"doc_id": "doc1", "doc_type": "ewrs"})
-        store.add("doc1::chunk_0", "texto actualizado", emb, {"doc_id": "doc1", "doc_type": "ewrs"})
+        store.add(
+            "doc1::chunk_0",
+            "texto actualizado",
+            emb,
+            {"doc_id": "doc1", "doc_type": "ewrs"},
+        )
         assert store.count() == 1
 
     def test_search_returns_results(self, store):
-        store.add("doc1::chunk_0", "circulación en Quintuco", _fake_embedding(), {"doc_id": "doc1", "doc_type": "ewrs"})
+        store.add(
+            "doc1::chunk_0",
+            "circulación en Quintuco",
+            _fake_embedding(),
+            {"doc_id": "doc1", "doc_type": "ewrs"},
+        )
         results = store.search(_fake_embedding(), n_results=1)
         assert len(results) == 1
 
     def test_search_result_has_expected_keys(self, store):
-        store.add("doc1::chunk_0", "texto", _fake_embedding(), {"doc_id": "doc1", "doc_type": "ewrs"})
+        store.add(
+            "doc1::chunk_0",
+            "texto",
+            _fake_embedding(),
+            {"doc_id": "doc1", "doc_type": "ewrs"},
+        )
         results = store.search(_fake_embedding(), n_results=1)
         assert "chunk_id" in results[0]
         assert "text" in results[0]
@@ -71,7 +86,9 @@ class TestVectorStore:
                 {"doc_id": "doc2", "doc_type": "ewrs"},
             ],
         )
-        results = store.search(_fake_embedding(), n_results=5, filters={"doc_type": "ewrs"})
+        results = store.search(
+            _fake_embedding(), n_results=5, filters={"doc_type": "ewrs"}
+        )
         assert all(r["metadata"]["doc_type"] == "ewrs" for r in results)
 
     def test_delete_by_doc(self, store):
@@ -79,19 +96,32 @@ class TestVectorStore:
             chunk_ids=["doc1::chunk_0", "doc2::chunk_0"],
             texts=["texto 1", "texto 2"],
             embeddings=[_fake_embedding()] * 2,
-            metadatas=[{"doc_id": "doc1", "doc_type": "ewrs"}, {"doc_id": "doc2", "doc_type": "ewrs"}],
+            metadatas=[
+                {"doc_id": "doc1", "doc_type": "ewrs"},
+                {"doc_id": "doc2", "doc_type": "ewrs"},
+            ],
         )
         store.delete_by_doc("doc1")
         assert store.count() == 1
 
     def test_reset_empties_store(self, store):
-        store.add("doc1::chunk_0", "texto", _fake_embedding(), {"doc_id": "doc1", "doc_type": "ewrs"})
+        store.add(
+            "doc1::chunk_0",
+            "texto",
+            _fake_embedding(),
+            {"doc_id": "doc1", "doc_type": "ewrs"},
+        )
         store.reset()
         assert store.count() == 0
 
     def test_persists_across_instances(self, tmp_path):
         path = tmp_path / "vs"
         s1 = VectorStore(path)
-        s1.add("doc1::chunk_0", "texto", _fake_embedding(), {"doc_id": "doc1", "doc_type": "ewrs"})
+        s1.add(
+            "doc1::chunk_0",
+            "texto",
+            _fake_embedding(),
+            {"doc_id": "doc1", "doc_type": "ewrs"},
+        )
         s2 = VectorStore(path)
         assert s2.count() == 1

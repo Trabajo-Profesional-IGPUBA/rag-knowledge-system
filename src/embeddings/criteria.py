@@ -1,13 +1,13 @@
 """
 Criterios de evaluación para la comparación de modelos de embeddings.
- 
+
 Historia: "Definición de criterios de evaluación"
   - QUALITY_METRICS: métricas de calidad identificadas.
   - PERFORMANCE_METRICS: métricas de rendimiento identificadas.
   - RESOURCE_METRICS: métricas de consumo de recursos identificadas.
   - COMPARISON_CRITERIA: documentación de los criterios de comparación.
 """
- 
+
 QUALITY_METRICS = {
     "retrieval_accuracy": (
         "Proporción de consultas de evaluación donde el modelo asigna mayor "
@@ -24,14 +24,14 @@ QUALITY_METRICS = {
         "(similitudes altas para todo, incluso lo irrelevante)."
     ),
 }
- 
+
 PERFORMANCE_METRICS = {
     "load_time_sec": "Tiempo de carga del modelo en memoria.",
     "encode_time_sec": "Tiempo total para generar embeddings del set de prueba.",
     "texts_per_sec": "Throughput: cantidad de textos vectorizados por segundo.",
     "embedding_dim": "Dimensión del vector resultante (afecta storage e índice).",
 }
- 
+
 RESOURCE_METRICS = {
     "peak_ram_mb": (
         "Incremento de memoria residente (RSS) del proceso entre antes y "
@@ -42,7 +42,7 @@ RESOURCE_METRICS = {
         "modelo, según la ficha publicada en Hugging Face)."
     ),
 }
- 
+
 COMPARISON_CRITERIA = """
 Criterios de comparación entre modelos candidatos:
  
@@ -97,14 +97,14 @@ CANDIDATE_MODELS = [
         "notes": "Mayor calidad esperada, ~2x más pesado que el actual.",
     },
 ]
- 
+
 # Tamaño en disco, ya que medirlo en runtime requiere acceso al cache dir y no es 100% portable.
 APPROX_DISK_SIZE_MB = {
     "paraphrase-multilingual-MiniLM-L12-v2": 470,
     "intfloat/multilingual-e5-base": 1100,
     "paraphrase-multilingual-mpnet-base-v2": 970,
 }
- 
+
 # Dataset query -> doc correcto / doc incorrecto, usado para medir calidad semántica
 # TODO: Ampliar con 30-50 casos reales del dominio IGPUBA antes
 # de tomar la decisión final; con pocos casos el accuracy no es representativo.
@@ -133,20 +133,20 @@ EVALUATION_QUERIES: list[dict] = [
         "doc_correcto": (
             "Durante la extracción de la sarta de bombeo mecánico por caída abrupta de producción, "
             "se detectó un desprendimiento de las varillas a los 1.820 metros de profundidad. Se "
-            "constató rotura por fatiga en el cuello de una varilla de 7/8\" (Grado D). Se bajó una "
-            "herramienta de pesca tipo overshot de 2 3/8\" con grapa espiral."
+            'constató rotura por fatiga en el cuello de una varilla de 7/8" (Grado D). Se bajó una '
+            'herramienta de pesca tipo overshot de 2 3/8" con grapa espiral.'
         ),
         "doc_incorrecto": (
             "Se constata pozo parado por rotura de varillas. Se procede a ahogar el pozo con 40 bbl "
             "de agua salada filtrada. Inicio de maniobra de extracción de sarta de bombeo mecánico "
-            "(AIB). Se recuperan 42 varillas de 7/8\". A la altura de la varilla 43 se encuentra "
+            '(AIB). Se recuperan 42 varillas de 7/8". A la altura de la varilla 43 se encuentra '
             "punto de corte (fatiga por corrosión severa) en el pozo PM-104."
         ),
     },
     {
         "query": "¿Qué pérdida de circulación se registró al bajar el casing en el pozo PM-104?",
         "doc_correcto": (
-            "Durante la carrera de bajada del casing de 9 5/8\" a los 2.450 metros mdf, se detectó "
+            'Durante la carrera de bajada del casing de 9 5/8" a los 2.450 metros mdf, se detectó '
             "una pérdida de circulación severa de aprox. 15 m³/h en la formación Quintuco. Se "
             "procedió a suspender la maniobra y se bombearon dos píldoras de material de pérdida de "
             "circulación (LCM) de alta concentración."

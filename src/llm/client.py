@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Iterator
 
 import requests
@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 
 OLLAMA_BASE_URL = "http://localhost:11434"
 DEFAULT_MODEL = "llama3:8b"
-DEFAULT_TIMEOUT = 120  
+DEFAULT_TIMEOUT = 120
 
 
 @dataclass
@@ -28,10 +28,10 @@ class LLMResponse:
 @dataclass
 class LLMConfig:
     model: str = DEFAULT_MODEL
-    temperature: float = 0.1     
+    temperature: float = 0.1
     top_p: float = 0.9
     top_k: int = 40
-    num_predict: int = 1024      
+    num_predict: int = 1024
     repeat_penalty: float = 1.1
     base_url: str = OLLAMA_BASE_URL
     timeout: int = DEFAULT_TIMEOUT
@@ -46,7 +46,11 @@ class LLMClient:
     def __init__(self, config: LLMConfig | None = None) -> None:
         self.config = config or LLMConfig()
         self._base_url = self.config.base_url.rstrip("/")
-        log.info("LLMClient inicializado — modelo: %s, url: %s", self.config.model, self._base_url)
+        log.info(
+            "LLMClient inicializado — modelo: %s, url: %s",
+            self.config.model,
+            self._base_url,
+        )
 
     def is_available(self) -> bool:
         """Verifica que Ollama esté corriendo."""
@@ -174,6 +178,7 @@ class LLMClient:
                 for line in r.iter_lines():
                     if line:
                         import json
+
                         chunk = json.loads(line)
                         token = chunk.get("response", "")
                         if token:

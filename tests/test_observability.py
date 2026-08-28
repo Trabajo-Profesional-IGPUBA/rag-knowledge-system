@@ -1,6 +1,4 @@
 import json
-import logging
-from pathlib import Path
 from src.observability import PipelineMetrics, Timer, setup_logging
 
 
@@ -47,6 +45,7 @@ class TestPipelineMetrics:
 class TestTimer:
     def test_measures_elapsed(self):
         import time
+
         with Timer() as t:
             time.sleep(0.01)
         assert t.elapsed >= 0.01

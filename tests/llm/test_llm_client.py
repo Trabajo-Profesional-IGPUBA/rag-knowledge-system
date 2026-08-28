@@ -1,12 +1,13 @@
 """Tests unitarios para LLMClient."""
+
 from __future__ import annotations
 from unittest.mock import MagicMock, patch
-import pytest
 
 
 class TestLLMClient:
     def setup_method(self):
         from src.llm.client import LLMClient, LLMConfig
+
         self.config_cls = LLMConfig
         self.client_cls = LLMClient
 
@@ -35,6 +36,7 @@ class TestLLMClient:
         mock_post.return_value = mock_resp
 
         from src.llm.client import LLMClient, LLMConfig
+
         client = LLMClient(LLMConfig())
         resp = client.generate("prompt de prueba")
 
@@ -53,6 +55,7 @@ class TestLLMClient:
         mock_get.return_value = mock_resp
 
         from src.llm.client import LLMClient
+
         client = LLMClient()
         models = client.list_models()
         assert "llama3:8b" in models

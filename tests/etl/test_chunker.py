@@ -1,4 +1,4 @@
-from src.etl.chunker import split, Chunk, MAX_CHARS
+from src.etl.chunker import split
 
 
 class TestSplit:

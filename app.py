@@ -11,16 +11,20 @@ BASE_DIR = Path(__file__).resolve().parent
 VECTORSTORE_DIR = BASE_DIR / "data" / "vectorstore"
 LOGS_DIR = BASE_DIR / "logs"
 
-st.markdown("""
+st.markdown(
+    """
 <style>
     .stChatMessage { border-radius: 10px; }
     .stSpinner { color: #555; }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 st.title("🛢️ IGPUBA — Sistema de consulta")
 st.caption("Consultá documentos técnicos de pozos en lenguaje natural.")
 st.divider()
+
 
 @st.cache_resource(show_spinner="Cargando sistema RAG...")
 def load_pipeline():
@@ -47,6 +51,7 @@ def load_pipeline():
         config=RAGConfig(top_k=5, min_score=0.3),
     )
     return pipeline, llm_client
+
 
 try:
     pipeline, llm_client = load_pipeline()

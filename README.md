@@ -79,7 +79,7 @@ streamlit run app.py --server.fileWatcherType none
 
 ### Evaluación de modelos de embeddings
 ```bash
-docker compose run evaluate
+docker compose run evaluate_embeddings
 ```
 
 ## Equipo

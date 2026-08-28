@@ -22,12 +22,12 @@ OVERLAP_CHARS = 150
 
 @dataclass
 class Chunk:
-    chunk_id: str          # "{doc_id}::chunk_{n}"
+    chunk_id: str  # "{doc_id}::chunk_{n}"
     doc_id: str
     doc_type: str
     text: str
     char_count: int = field(init=False)
-    chunk_index: int = 0   # posición dentro del documento
+    chunk_index: int = 0  # posición dentro del documento
 
     def __post_init__(self) -> None:
         self.char_count = len(self.text)
@@ -95,7 +95,9 @@ def split(
                 chunk_idx += 1
 
             # Partir por oraciones (punto + espacio)
-            sentences = [s.strip() for s in para.replace(". ", ".|").split("|") if s.strip()]
+            sentences = [
+                s.strip() for s in para.replace(". ", ".|").split("|") if s.strip()
+            ]
             for sentence in sentences:
                 if current_len + len(sentence) + 2 > max_chars and current_parts:
                     _flush(chunk_idx)

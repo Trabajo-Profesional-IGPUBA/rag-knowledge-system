@@ -77,6 +77,7 @@ class Retriever:
 
 # ── #13 Evaluación de precisión y rendimiento ─────────────────────────────
 
+
 def evaluate_topk_accuracy(
     retriever: Retriever,
     queries_with_expected: list[tuple[str, list[str]]],

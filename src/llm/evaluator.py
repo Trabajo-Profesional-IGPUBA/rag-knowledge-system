@@ -197,15 +197,21 @@ def evaluate_models(
 
         ok_results = [r for r in model_results if r.ok]
         report.summary[model_name] = {
-            "avg_elapsed_sec": round(
-                sum(r.elapsed_sec for r in ok_results) / len(ok_results), 2
-            ) if ok_results else 0.0,
-            "avg_keyword_score": round(
-                sum(r.keyword_score for r in ok_results) / len(ok_results), 4
-            ) if ok_results else 0.0,
-            "avg_response_length": round(
-                sum(r.response_length for r in ok_results) / len(ok_results), 1
-            ) if ok_results else 0.0,
+            "avg_elapsed_sec": (
+                round(sum(r.elapsed_sec for r in ok_results) / len(ok_results), 2)
+                if ok_results
+                else 0.0
+            ),
+            "avg_keyword_score": (
+                round(sum(r.keyword_score for r in ok_results) / len(ok_results), 4)
+                if ok_results
+                else 0.0
+            ),
+            "avg_response_length": (
+                round(sum(r.response_length for r in ok_results) / len(ok_results), 1)
+                if ok_results
+                else 0.0
+            ),
             "error_count": len([r for r in model_results if not r.ok]),
             "total_queries": len(model_results),
         }

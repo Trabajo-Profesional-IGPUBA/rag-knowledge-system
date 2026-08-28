@@ -71,7 +71,12 @@ def extract(pdf_path: Path, raw_dir: Path) -> ProcessedDoc:
                 chunks.append(clean)
 
         if ocr_pages:
-            log.info("%s: %d/%d páginas procesadas con OCR", pdf_path.name, ocr_pages, doc.page_count)
+            log.info(
+                "%s: %d/%d páginas procesadas con OCR",
+                pdf_path.name,
+                ocr_pages,
+                doc.page_count,
+            )
 
         doc.pages = pages_data
         doc.text = "\n\n".join(chunks)

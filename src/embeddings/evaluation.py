@@ -1,18 +1,18 @@
 """
 Evaluación y comparación de modelos de embeddings candidatos.
- 
+
 Historia: "Pruebas de modelos candidatos"
   - evaluate_candidate_model(): genera embeddings de prueba, ejecuta las
     consultas de evaluación y registra los resultados de un modelo.
   - evaluate_models(): corre todos los candidatos y persiste resultados.
- 
+
 Historia: "Comparación y selección"
   - measure_quality(): comparación de calidad semántica.
   - evaluate_candidate_model(): también mide velocidad y consumo de RAM.
 """
- 
+
 from __future__ import annotations
- 
+
 import json
 import logging
 import time
@@ -20,65 +20,75 @@ import statistics
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Optional
- 
+
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
- 
-from src.embeddings.criteria import APPROX_DISK_SIZE_MB, CANDIDATE_MODELS, EVALUATION_QUERIES
- 
+
+from src.embeddings.criteria import (
+    APPROX_DISK_SIZE_MB,
+    CANDIDATE_MODELS,
+    EVALUATION_QUERIES,
+)
+
 try:
     import psutil
+
     _HAS_PSUTIL = True
 except ImportError:  # medición de RAM es opcional, no bloquea el resto
     _HAS_PSUTIL = False
- 
+
 log = logging.getLogger(__name__)
- 
- 
+
+
 @dataclass
 class ModelEvaluationResult:
     model_name: str
     ok: bool = True
     error: Optional[str] = None
- 
+
     # Rendimiento
     embedding_dim: Optional[int] = None
     load_time_sec: Optional[float] = None
     encode_time_sec: Optional[float] = None
     texts_per_sec: Optional[float] = None
- 
+
     # Recursos
     peak_ram_mb: Optional[float] = None
     approx_disk_size_mb: Optional[float] = None
- 
+
     # Calidad semántica
     retrieval_accuracy: Optional[float] = None
     avg_margin: Optional[float] = None
     avg_similarity_correct: Optional[float] = None
- 
+
     def to_dict(self) -> dict:
         return asdict(self)
- 
- 
+
+
 def _current_ram_mb() -> Optional[float]:
     if not _HAS_PSUTIL:
         return None
     return psutil.Process().memory_info().rss / (1024 * 1024)
 
+
 def measure_quality(model: SentenceTransformer, evaluation_queries: list[dict]) -> dict:
-    """ 
+    """
     Para cada consulta de evaluación, vectoriza query + doc correcto +
     doc incorrecto y verifica si el modelo asigna mayor similitud al
     documento correcto (acierto de retrieval).
     """
     if not evaluation_queries:
-        return {"retrieval_accuracy": None, "avg_margin": None, "avg_similarity_correct": None}
- 
+        return {
+            "retrieval_accuracy": None,
+            "avg_margin": None,
+            "avg_similarity_correct": None,
+        }
+
     aciertos = 0
     margenes = []
     similitudes_correctas = []
- 
+
     for caso in evaluation_queries:
         vs = model.encode(
             [caso["query"], caso["doc_correcto"], caso["doc_incorrecto"]],
@@ -86,19 +96,20 @@ def measure_quality(model: SentenceTransformer, evaluation_queries: list[dict]) 
         )
         sim_ok = float(cosine_similarity([vs[0]], [vs[1]])[0][0])
         sim_mal = float(cosine_similarity([vs[0]], [vs[2]])[0][0])
- 
+
         if sim_ok > sim_mal:
             aciertos += 1
         margenes.append(sim_ok - sim_mal)
         similitudes_correctas.append(sim_ok)
- 
+
     n = len(evaluation_queries)
     return {
         "retrieval_accuracy": round(aciertos / n, 3),
         "avg_margin": round(float(np.mean(margenes)), 4),
         "avg_similarity_correct": round(float(np.mean(similitudes_correctas)), 4),
     }
- 
+
+
 def evaluate_candidate_model(
     model_name: str,
     test_texts: list[str],
@@ -140,23 +151,29 @@ def evaluate_candidate_model(
             embedding_dim=int(vectors.shape[1]),
             load_time_sec=round(load_time, 3),
             encode_time_sec=round(encode_time, 3),
-            texts_per_sec=round(len(test_texts) / encode_time, 1) if encode_time > 0 else None,
+            texts_per_sec=(
+                round(len(test_texts) / encode_time, 1) if encode_time > 0 else None
+            ),
             peak_ram_mb=peak_ram,
             approx_disk_size_mb=APPROX_DISK_SIZE_MB.get(model_name),
             **calidad,
         )
         log.info(
             "Resultado %s (mediana de %d corridas): dim=%s, %.1f textos/s, accuracy=%s, ram=%s MB",
-            model_name, n_repeticiones, result.embedding_dim,
-            result.texts_per_sec or 0, result.retrieval_accuracy, result.peak_ram_mb,
+            model_name,
+            n_repeticiones,
+            result.embedding_dim,
+            result.texts_per_sec or 0,
+            result.retrieval_accuracy,
+            result.peak_ram_mb,
         )
         return result
 
     except Exception as e:
         log.exception("Error evaluando %s", model_name)
         return ModelEvaluationResult(model_name=model_name, ok=False, error=str(e))
- 
- 
+
+
 def evaluate_models(
     test_texts: list[str],
     evaluation_queries: Optional[list[dict]] = None,
@@ -168,27 +185,36 @@ def evaluate_models(
     prueba y consultas de evaluación, y persiste los resultados en JSON
     para trazabilidad (registro de resultados obtenidos).
     """
-    evaluation_queries = evaluation_queries if evaluation_queries is not None else EVALUATION_QUERIES
+    evaluation_queries = (
+        evaluation_queries if evaluation_queries is not None else EVALUATION_QUERIES
+    )
     candidate_names = candidates or [c["name"] for c in CANDIDATE_MODELS]
- 
+
     results: dict[str, ModelEvaluationResult] = {}
     for model_name in candidate_names:
-        results[model_name] = evaluate_candidate_model(model_name, test_texts, evaluation_queries)
- 
+        results[model_name] = evaluate_candidate_model(
+            model_name, test_texts, evaluation_queries
+        )
+
     if results_path:
         Path(results_path).write_text(
-            json.dumps({k: v.to_dict() for k, v in results.items()}, indent=2, ensure_ascii=False),
+            json.dumps(
+                {k: v.to_dict() for k, v in results.items()},
+                indent=2,
+                ensure_ascii=False,
+            ),
             encoding="utf-8",
         )
         log.info("Resultados guardados en %s", results_path)
- 
+
     return results
- 
+
+
 def generate_report(
     results: dict[str, ModelEvaluationResult],
     accuracy_threshold: float = 0.75,
 ) -> str:
-    """ 
+    """
     Genera un reporte en Markdown con la tabla comparativa y una
     justificación automática basada en los umbrales definidos en
     criteria.COMPARISON_CRITERIA.
@@ -198,7 +224,7 @@ def generate_report(
         "| Modelo | Dim | Textos/s | RAM (MB) | Disco aprox (MB) | Accuracy | Margen prom. |"
     )
     lines.append("|---|---|---|---|---|---|---|")
- 
+
     for name, r in results.items():
         if not r.ok:
             lines.append(f"| {name} | ERROR: {r.error} | | | | | |")
@@ -208,13 +234,15 @@ def generate_report(
             f"{r.peak_ram_mb} | {r.approx_disk_size_mb} | "
             f"{r.retrieval_accuracy} | {r.avg_margin} |"
         )
- 
+
     validos = {
         k: v
         for k, v in results.items()
-        if v.ok and v.retrieval_accuracy is not None and v.retrieval_accuracy >= accuracy_threshold
+        if v.ok
+        and v.retrieval_accuracy is not None
+        and v.retrieval_accuracy >= accuracy_threshold
     }
- 
+
     lines.append("\n## Justificación\n")
     if not validos:
         lines.append(
@@ -243,6 +271,5 @@ def generate_report(
                 f"y/o mayor consumo de recursos, sin ofrecer una mejora de "
                 f"calidad que lo justifique."
             )
- 
+
     return "\n".join(lines)
- 

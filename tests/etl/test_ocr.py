@@ -42,6 +42,7 @@ class TestExtractTextFromPage:
 class TestNeedsOcr:
     def test_returns_bool(self, tmp_path):
         from fpdf import FPDF
+
         pdf_path = tmp_path / "test.pdf"
         pdf = FPDF()
         pdf.add_page()
@@ -54,11 +55,14 @@ class TestNeedsOcr:
 
     def test_digital_pdf_does_not_need_ocr(self, tmp_path):
         from fpdf import FPDF
+
         pdf_path = tmp_path / "digital.pdf"
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Helvetica", size=11)
-        pdf.multi_cell(0, 6, "Informe técnico completo con mucho texto de contenido " * 10)
+        pdf.multi_cell(
+            0, 6, "Informe técnico completo con mucho texto de contenido " * 10
+        )
         pdf.output(str(pdf_path))
 
         assert needs_ocr(pdf_path) is False

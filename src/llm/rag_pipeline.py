@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Iterator
 
 from src.retrieval.retriever import Retriever, RetrievalResult
-from src.llm.client import LLMClient, LLMConfig, LLMResponse
+from src.llm.client import LLMClient, LLMResponse
 from src.llm.prompt_builder import PromptBuilder, BuiltPrompt
 
 log = logging.getLogger(__name__)
@@ -30,7 +30,9 @@ class RAGResponse:
         """Fuentes usadas, ordenadas por relevancia."""
         return [
             {
-                "filename": c["metadata"].get("filename", c["metadata"].get("doc_id", "")),
+                "filename": c["metadata"].get(
+                    "filename", c["metadata"].get("doc_id", "")
+                ),
                 "doc_type": c["metadata"].get("doc_type", ""),
                 "score": c["score"],
                 "chunk_id": c["chunk_id"],
@@ -41,16 +43,18 @@ class RAGResponse:
     def pretty_sources(self) -> str:
         lines = []
         for i, s in enumerate(self.sources, 1):
-            lines.append(f"  [{i}] {s['filename']} ({s['doc_type']}) — relevancia: {s['score']:.0%}")
+            lines.append(
+                f"  [{i}] {s['filename']} ({s['doc_type']}) — relevancia: {s['score']:.0%}"
+            )
         return "\n".join(lines) if lines else "  Sin fuentes"
 
 
 @dataclass
 class RAGConfig:
-    top_k: int = 5                   
-    min_score: float = 0.3           
-    stream: bool = False              
-    filters: dict[str, Any] | None = None 
+    top_k: int = 5
+    min_score: float = 0.3
+    stream: bool = False
+    filters: dict[str, Any] | None = None
 
 
 class RAGPipeline:
@@ -79,7 +83,6 @@ class RAGPipeline:
             self._llm.config.model,
         )
 
-
     def query(self, question: str, use_history: bool = False) -> RAGResponse:
         """
         Ejecuta una consulta RAG completa.
@@ -101,12 +104,13 @@ class RAGPipeline:
         )
 
         filtered_chunks = [
-            c for c in retrieval.chunks
-            if c["score"] >= self._config.min_score
+            c for c in retrieval.chunks if c["score"] >= self._config.min_score
         ]
 
         if not filtered_chunks:
-            log.warning("No se encontraron chunks con score >= %.2f", self._config.min_score)
+            log.warning(
+                "No se encontraron chunks con score >= %.2f", self._config.min_score
+            )
 
         if use_history and self._history:
             built = self._prompt_builder.build_with_history(
@@ -151,8 +155,7 @@ class RAGPipeline:
         )
 
         filtered_chunks = [
-            c for c in retrieval.chunks
-            if c["score"] >= self._config.min_score
+            c for c in retrieval.chunks if c["score"] >= self._config.min_score
         ]
 
         built = self._prompt_builder.build(query=question, chunks=filtered_chunks)
