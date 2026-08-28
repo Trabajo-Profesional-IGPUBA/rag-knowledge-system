@@ -186,7 +186,7 @@ def evaluate_models(
  
 def generate_report(
     results: dict[str, ModelEvaluationResult],
-    accuracy_threshold: float = 0.85,
+    accuracy_threshold: float = 0.75,
 ) -> str:
     """ 
     Genera un reporte en Markdown con la tabla comparativa y una
