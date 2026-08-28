@@ -32,3 +32,10 @@ services:
     volumes:
       - .:/app
     working_dir: /app
+
+  evaluate_embeddings:
+    build: .
+    command: python run_evaluation.py
+    volumes:
+      - .:/app
+    working_dir: /app
