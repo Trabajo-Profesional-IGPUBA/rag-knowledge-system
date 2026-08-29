@@ -20,6 +20,20 @@ class TestLLMClient:
 
         assert client.config.base_url == custom_url
 
+    @patch("requests.get")
+    def test_uses_configured_base_url_in_requests(self, mock_get):
+        """Cubre CA-1.2 (Historia 1) — el cliente usa la base_url configurada en las peticiones."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_get.return_value = mock_resp
+
+        custom_url = "http://mi-servidor-custom:9999"
+        client = self.client_cls(self.config_cls(base_url=custom_url))
+        client.is_available()
+
+        called_url = mock_get.call_args[0][0]
+        assert called_url == f"{custom_url}/api/tags"    
+
     def test_is_available_false_when_no_server(self):
         client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
         assert client.is_available() is False
