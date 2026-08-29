@@ -182,9 +182,12 @@ class LLMClient:
                 r.raise_for_status()
                 for line in r.iter_lines():
                     if line:
-                        import json
+                        try:
+                            chunk = json.loads(line)
+                        except json.JSONDecodeError:
+                            log.warning("Línea de streaming inválida, se ignora: %s", line)
+                            continue
 
-                        chunk = json.loads(line)
                         token = chunk.get("response", "")
                         if token:
                             yield token
