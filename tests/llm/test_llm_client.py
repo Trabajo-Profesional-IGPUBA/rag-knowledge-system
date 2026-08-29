@@ -143,7 +143,17 @@ class TestLLMClient:
 
         assert "no deberia llegar" not in tokens
         assert tokens == ["Hola"]
-        
+
+    def test_generate_stream_handles_connection_error(self):
+        """Cubre CA-3.3 (Historia 3) — informa error de conexión sin interrumpirse abruptamente."""
+        client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
+
+        tokens = list(client.generate_stream("test prompt"))
+
+        assert len(tokens) == 1
+        assert "Error" in tokens[0]
+        assert "Ollama no disponible" in tokens[0]
+
     def test_is_available_false_when_no_server(self):
         client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
         assert client.is_available() is False
