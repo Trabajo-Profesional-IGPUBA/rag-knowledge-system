@@ -12,6 +12,14 @@ class TestLLMClient:
         self.config_cls = LLMConfig
         self.client_cls = LLMClient
 
+    def test_llmconfig_accepts_custom_base_url(self):
+        """Cubre CA-1.1 (Historia 1) — el sistema permite configurar la URL del servidor."""
+        custom_url = "http://mi-servidor-custom:9999"
+        config = self.config_cls(base_url=custom_url)
+        client = self.client_cls(config)
+
+        assert client.config.base_url == custom_url
+
     def test_is_available_false_when_no_server(self):
         client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
         assert client.is_available() is False
