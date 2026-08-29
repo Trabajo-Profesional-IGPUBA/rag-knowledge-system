@@ -154,6 +154,48 @@ class TestLLMClient:
         assert "Error" in tokens[0]
         assert "Ollama no disponible" in tokens[0]
 
+    def test_is_available_checks_server_before_use(self):
+        """Cubre CA-4.1 (Historia 4) — permite verificar disponibilidad antes de usar el servidor."""
+        client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
+
+        result = client.is_available()
+
+        assert isinstance(result, bool)
+
+    def test_is_available_returns_false_without_raising(self):
+        """Cubre CA-4.2 (Historia 4) — informa indisponibilidad sin lanzar excepción."""
+        client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
+
+        try:
+            result = client.is_available()
+        except Exception as e:
+            assert False, f"is_available() no debería lanzar excepción, lanzó: {e}"
+
+        assert result is False
+
+    def test_is_available_returns_false_without_raising(self):
+        """Cubre CA-4.2 (Historia 4) — informa indisponibilidad sin lanzar excepción."""
+        client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
+
+        try:
+            result = client.is_available()
+        except Exception as e:
+            assert False, f"is_available() no debería lanzar excepción, lanzó: {e}"
+
+        assert result is False
+
+    @patch("requests.get")
+    def test_is_available_true_when_server_responds(self, mock_get):
+        """Cubre CA-4.3 (Historia 4) — confirma disponibilidad cuando el servidor responde."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_get.return_value = mock_resp
+
+        client = self.client_cls(self.config_cls())
+        result = client.is_available()
+
+        assert result is True
+                
     def test_is_available_false_when_no_server(self):
         client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
         assert client.is_available() is False
