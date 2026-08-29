@@ -294,6 +294,49 @@ class TestLLMClient:
 
         assert resp.text == ""
 
+    def test_llmconfig_centralizes_model_parameters(self):
+        """Cubre CA-8.1 (Historia 8) — centraliza los parámetros del modelo en un solo lugar."""
+        config = self.config_cls(
+            model="mistral:7b",
+            temperature=0.5,
+            top_p=0.8,
+            top_k=20,
+            num_predict=512,
+            repeat_penalty=1.2,
+        )
+
+        assert config.model == "mistral:7b"
+        assert config.temperature == 0.5
+        assert config.top_p == 0.8
+        assert config.top_k == 20
+        assert config.num_predict == 512
+        assert config.repeat_penalty == 1.2
+
+    def test_llmconfig_has_reasonable_defaults(self):
+        """Cubre CA-8.2 (Historia 8) — valores por defecto razonables si no se especifican."""
+        from src.llm.client import DEFAULT_MODEL, DEFAULT_TIMEOUT, OLLAMA_BASE_URL
+
+        config = self.config_cls()
+
+        assert config.model == DEFAULT_MODEL
+        assert config.base_url == OLLAMA_BASE_URL
+        assert config.timeout == DEFAULT_TIMEOUT
+        assert config.temperature == 0.1
+        assert config.top_p == 0.9
+        assert config.top_k == 40
+        assert config.num_predict == 1024
+        assert config.repeat_penalty == 1.1
+
+    def test_llmconfig_reusable_across_multiple_clients(self):
+        """Cubre CA-8.3 (Historia 8) — la configuración se puede reutilizar en varias instancias."""
+        config = self.config_cls(model="mistral:7b")
+
+        client_a = self.client_cls(config)
+        client_b = self.client_cls(config)
+
+        assert client_a.config is config
+        assert client_b.config is config
+        assert client_a.config.model == client_b.config.model == "mistral:7b"
 
     def test_is_available_false_when_no_server(self):
         client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
