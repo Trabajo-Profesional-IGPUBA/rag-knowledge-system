@@ -34,6 +34,15 @@ class TestLLMClient:
         called_url = mock_get.call_args[0][0]
         assert called_url == f"{custom_url}/api/tags"    
 
+    def test_default_base_url_when_not_configured(self):
+        """Cubre CA-1.3 (Historia 1) — usa una URL por defecto si no se configura ninguna."""
+        from src.llm.client import OLLAMA_BASE_URL
+
+        client = self.client_cls(self.config_cls())
+
+        assert client.config.base_url == OLLAMA_BASE_URL
+        assert client._base_url == OLLAMA_BASE_URL
+        
     def test_is_available_false_when_no_server(self):
         client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
         assert client.is_available() is False
