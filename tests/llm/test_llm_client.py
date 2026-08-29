@@ -268,6 +268,32 @@ class TestLLMClient:
             assert False, f"pull_model() no debería lanzar excepción, lanzó: {e}"
 
         assert result is False
+    def test_generate_reports_failure_when_server_unavailable(self):
+        """Cubre CA-7.1 (Historia 7) — informa el fallo de forma clara y estructurada."""
+        client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
+        resp = client.generate("test prompt")
+
+        assert resp.ok is False
+
+    def test_generate_error_includes_understandable_reason(self):
+        """Cubre CA-7.2 (Historia 7) — el fallo incluye un motivo entendible."""
+        client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
+        resp = client.generate("test prompt")
+
+        assert resp.error is not None
+        assert len(resp.error) > 0
+
+    def test_generate_does_not_raise_on_connection_error(self):
+        """Cubre CA-7.3 (Historia 7) — no se interrumpe con error técnico no controlado."""
+        client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
+
+        try:
+            resp = client.generate("test prompt")
+        except Exception as e:
+            assert False, f"generate() no debería lanzar excepción, lanzó: {e}"
+
+        assert resp.text == ""
+
 
     def test_is_available_false_when_no_server(self):
         client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
