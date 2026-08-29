@@ -226,6 +226,48 @@ class TestLLMClient:
 
         assert models == []
 
+    @patch("requests.post")
+    def test_pull_model_downloads_missing_model(self, mock_post):
+        """Cubre CA-6.1 (Historia 6) — permite descargar un modelo no disponible localmente."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.raise_for_status = MagicMock()
+        mock_post.return_value = mock_resp
+
+        client = self.client_cls(self.config_cls())
+        client.pull_model("llama3:8b")
+
+        assert mock_post.call_count == 1
+        called_url = mock_post.call_args[0][0]
+        assert called_url.endswith("/api/pull")
+
+    @patch("requests.post")
+    def test_pull_model_confirms_success(self, mock_post):
+        """Cubre CA-6.2 (Historia 6) — confirma cuando la descarga fue exitosa."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.raise_for_status = MagicMock()
+        mock_post.return_value = mock_resp
+
+        client = self.client_cls(self.config_cls())
+        result = client.pull_model("llama3:8b")
+
+        assert result is True
+
+    @patch("requests.post")
+    def test_pull_model_handles_failure_without_crashing(self, mock_post):
+        """Cubre CA-6.3 (Historia 6) — informa fallo de descarga sin interrumpirse abruptamente."""
+        mock_post.side_effect = ConnectionError("No se pudo conectar")
+
+        client = self.client_cls(self.config_cls())
+
+        try:
+            result = client.pull_model("llama3:8b")
+        except Exception as e:
+            assert False, f"pull_model() no debería lanzar excepción, lanzó: {e}"
+
+        assert result is False
+        
     def test_is_available_false_when_no_server(self):
         client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
         assert client.is_available() is False
