@@ -42,6 +42,26 @@ class TestLLMClient:
 
         assert client.config.base_url == OLLAMA_BASE_URL
         assert client._base_url == OLLAMA_BASE_URL
+
+    @patch("requests.post")
+    def test_generate_returns_complete_response_in_single_call(self, mock_post):
+        """Cubre CA-2.1 (Historia 2) — genera una respuesta completa de una sola vez."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "response": "Respuesta generada",
+            "eval_count": 42,
+            "prompt_eval_count": 100,
+            "done": True,
+        }
+        mock_resp.raise_for_status = MagicMock()
+        mock_post.return_value = mock_resp
+
+        client = self.client_cls(self.config_cls())
+        resp = client.generate("prompt de prueba")
+
+        assert resp.text == "Respuesta generada"
+        assert mock_post.call_count == 1    
         
     def test_is_available_false_when_no_server(self):
         client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
