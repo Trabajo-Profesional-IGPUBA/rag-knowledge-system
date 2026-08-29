@@ -338,6 +338,60 @@ class TestLLMClient:
         assert client_b.config is config
         assert client_a.config.model == client_b.config.model == "mistral:7b"
 
+    def test_llmresponse_same_structure_success_and_failure(self):
+        """Cubre CA-9.1 (Historia 9) — misma estructura sin importar éxito o fallo."""
+        from src.llm.client import LLMResponse
+
+        success_fields = set(LLMResponse(text="ok", model="llama3:8b").__dict__.keys())
+        failure_fields = set(
+            LLMResponse(text="", model="llama3:8b", ok=False, error="algo falló").__dict__.keys()
+        )
+
+        assert success_fields == failure_fields
+
+    def test_llmresponse_includes_generated_text_or_empty(self):
+        """Cubre CA-9.2 (Historia 9) — incluye el texto generado, o vacío si falló."""
+        from src.llm.client import LLMResponse
+
+        ok_resp = LLMResponse(text="Hola mundo", model="llama3:8b")
+        fail_resp = LLMResponse(text="", model="llama3:8b", ok=False, error="error")
+
+        assert ok_resp.text == "Hola mundo"
+        assert fail_resp.text == ""
+
+    @patch("requests.post")
+    def test_llmresponse_includes_tokens_and_elapsed_time(self, mock_post):
+        """Cubre CA-9.3 (Historia 9) — incluye métricas de tokens y tiempo transcurrido."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "response": "Respuesta generada",
+            "eval_count": 42,
+            "prompt_eval_count": 100,
+            "done": True,
+        }
+        mock_resp.raise_for_status = MagicMock()
+        mock_post.return_value = mock_resp
+
+        client = self.client_cls(self.config_cls())
+        resp = client.generate("prompt de prueba")
+
+        assert resp.completion_tokens == 42
+        assert resp.prompt_tokens == 100
+        assert resp.elapsed_sec >= 0
+
+    def test_llmresponse_indicates_success_or_failure_reason(self):
+        """Cubre CA-9.4 (Historia 9) — indica éxito/fallo y el motivo en caso de falla."""
+        from src.llm.client import LLMResponse
+
+        ok_resp = LLMResponse(text="Hola mundo", model="llama3:8b")
+        fail_resp = LLMResponse(text="", model="llama3:8b", ok=False, error="Ollama no disponible")
+
+        assert ok_resp.ok is True
+        assert ok_resp.error is None
+        assert fail_resp.ok is False
+        assert fail_resp.error == "Ollama no disponible"
+           
     def test_is_available_false_when_no_server(self):
         client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
         assert client.is_available() is False
