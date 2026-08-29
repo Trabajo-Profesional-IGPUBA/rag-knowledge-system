@@ -122,6 +122,27 @@ class TestLLMClient:
         tokens = list(client.generate_stream("prompt de prueba"))
 
         assert tokens == ["Hola", " mundo"]
+
+    @patch("requests.post")
+    def test_generate_stream_stops_on_done(self, mock_post):
+        """Cubre CA-3.2 (Historia 3) — detiene la entrega progresiva cuando done=True."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.iter_lines.return_value = [
+            b'{"response": "Hola", "done": false}',
+            b'{"response": "", "done": true}',
+            b'{"response": "no deberia llegar", "done": false}',
+        ]
+        mock_resp.__enter__.return_value = mock_resp
+        mock_resp.__exit__.return_value = False
+        mock_post.return_value = mock_resp
+
+        client = self.client_cls(self.config_cls())
+        tokens = list(client.generate_stream("prompt de prueba"))
+
+        assert "no deberia llegar" not in tokens
+        assert tokens == ["Hola"]
         
     def test_is_available_false_when_no_server(self):
         client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
