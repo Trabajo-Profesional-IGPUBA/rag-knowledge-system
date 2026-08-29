@@ -102,7 +102,27 @@ class TestLLMClient:
 
         assert resp.ok is True
         assert resp.error is None
-                        
+
+    @patch("requests.post")
+    def test_generate_stream_yields_tokens_progressively(self, mock_post):
+        """Cubre CA-3.1 (Historia 3) — entrega la respuesta de forma progresiva, token a token."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.iter_lines.return_value = [
+            b'{"response": "Hola", "done": false}',
+            b'{"response": " mundo", "done": false}',
+            b'{"response": "", "done": true}',
+        ]
+        mock_resp.__enter__.return_value = mock_resp
+        mock_resp.__exit__.return_value = False
+        mock_post.return_value = mock_resp
+
+        client = self.client_cls(self.config_cls())
+        tokens = list(client.generate_stream("prompt de prueba"))
+
+        assert tokens == ["Hola", " mundo"]
+        
     def test_is_available_false_when_no_server(self):
         client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
         assert client.is_available() is False
