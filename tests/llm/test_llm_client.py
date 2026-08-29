@@ -195,7 +195,37 @@ class TestLLMClient:
         result = client.is_available()
 
         assert result is True
-                
+
+    @patch("requests.get")
+    def test_list_models_reports_available_models(self, mock_get):
+        """Cubre CA-5.1 (Historia 5) — informa qué modelos están disponibles."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "models": [{"name": "llama3:8b"}, {"name": "mistral:7b"}]
+        }
+        mock_resp.raise_for_status = MagicMock()
+        mock_get.return_value = mock_resp
+
+        client = self.client_cls(self.config_cls())
+        models = client.list_models()
+
+        assert models == ["llama3:8b", "mistral:7b"]
+
+    @patch("requests.get")
+    def test_list_models_returns_empty_list_on_error(self, mock_get):
+        """Cubre CA-5.2 (Historia 5) — informa lista vacía en caso de error, sin fallar."""
+        mock_get.side_effect = ConnectionError("No se pudo conectar")
+
+        client = self.client_cls(self.config_cls())
+
+        try:
+            models = client.list_models()
+        except Exception as e:
+            assert False, f"list_models() no debería lanzar excepción, lanzó: {e}"
+
+        assert models == []
+
     def test_is_available_false_when_no_server(self):
         client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
         assert client.is_available() is False
