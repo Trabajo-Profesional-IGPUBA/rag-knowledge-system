@@ -82,7 +82,27 @@ class TestLLMClient:
 
         assert resp.completion_tokens == 42
         assert resp.prompt_tokens == 100
-                
+
+    @patch("requests.post")
+    def test_generate_reports_success_status(self, mock_post):
+        """Cubre CA-2.3 (Historia 2) — informa si la generación fue exitosa."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "response": "Respuesta generada",
+            "eval_count": 42,
+            "prompt_eval_count": 100,
+            "done": True,
+        }
+        mock_resp.raise_for_status = MagicMock()
+        mock_post.return_value = mock_resp
+
+        client = self.client_cls(self.config_cls())
+        resp = client.generate("prompt de prueba")
+
+        assert resp.ok is True
+        assert resp.error is None
+                        
     def test_is_available_false_when_no_server(self):
         client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
         assert client.is_available() is False
