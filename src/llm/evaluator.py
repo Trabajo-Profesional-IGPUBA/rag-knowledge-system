@@ -1,4 +1,4 @@
-from __future__ import annotations
+"""Evaluación comparativa de modelos LLM sobre el pipeline RAG (latencia, cobertura de keywords)."""
 
 import json
 import logging
@@ -52,6 +52,8 @@ EVAL_QUERIES: list[dict[str, Any]] = [
 
 @dataclass
 class ModelEvalResult:
+    """Resultado de evaluar un modelo sobre una consulta puntual."""
+
     model: str
     query_id: str
     query: str
@@ -65,11 +67,14 @@ class ModelEvalResult:
 
     @property
     def ok(self) -> bool:
+        """True si la consulta se ejecutó sin error."""
         return self.error is None
 
 
 @dataclass
 class EvaluationReport:
+    """Reporte consolidado de la evaluación: resultados por query, resumen por modelo y selección final."""
+
     evaluated_at: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
@@ -80,10 +85,12 @@ class EvaluationReport:
     selection_rationale: str = ""
 
     def to_dict(self) -> dict:
+        """Convierte el reporte a diccionario serializable."""
         d = asdict(self)
         return d
 
     def save(self, path: Path) -> None:
+        """Guarda el reporte como JSON en el path indicado, creando carpetas si hace falta."""
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
             json.dumps(self.to_dict(), indent=2, ensure_ascii=False),
@@ -92,6 +99,7 @@ class EvaluationReport:
         log.info("Reporte de evaluación guardado en %s", path)
 
     def print_summary(self) -> None:
+        """Imprime en consola un resumen legible del reporte por modelo."""
         print("\n" + "═" * 60)
         print("EVALUACIÓN COMPARATIVA DE MODELOS LLM")
         print("═" * 60)
@@ -120,6 +128,7 @@ def evaluate_models(
     queries: list[dict[str, Any]] | None = None,
     output_path: Path | None = None,
 ) -> EvaluationReport:
+    """Evalúa cada modelo contra el set de queries, arma el resumen y selecciona el mejor."""
     queries = queries or EVAL_QUERIES
     report = EvaluationReport(models_evaluated=models)
     prompt_builder = PromptBuilder()
@@ -173,7 +182,7 @@ def evaluate_models(
                     keyword_score=round(score, 4),
                 )
 
-            except Exception as e: # noqa: BLE001 — se captura todo para no interrumpir la evaluación de otros modelos/queries
+            except Exception as e:  # noqa: BLE001 — se captura todo para no interrumpir la evaluación de otros modelos/queries
                 result = ModelEvalResult(
                     model=model_name,
                     query_id=q["id"],
