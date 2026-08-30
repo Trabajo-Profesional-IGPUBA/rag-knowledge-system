@@ -55,6 +55,16 @@ def load_pipeline():
     return pipeline, llm_client
 
 
+def render_streaming_response(placeholder, token_iterator):
+    """Renderiza tokens progresivamente con cursor, y el texto final sin cursor."""
+    full_response = ""
+    for token in token_iterator:
+        full_response += token
+        placeholder.markdown(full_response + "▌")
+    placeholder.markdown(full_response)
+    return full_response
+
+
 try:
     pipeline, llm_client = load_pipeline()
     ollama_ok = llm_client.is_available()
@@ -81,13 +91,9 @@ if prompt := st.chat_input("Escribí tu consulta técnica..."):
 
     with st.chat_message("assistant"):
         response_placeholder = st.empty()
-        full_response = ""
-
         with st.spinner("Buscando en documentos..."):
-            for token in pipeline.query_stream(prompt):
-                full_response += token
-                response_placeholder.markdown(full_response + "▌")
-
-        response_placeholder.markdown(full_response)
+            full_response = render_streaming_response(
+                response_placeholder, pipeline.query_stream(prompt)
+            )
 
     st.session_state.messages.append({"role": "assistant", "content": full_response})
