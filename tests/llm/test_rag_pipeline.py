@@ -229,3 +229,20 @@ class TestRAGPipeline:
         assert resp.retrieval is not None
         assert resp.prompt is not None
 
+    def test_query_stream_yields_tokens(self):
+        """CA-4.1: la respuesta se entrega progresivamente, token a token."""
+        pipeline, _, mock_llm = self._make_pipeline()
+        mock_llm.generate_stream.return_value = iter(["Hola", " ", "mundo"])
+
+        tokens = list(pipeline.query_stream("pregunta"))
+
+        assert tokens == ["Hola", " ", "mundo"]
+
+    def test_query_stream_saves_full_response_to_history(self):
+        """CA-4.2: al finalizar el streaming, la respuesta completa se guarda en el historial."""
+        pipeline, _, mock_llm = self._make_pipeline()
+        mock_llm.generate_stream.return_value = iter(["Hola", " ", "mundo"])
+
+        list(pipeline.query_stream("pregunta"))
+
+        assert pipeline.history == [("pregunta", "Hola mundo")]
