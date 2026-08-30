@@ -139,3 +139,74 @@ class TestRAGPipeline:
         )
         resp = pipeline_sin_builder.query("pregunta")
         assert resp.ok
+
+    def test_min_score_filters_chunks(self):
+        """CA-2.1: chunks por debajo del score mínimo se descartan."""
+        from src.llm.client import LLMResponse
+        from src.llm.rag_pipeline import RAGConfig, RAGPipeline
+        from src.retrieval.retriever import RetrievalResult
+
+        mock_retriever = MagicMock()
+        mock_retriever.retrieve.return_value = RetrievalResult(
+            query="test",
+            chunks=[
+                {
+                    "chunk_id": "c1",
+                    "text": "bueno",
+                    "metadata": {},
+                    "score": 0.8,
+                    "distance": 0.2,
+                },
+                {
+                    "chunk_id": "c2",
+                    "text": "malo",
+                    "metadata": {},
+                    "score": 0.1,
+                    "distance": 0.9,
+                },
+            ],
+            top_k=5,
+        )
+
+        mock_llm = MagicMock()
+        mock_llm.config = MagicMock()
+        mock_llm.config.model = "test"
+        mock_llm.generate.return_value = LLMResponse(text="ok", model="test", ok=True)
+
+        pipeline = RAGPipeline(
+            retriever=mock_retriever,
+            llm_client=mock_llm,
+            config=RAGConfig(min_score=0.5),
+        )
+        resp = pipeline.query("test")
+        assert resp.prompt.num_chunks == 1
+
+    def test_min_score_is_configurable(self):
+        """CA-2.2: el score mínimo no es un valor fijo, cambia según RAGConfig."""
+        from src.llm.rag_pipeline import RAGConfig, RAGPipeline
+
+        pipeline, mock_retriever, mock_llm = self._make_pipeline("respuesta")
+
+        pipeline_estricto = RAGPipeline(
+            retriever=mock_retriever,
+            llm_client=mock_llm,
+            config=RAGConfig(min_score=0.99),
+        )
+        resp = pipeline_estricto.query("pregunta")
+        assert resp.prompt.num_chunks == 0  # el único chunk tiene score 0.85 < 0.99
+
+    def test_no_chunks_pass_threshold_does_not_fail(self):
+        """CA-2.3: si ningún chunk supera el score mínimo, el pipeline no debe fallar."""
+        pipeline, mock_retriever, _ = self._make_pipeline("respuesta sin contexto")
+        mock_retriever.retrieve.return_value.chunks = [
+            {
+                "chunk_id": "c1",
+                "text": "irrelevante",
+                "metadata": {},
+                "score": 0.05,
+                "distance": 0.95,
+            }
+        ]
+        resp = pipeline.query("pregunta")
+        assert resp.ok
+        assert resp.prompt.num_chunks == 0
