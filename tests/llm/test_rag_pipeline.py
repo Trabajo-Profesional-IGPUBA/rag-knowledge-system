@@ -246,7 +246,7 @@ class TestRAGPipeline:
         list(pipeline.query_stream("pregunta"))
 
         assert pipeline.history == [("pregunta", "Hola mundo")]
-        
+
     def test_query_saves_history(self):
         """CA-5.1: cada consulta exitosa se agrega al historial (pregunta + respuesta)."""
         pipeline, _, _ = self._make_pipeline("respuesta")
@@ -271,3 +271,29 @@ class TestRAGPipeline:
 
         assert not resp.ok
         assert len(pipeline.history) == 0
+
+    def test_clear_history(self):
+        """CA-6.1: el historial se puede borrar en cualquier momento."""
+        pipeline, _, _ = self._make_pipeline("respuesta")
+        pipeline.query("pregunta")
+        pipeline.clear_history()
+        assert len(pipeline.history) == 0
+
+    def test_clear_history_then_query_does_not_use_history(self):
+        """CA-6.2: tras limpiar el historial, la siguiente consulta no usa contexto previo."""
+        pipeline, _, _ = self._make_pipeline("respuesta")
+        pipeline._prompt_builder = MagicMock()
+        pipeline._prompt_builder.build.return_value = MagicMock(
+            prompt="p", num_chunks=1, total_chars=1
+        )
+        pipeline._prompt_builder.build_with_history.return_value = MagicMock(
+            prompt="p", num_chunks=1, total_chars=1
+        )
+
+        pipeline.query("pregunta 1", use_history=True)  # historial vacío -> usa build()
+        pipeline.query("pregunta 2", use_history=True)  # ya hay historial -> usa build_with_history()
+        pipeline.clear_history()
+        pipeline.query("pregunta 3", use_history=True)  # historial vacío otra vez -> vuelve a build()
+
+        assert pipeline._prompt_builder.build_with_history.call_count == 1
+
