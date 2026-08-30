@@ -210,3 +210,22 @@ class TestRAGPipeline:
         resp = pipeline.query("pregunta")
         assert resp.ok
         assert resp.prompt.num_chunks == 0
+
+
+    def test_query_returns_rag_response(self):
+        """CA-3.1: genera una respuesta completa de una sola vez."""
+        pipeline, _, _ = self._make_pipeline("La presión es 3500 psi.")
+        resp = pipeline.query("¿Cuál es la presión?")
+        assert resp.ok
+        assert resp.answer == "La presión es 3500 psi."
+        assert resp.query == "¿Cuál es la presión?"
+
+    def test_response_includes_query_retrieval_and_prompt(self):
+        """CA-3.2: la respuesta incluye texto generado, query original, recuperación y prompt."""
+        pipeline, _, _ = self._make_pipeline("respuesta")
+        resp = pipeline.query("pregunta")
+        assert resp.query == "pregunta"
+        assert resp.answer == "respuesta"
+        assert resp.retrieval is not None
+        assert resp.prompt is not None
+
