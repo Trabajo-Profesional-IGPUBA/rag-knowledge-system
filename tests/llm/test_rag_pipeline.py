@@ -1,4 +1,3 @@
-
 from unittest.mock import MagicMock
 
 
@@ -108,3 +107,35 @@ class TestRAGPipeline:
         pipeline, _, _ = self._make_pipeline("respuesta")
         resp = pipeline.query("pregunta")
         assert len(resp.sources) >= 0
+        
+
+    def test_query_calls_components_in_order_with_expected_args(self):
+        """CA-1.1: retrieve -> build -> generate, en ese orden y con los args correctos."""
+        pipeline, mock_retriever, mock_llm = self._make_pipeline("respuesta")
+        pipeline._prompt_builder = MagicMock()
+        pipeline._prompt_builder.build.return_value = MagicMock(
+            prompt="prompt final", num_chunks=1, total_chars=10
+        )
+
+        manager = MagicMock()
+        manager.attach_mock(mock_retriever.retrieve, "retrieve")
+        manager.attach_mock(pipeline._prompt_builder.build, "build")
+        manager.attach_mock(mock_llm.generate, "generate")
+
+        pipeline.query("¿Cuál es la presión?")
+
+        assert manager.mock_calls[0][0] == "retrieve"
+        assert manager.mock_calls[1][0] == "build"
+        assert manager.mock_calls[2][0] == "generate"
+        mock_llm.generate.assert_called_with("prompt final")
+
+    def test_default_prompt_builder_is_used_when_not_provided(self):
+        """CA-1.3: si no se pasa PromptBuilder, se instancia uno por defecto y el pipeline funciona igual."""
+        from src.llm.rag_pipeline import RAGPipeline
+
+        pipeline, _, _ = self._make_pipeline("respuesta")
+        pipeline_sin_builder = RAGPipeline(
+            retriever=pipeline._retriever, llm_client=pipeline._llm
+        )
+        resp = pipeline_sin_builder.query("pregunta")
+        assert resp.ok
