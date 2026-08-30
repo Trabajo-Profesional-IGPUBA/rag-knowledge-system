@@ -27,6 +27,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from src.embeddings.criteria import (
     APPROX_DISK_SIZE_MB,
     CANDIDATE_MODELS,
+    COMPARISON_CRITERIA,
     EVALUATION_QUERIES,
 )
 
@@ -219,6 +220,8 @@ def generate_report(
     criteria.COMPARISON_CRITERIA.
     """
     lines = ["# Evaluación de modelos de embeddings — resultados\n"]
+    lines.append("## Criterios de comparación\n")
+    lines.append(COMPARISON_CRITERIA)
     lines.append(
         "| Modelo | Dim | Textos/s | RAM (MB) | Disco aprox (MB) | Accuracy | Margen prom. |"
     )
