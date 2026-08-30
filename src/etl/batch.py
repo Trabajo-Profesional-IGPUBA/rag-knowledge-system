@@ -202,7 +202,7 @@ def run(
             for fut in done:
                 try:
                     pdf, doc = fut.result()
-                except Exception as e:  # noqa: BLE001 — un worker individual no debe interrumpir el procesamiento del resto del batch
+                except Exception as e:
                     log_error("unknown", str(e))
                     continue
 

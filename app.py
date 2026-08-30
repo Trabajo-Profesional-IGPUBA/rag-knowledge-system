@@ -69,7 +69,7 @@ def render_streaming_response(placeholder, token_iterator):
 try:
     pipeline, llm_client = load_pipeline()
     ollama_ok = llm_client.is_available()
-except Exception as e:  # noqa: BLE001 — falla de inicialización de la app: se muestra el error en la UI y se detiene la ejecución, no hay forma razonable de continuar
+except Exception as e:
     st.error(f"Error al cargar el sistema: {e}")
     st.stop()
 

@@ -173,7 +173,7 @@ def evaluate_models(
                     keyword_score=round(score, 4),
                 )
 
-            except Exception as e: # noqa: BLE001 — se captura todo para no interrumpir la evaluación de otros modelos/queries
+            except Exception as e:
                 result = ModelEvalResult(
                     model=model_name,
                     query_id=q["id"],

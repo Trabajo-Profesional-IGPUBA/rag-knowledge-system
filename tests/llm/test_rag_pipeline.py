@@ -44,71 +44,6 @@ class TestRAGPipeline:
         )
         return pipeline, mock_retriever, mock_llm
 
-    def test_query_returns_rag_response(self):
-        pipeline, _, _ = self._make_pipeline("La presión es 3500 psi.")
-        resp = pipeline.query("¿Cuál es la presión?")
-        assert resp.ok
-        assert resp.answer == "La presión es 3500 psi."
-        assert resp.query == "¿Cuál es la presión?"
-
-    def test_query_saves_history(self):
-        pipeline, _, _ = self._make_pipeline("respuesta")
-        pipeline.query("pregunta 1")
-        pipeline.query("pregunta 2")
-        assert len(pipeline.history) == 2
-
-    def test_clear_history(self):
-        pipeline, _, _ = self._make_pipeline("respuesta")
-        pipeline.query("pregunta")
-        pipeline.clear_history()
-        assert len(pipeline.history) == 0
-
-    def test_min_score_filters_chunks(self):
-        from src.llm.client import LLMResponse
-        from src.llm.rag_pipeline import RAGConfig, RAGPipeline
-        from src.retrieval.retriever import RetrievalResult
-
-        mock_retriever = MagicMock()
-        mock_retriever.retrieve.return_value = RetrievalResult(
-            query="test",
-            chunks=[
-                {
-                    "chunk_id": "c1",
-                    "text": "bueno",
-                    "metadata": {},
-                    "score": 0.8,
-                    "distance": 0.2,
-                },
-                {
-                    "chunk_id": "c2",
-                    "text": "malo",
-                    "metadata": {},
-                    "score": 0.1,
-                    "distance": 0.9,
-                },
-            ],
-            top_k=5,
-        )
-
-        mock_llm = MagicMock()
-        mock_llm.config = MagicMock()
-        mock_llm.config.model = "test"
-        mock_llm.generate.return_value = LLMResponse(text="ok", model="test", ok=True)
-
-        pipeline = RAGPipeline(
-            retriever=mock_retriever,
-            llm_client=mock_llm,
-            config=RAGConfig(min_score=0.5),
-        )
-        resp = pipeline.query("test")
-        assert resp.prompt.num_chunks == 1
-
-    def test_sources_property(self):
-        pipeline, _, _ = self._make_pipeline("respuesta")
-        resp = pipeline.query("pregunta")
-        assert len(resp.sources) >= 0
-        
-
     def test_query_calls_components_in_order_with_expected_args(self):
         """CA-1.1: retrieve -> build -> generate, en ese orden y con los args correctos."""
         pipeline, mock_retriever, mock_llm = self._make_pipeline("respuesta")
@@ -185,7 +120,7 @@ class TestRAGPipeline:
         """CA-2.2: el score mínimo no es un valor fijo, cambia según RAGConfig."""
         from src.llm.rag_pipeline import RAGConfig, RAGPipeline
 
-        pipeline, mock_retriever, mock_llm = self._make_pipeline("respuesta")
+        _pipeline, mock_retriever, mock_llm = self._make_pipeline("respuesta")
 
         pipeline_estricto = RAGPipeline(
             retriever=mock_retriever,
@@ -210,7 +145,6 @@ class TestRAGPipeline:
         resp = pipeline.query("pregunta")
         assert resp.ok
         assert resp.prompt.num_chunks == 0
-
 
     def test_query_returns_rag_response(self):
         """CA-3.1: genera una respuesta completa de una sola vez."""
@@ -291,9 +225,13 @@ class TestRAGPipeline:
         )
 
         pipeline.query("pregunta 1", use_history=True)  # historial vacío -> usa build()
-        pipeline.query("pregunta 2", use_history=True)  # ya hay historial -> usa build_with_history()
+        pipeline.query(
+            "pregunta 2", use_history=True
+        )  # ya hay historial -> usa build_with_history()
         pipeline.clear_history()
-        pipeline.query("pregunta 3", use_history=True)  # historial vacío otra vez -> vuelve a build()
+        pipeline.query(
+            "pregunta 3", use_history=True
+        )  # historial vacío otra vez -> vuelve a build()
 
         assert pipeline._prompt_builder.build_with_history.call_count == 1
 
@@ -301,7 +239,9 @@ class TestRAGPipeline:
         """CA-7.1: RAGConfig centraliza top_k, min_score, stream y filters en un solo lugar."""
         from src.llm.rag_pipeline import RAGConfig
 
-        config = RAGConfig(top_k=10, min_score=0.6, stream=True, filters={"doc_type": "ewrs"})
+        config = RAGConfig(
+            top_k=10, min_score=0.6, stream=True, filters={"doc_type": "ewrs"}
+        )
         assert config.top_k == 10
         assert config.min_score == 0.6
         assert config.stream is True
@@ -332,11 +272,12 @@ class TestRAGPipeline:
         from src.llm.client import LLMResponse
 
         pipeline, _, mock_llm = self._make_pipeline()
-        mock_llm.generate.return_value = LLMResponse(text="algo", model="test", ok=False)
+        mock_llm.generate.return_value = LLMResponse(
+            text="algo", model="test", ok=False
+        )
 
         resp = pipeline.query("pregunta")
         assert resp.ok is False
-
 
     def test_sources_property(self):
         """CA-9.1/CA-9.2: sources lista filename, doc_type y score de cada fuente."""
@@ -352,12 +293,32 @@ class TestRAGPipeline:
         """CA-9.3: sources se limita a los chunks efectivamente usados en el prompt, no a todos los recuperados."""
         pipeline, mock_retriever, _ = self._make_pipeline("respuesta")
         mock_retriever.retrieve.return_value.chunks = [
-            {"chunk_id": "c1", "text": "a", "metadata": {"filename": "f1"}, "score": 0.9, "distance": 0.1},
-            {"chunk_id": "c2", "text": "b", "metadata": {"filename": "f2"}, "score": 0.8, "distance": 0.2},
-            {"chunk_id": "c3", "text": "c", "metadata": {"filename": "f3"}, "score": 0.7, "distance": 0.3},
+            {
+                "chunk_id": "c1",
+                "text": "a",
+                "metadata": {"filename": "f1"},
+                "score": 0.9,
+                "distance": 0.1,
+            },
+            {
+                "chunk_id": "c2",
+                "text": "b",
+                "metadata": {"filename": "f2"},
+                "score": 0.8,
+                "distance": 0.2,
+            },
+            {
+                "chunk_id": "c3",
+                "text": "c",
+                "metadata": {"filename": "f3"},
+                "score": 0.7,
+                "distance": 0.3,
+            },
         ]
         resp = pipeline.query("pregunta")
-        resp.prompt.num_chunks = 2  # simula que el PromptBuilder solo usó 2 de los 3 chunks
+        resp.prompt.num_chunks = (
+            2  # simula que el PromptBuilder solo usó 2 de los 3 chunks
+        )
         assert len(resp.sources) == 2
         assert {s["filename"] for s in resp.sources} == {"f1", "f2"}
 

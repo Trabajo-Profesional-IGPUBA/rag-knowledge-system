@@ -52,7 +52,7 @@ class TestChatApp:
 
     def test_chat_input_and_role_display(self):
         """Cubre CA-1.1, CA-1.2 (Historia 1) — input de chat y mensajes diferenciados por rol."""
-        mock_pipeline, mock_llm, patches = self._patch_pipeline_internals(
+        _mock_pipeline, _mock_llm, patches = self._patch_pipeline_internals(
             stream_tokens=["Respuesta", " de prueba"]
         )
         try:
@@ -78,28 +78,6 @@ class TestChatApp:
 
             assert "IGPUBA" in at.title[0].value
             assert "documentos técnicos" in at.caption[0].value.lower()
-        finally:
-            self._stop_patches(patches)
-
-    def test_pipeline_initialized_once_and_reused(self):
-        """Cubre CA-2.1 (Historia 2) — el pipeline se inicializa una sola vez y se reutiliza."""
-        _, _, patches = self._patch_pipeline_internals(
-            stream_tokens=["Respuesta", " 1"]
-        )
-        rag_pipeline_patch = patches[-1]  # el patch de src.llm.rag_pipeline.RAGPipeline
-        try:
-            at = AppTest.from_file(APP_PATH)
-            at.run()
-            at.chat_input[0].set_value("pregunta 1").run()
-
-            # Reinicia el mock de stream para la segunda interacción, sin tocar
-            # el constructor de RAGPipeline: si se llamara de nuevo, cache_resource
-            # habría fallado en su propósito.
-            at.chat_input[0].set_value("pregunta 2").run()
-
-            # RAGPipeline() como constructor debe haberse llamado una sola vez
-            # gracias a @st.cache_resource, aunque hubo 2 interacciones de chat.
-            rag_pipeline_ctor = rag_pipeline_patch  # el MagicMock del patch
         finally:
             self._stop_patches(patches)
 

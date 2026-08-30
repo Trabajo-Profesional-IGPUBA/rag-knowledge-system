@@ -83,7 +83,7 @@ def extract(pdf_path: Path, raw_dir: Path) -> ProcessedDoc:
         doc.text = "\n\n".join(chunks)
         doc.char_count = len(doc.text)
 
-    except Exception as exc:  # noqa: BLE001 — el reader debe seguir procesando el resto del corpus aunque un documento falle por cualquier motivo (formato corrupto, encoding, librería específica del tipo de archivo, etc.)
+    except Exception as exc:
         doc.error = f"{type(exc).__name__}: {exc}"
 
     return doc
