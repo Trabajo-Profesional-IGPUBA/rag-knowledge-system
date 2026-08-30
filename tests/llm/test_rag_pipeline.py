@@ -316,3 +316,23 @@ class TestRAGPipeline:
         assert config.min_score == 0.3
         assert config.stream is False
         assert config.filters is None
+
+    def test_rag_response_includes_full_traceability(self):
+        """CA-8.1: el resultado incluye pregunta, respuesta, recuperación, prompt y respuesta cruda del LLM."""
+        pipeline, _, mock_llm = self._make_pipeline("respuesta")
+        resp = pipeline.query("pregunta")
+        assert resp.query == "pregunta"
+        assert resp.answer == "respuesta"
+        assert resp.retrieval is not None
+        assert resp.prompt is not None
+        assert resp.llm_response is mock_llm.generate.return_value
+
+    def test_rag_response_ok_reflects_retrieval_and_generation(self):
+        """CA-8.2: ok indica éxito conjunto (recuperación + generación), no solo si el LLM respondió."""
+        from src.llm.client import LLMResponse
+
+        pipeline, _, mock_llm = self._make_pipeline()
+        mock_llm.generate.return_value = LLMResponse(text="algo", model="test", ok=False)
+
+        resp = pipeline.query("pregunta")
+        assert resp.ok is False
