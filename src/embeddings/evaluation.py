@@ -43,6 +43,8 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class ModelEvaluationResult:
+    """Contenedor con los resultados de rendimiento, recursos y calidad de un modelo evaluado."""
+
     model_name: str
     ok: bool = True
     error: str | None = None
@@ -63,10 +65,12 @@ class ModelEvaluationResult:
     avg_similarity_correct: float | None = None
 
     def to_dict(self) -> dict:
+        """Convierte el resultado a un diccionario serializable."""
         return asdict(self)
 
 
 def _current_ram_mb() -> float | None:
+    """Devuelve la RAM actual (RSS) del proceso en MB, o None si psutil no está disponible."""
     if not _HAS_PSUTIL:
         return None
     return psutil.Process().memory_info().rss / (1024 * 1024)
@@ -116,6 +120,7 @@ def evaluate_candidate_model(
     evaluation_queries: list[dict],
     n_repeticiones: int = 5,
 ) -> ModelEvaluationResult:
+    """Carga un modelo, mide su velocidad (con warmup y repeticiones), su consumo de RAM y su calidad de retrieval."""
     log.info("=== Evaluando modelo: %s ===", model_name)
     ram_antes = _current_ram_mb()
 

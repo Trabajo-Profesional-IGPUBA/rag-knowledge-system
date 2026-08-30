@@ -3,6 +3,7 @@ from pathlib import Path
 
 
 def load_documents(data_dir: str = "data/processed") -> list[dict]:
+    """Carga todos los JSON de data_dir (recursivamente) como lista de dicts, agregando la ruta de origen en '_source_file'."""
     docs = []
     base = Path(data_dir)
     if not base.exists():
@@ -22,6 +23,7 @@ def load_documents(data_dir: str = "data/processed") -> list[dict]:
 
 
 def extract_test_texts(docs: list[dict], max_docs: int | None = None) -> list[str]:
+    """Extrae el campo 'text' de cada documento (descartando vacíos), opcionalmente limitado a max_docs."""
     texts = [d["text"] for d in docs if d.get("text")]
     if max_docs:
         texts = texts[:max_docs]
@@ -29,6 +31,7 @@ def extract_test_texts(docs: list[dict], max_docs: int | None = None) -> list[st
 
 
 def summary_by_doc_type(docs: list[dict]) -> dict[str, int]:
+    """Cuenta cuántos documentos hay por cada valor de 'doc_type' (usando 'unknown' si falta)."""
     count: dict[str, int] = {}
     for d in docs:
         dt = d.get("doc_type", "unknown")
@@ -37,6 +40,7 @@ def summary_by_doc_type(docs: list[dict]) -> dict[str, int]:
 
 
 def detect_possible_duplicates(docs: list[dict]) -> list[tuple[str, str]]:
+    """Detecta pares de documentos con texto idéntico y devuelve sus (doc_id, doc_id) como posibles duplicados."""
     by_text: dict[str, list[str]] = {}
     for d in docs:
         text = d.get("text", "").strip()
