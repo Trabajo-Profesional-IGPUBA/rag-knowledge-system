@@ -336,3 +336,27 @@ class TestRAGPipeline:
 
         resp = pipeline.query("pregunta")
         assert resp.ok is False
+
+
+    def test_sources_property(self):
+        """CA-9.1/CA-9.2: sources lista filename, doc_type y score de cada fuente."""
+        pipeline, _, _ = self._make_pipeline("respuesta")
+        resp = pipeline.query("pregunta")
+        assert len(resp.sources) == 1
+        source = resp.sources[0]
+        assert source["filename"] == "PM104"
+        assert source["doc_type"] == "ewrs"
+        assert source["score"] == 0.85
+
+    def test_sources_limited_to_chunks_used_in_prompt(self):
+        """CA-9.3: sources se limita a los chunks efectivamente usados en el prompt, no a todos los recuperados."""
+        pipeline, mock_retriever, _ = self._make_pipeline("respuesta")
+        mock_retriever.retrieve.return_value.chunks = [
+            {"chunk_id": "c1", "text": "a", "metadata": {"filename": "f1"}, "score": 0.9, "distance": 0.1},
+            {"chunk_id": "c2", "text": "b", "metadata": {"filename": "f2"}, "score": 0.8, "distance": 0.2},
+            {"chunk_id": "c3", "text": "c", "metadata": {"filename": "f3"}, "score": 0.7, "distance": 0.3},
+        ]
+        resp = pipeline.query("pregunta")
+        resp.prompt.num_chunks = 2  # simula que el PromptBuilder solo usó 2 de los 3 chunks
+        assert len(resp.sources) == 2
+        assert {s["filename"] for s in resp.sources} == {"f1", "f2"}
