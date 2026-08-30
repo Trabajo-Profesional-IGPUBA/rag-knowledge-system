@@ -1,3 +1,5 @@
+"""Pipeline RAG: orquesta Retriever + PromptBuilder + LLMClient para responder consultas."""
+
 import logging
 import time
 from collections.abc import Iterator
@@ -13,6 +15,8 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class RAGResponse:
+    """Resultado de una consulta RAG: pregunta, respuesta, fuentes y métricas."""
+
     query: str
     answer: str
     retrieval: RetrievalResult
@@ -22,6 +26,7 @@ class RAGResponse:
 
     @property
     def ok(self) -> bool:
+        """True si la generación fue exitosa y produjo una respuesta no vacía."""
         return self.llm_response.ok and bool(self.answer)
 
     @property
@@ -40,6 +45,7 @@ class RAGResponse:
         ]
 
     def pretty_sources(self) -> str:
+        """Devuelve las fuentes formateadas como texto legible, o "Sin fuentes" si no hay."""
         lines = []
         for i, s in enumerate(self.sources, 1):
             lines.append(
@@ -50,6 +56,8 @@ class RAGResponse:
 
 @dataclass
 class RAGConfig:
+    """Parámetros de configuración del pipeline RAG (top_k, score mínimo, streaming, filtros)."""
+
     top_k: int = 5
     min_score: float = 0.3
     stream: bool = False
@@ -57,10 +65,7 @@ class RAGConfig:
 
 
 class RAGPipeline:
-    """
-    Pipeline RAG completo.
-    Combina Retriever + PromptBuilder + LLMClient.
-    """
+    """Orquesta Retriever + PromptBuilder + LLMClient para responder consultas RAG."""
 
     def __init__(
         self,
@@ -147,6 +152,7 @@ class RAGPipeline:
         )
 
     def query_stream(self, question: str) -> Iterator[str]:
+        """Ejecuta una consulta RAG en modo streaming, yieldeando tokens a medida que se generan."""
         retrieval = self._retriever.retrieve(
             query=question,
             top_k=self._config.top_k,
@@ -167,9 +173,11 @@ class RAGPipeline:
         self._history.append((question, "".join(full_response)))
 
     def clear_history(self) -> None:
+        """Borra el historial de conversación de la sesión."""
         self._history.clear()
         log.info("Historial de conversación limpiado")
 
     @property
     def history(self) -> list[tuple[str, str]]:
+        """Historial de conversación como lista de tuplas (pregunta, respuesta)."""
         return list(self._history)
