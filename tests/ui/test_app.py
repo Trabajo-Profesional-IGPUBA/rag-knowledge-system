@@ -140,3 +140,29 @@ class TestChatApp:
 
             assert len(at.error) > 0
             assert "Error al cargar el sistema" in at.error[0].value
+
+    def test_blocks_chat_when_ollama_unavailable(self):
+        """Cubre CA-3.1, CA-3.3 (Historia 3) — verifica disponibilidad y bloquea el chat si falla."""
+        _, mock_llm, patches = self._patch_pipeline_internals(ollama_available=False)
+        try:
+            at = AppTest.from_file(APP_PATH)
+            at.run()
+
+            assert len(at.chat_input) == 0
+            mock_llm.is_available.assert_called_once()
+        finally:
+            self._stop_patches(patches)
+
+    def test_shows_actionable_error_message(self):
+        """Cubre CA-3.2 (Historia 3) — mensaje de error con acción concreta (comando)."""
+        _, _, patches = self._patch_pipeline_internals(ollama_available=False)
+        try:
+            at = AppTest.from_file(APP_PATH)
+            at.run()
+
+            assert len(at.error) > 0
+            assert "ollama serve" in at.error[0].value
+        finally:
+            self._stop_patches(patches)
+
+
