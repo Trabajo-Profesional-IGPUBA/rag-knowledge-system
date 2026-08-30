@@ -15,6 +15,8 @@ DEFAULT_TIMEOUT = 120
 
 @dataclass
 class LLMResponse:
+    """Resultado de una generación: texto, tokens, tiempo y estado de éxito/error."""
+
     text: str
     model: str
     prompt_tokens: int = 0
@@ -26,6 +28,8 @@ class LLMResponse:
 
 @dataclass
 class LLMConfig:
+    """Parámetros de configuración del modelo y de conexión al servidor Ollama."""
+
     model: str = DEFAULT_MODEL
     temperature: float = 0.1
     top_p: float = 0.9
@@ -43,6 +47,7 @@ class LLMClient:
     """
 
     def __init__(self, config: LLMConfig | None = None) -> None:
+        """Inicializa el cliente con la configuración dada (o los defaults si no se especifica)."""
         self.config = config or LLMConfig()
         self._base_url = self.config.base_url.rstrip("/")
         log.info(
@@ -155,6 +160,7 @@ class LLMClient:
             return LLMResponse(text="", model=model, ok=False, error=msg)
 
     def generate_stream(self, prompt: str, model: str | None = None) -> Iterator[str]:
+        """Genera una respuesta en modo streaming, yieldeando tokens a medida que llegan."""
         model = model or self.config.model
 
         payload = {
@@ -180,9 +186,14 @@ class LLMClient:
                 r.raise_for_status()
                 for line in r.iter_lines():
                     if line:
-                        import json
+                        try:
+                            chunk = json.loads(line)
+                        except json.JSONDecodeError:
+                            log.warning(
+                                "Línea de streaming inválida, se ignora: %s", line
+                            )
+                            continue
 
-                        chunk = json.loads(line)
                         token = chunk.get("response", "")
                         if token:
                             yield token

@@ -4,13 +4,13 @@ from src.embeddings.evaluation import evaluate_models, generate_report
 
 logging.basicConfig(level=logging.INFO)
 
-from src.embeddings.corpus_loader import cargar_documentos, extraer_test_texts
+from src.embeddings.corpus_loader import extract_test_texts, load_documents
 
-documentos = cargar_documentos("data/processed")
-textos_de_prueba = extraer_test_texts(documentos, max_docs=40)
-resultados = evaluate_models(textos_de_prueba)
-reporte = generate_report(resultados)
+documents = load_documents("data/processed")
+test_texts = extract_test_texts(documents, max_docs=40)
+results = evaluate_models(test_texts)
+report = generate_report(results)
 
-print(reporte)
-with open("reporte_evaluacion_embeddings.md", "w", encoding="utf-8") as f:
-    f.write(reporte)
+print(report)
+with open("embeddings_evaluation_report.md", "w", encoding="utf-8") as f:
+    f.write(report)
