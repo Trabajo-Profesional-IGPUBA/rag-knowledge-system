@@ -297,3 +297,22 @@ class TestRAGPipeline:
 
         assert pipeline._prompt_builder.build_with_history.call_count == 1
 
+    def test_rag_config_centralizes_parameters(self):
+        """CA-7.1: RAGConfig centraliza top_k, min_score, stream y filters en un solo lugar."""
+        from src.llm.rag_pipeline import RAGConfig
+
+        config = RAGConfig(top_k=10, min_score=0.6, stream=True, filters={"doc_type": "ewrs"})
+        assert config.top_k == 10
+        assert config.min_score == 0.6
+        assert config.stream is True
+        assert config.filters == {"doc_type": "ewrs"}
+
+    def test_rag_config_defaults(self):
+        """CA-7.2: existen valores por defecto razonables si no se especifica configuración propia."""
+        from src.llm.rag_pipeline import RAGConfig
+
+        config = RAGConfig()
+        assert config.top_k == 5
+        assert config.min_score == 0.3
+        assert config.stream is False
+        assert config.filters is None
