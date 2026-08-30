@@ -154,6 +154,30 @@ class TestLLMClient:
         assert "Error" in tokens[0]
         assert "Ollama no disponible" in tokens[0]
 
+    @patch("requests.post")
+    def test_generate_stream_handles_malformed_json(self, mock_post):
+        """Cubre CA-3.4 (Historia 3) — ignora JSON malformado sin propagar excepción."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.iter_lines.return_value = [
+            b'{"response": "ok", "done": false}',
+            b'{"response": "incompleto"',  # JSON corrupto (falta cerrar la llave)
+            b'{"response": "", "done": true}',
+        ]
+        mock_resp.__enter__.return_value = mock_resp
+        mock_resp.__exit__.return_value = False
+        mock_post.return_value = mock_resp
+
+        client = self.client_cls(self.config_cls())
+
+        try:
+            tokens = list(client.generate_stream("prompt de prueba"))
+        except Exception as e:
+            assert False, f"generate_stream() no debería lanzar excepción, lanzó: {e}"
+
+        assert tokens == ["ok"]
+        
     def test_is_available_checks_server_before_use(self):
         """Cubre CA-4.1 (Historia 4) — permite verificar disponibilidad antes de usar el servidor."""
         client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
