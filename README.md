@@ -1,27 +1,3 @@
-# RAG Knowledge System
-
-Sistema de Generación Aumentada por Recuperación (RAG) para la gestión de conocimiento técnico en cuencas maduras.
-
-## Descripción
-
-Este sistema permite consultar inteligentemente documentación histórica de pozos petroleros (informes de perforación, partes diarios, análisis de falla, estudios de reservorio, entre otros) mediante lenguaje natural.
-
-## Estructura del proyecto
-
-```
-rag-knowledge-system/
-├── data/
-│   ├── raw/            # Documentos originales
-│   ├── processed/      # Texto procesado y segmentado
-│   └── vectorstore/    # Base de datos vectorial
-├── src/
-│   ├── etl/            # Ingesta, OCR y chunking
-│   ├── embeddings/     # Generación de vectores
-│   ├── retrieval/      # Búsqueda semántica
-│   ├── llm/            # Integración del modelo de lenguaje
-│   └── interface/      # API o interfaz de consulta
-└── tests/              # Pruebas unitarias y de integración
-```
 
 ## Instalación
 
@@ -33,6 +9,7 @@ source venv/bin/activate  # En Windows: venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env
 ```
+
 ## Docker
 
 ### Levantar la aplicación
@@ -80,6 +57,45 @@ streamlit run app.py --server.fileWatcherType none
 ### Evaluación de modelos de embeddings
 ```bash
 docker compose run evaluate_embeddings
+```
+
+## Lint y formato de código
+
+El proyecto usa `ruff` (lint) y `black` (formato), ambos ya incluidos en
+la imagen Docker. El CI verifica automáticamente que el código cumpla
+ambos estándares y bloquea el PR si no es así.
+
+### Verificar localmente antes de commitear
+
+```bash
+docker compose run lint-check     # solo reporta errores de lint
+docker compose run format-check   # solo reporta problemas de formato
+```
+
+### Corregir automáticamente
+
+```bash
+docker compose run lint     # aplica fixes de ruff
+docker compose run format   # aplica formato de black
+```
+
+### Hook de pre-commit (recomendado)
+
+Instalar dependencias de desarrollo (una sola vez):
+
+```bash
+pip install -r requirements-dev.txt
+pre-commit install
+```
+
+A partir de ahí, cada `git commit` va a correr lint y formato
+automáticamente sobre los archivos modificados, usando los mismos
+contenedores Docker del proyecto.
+
+Para correrlo manualmente sobre todo el repo sin hacer commit:
+
+```bash
+pre-commit run --all-files
 ```
 
 ## Equipo
