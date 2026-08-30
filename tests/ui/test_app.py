@@ -48,6 +48,7 @@ class TestChatApp:
         for p in patches:
             p.stop()
 
+    # ---------- Historia 1: Chat con el usuario ----------
 
     def test_chat_input_and_role_display(self):
         """Cubre CA-1.1, CA-1.2 (Historia 1) — input de chat y mensajes diferenciados por rol."""
@@ -80,4 +81,62 @@ class TestChatApp:
         finally:
             self._stop_patches(patches)
 
-  
+    def test_pipeline_initialized_once_and_reused(self):
+        """Cubre CA-2.1 (Historia 2) — el pipeline se inicializa una sola vez y se reutiliza."""
+        _, _, patches = self._patch_pipeline_internals(
+            stream_tokens=["Respuesta", " 1"]
+        )
+        rag_pipeline_patch = patches[-1]  # el patch de src.llm.rag_pipeline.RAGPipeline
+        try:
+            at = AppTest.from_file(APP_PATH)
+            at.run()
+            at.chat_input[0].set_value("pregunta 1").run()
+
+            # Reinicia el mock de stream para la segunda interacción, sin tocar
+            # el constructor de RAGPipeline: si se llamara de nuevo, cache_resource
+            # habría fallado en su propósito.
+            at.chat_input[0].set_value("pregunta 2").run()
+
+            # RAGPipeline() como constructor debe haberse llamado una sola vez
+            # gracias a @st.cache_resource, aunque hubo 2 interacciones de chat.
+            rag_pipeline_ctor = rag_pipeline_patch  # el MagicMock del patch
+        finally:
+            self._stop_patches(patches)
+
+    def test_pipeline_initialized_once_and_reused(self):
+        """Cubre CA-2.1 (Historia 2) — el pipeline se inicializa una sola vez y se reutiliza."""
+        mock_pipeline = MagicMock()
+        mock_pipeline.query_stream.side_effect = lambda q: iter(["ok"])
+        mock_llm = MagicMock()
+        mock_llm.is_available.return_value = True
+        mock_llm.config.model = "llama3:8b"
+
+        with (
+            patch("src.embeddings.embedder.Embedder", return_value=MagicMock()),
+            patch("src.retrieval.vectorstore.VectorStore", return_value=MagicMock()),
+            patch("src.retrieval.retriever.Retriever", return_value=MagicMock()),
+            patch("src.llm.client.LLMClient", return_value=mock_llm),
+            patch(
+                "src.llm.rag_pipeline.RAGPipeline", return_value=mock_pipeline
+            ) as mock_rag_pipeline_ctor,
+        ):
+            at = AppTest.from_file(APP_PATH)
+            at.run()
+            at.chat_input[0].set_value("pregunta 1").run()
+            at.chat_input[0].set_value("pregunta 2").run()
+
+            # @st.cache_resource debe evitar que RAGPipeline() se construya
+            # de nuevo en cada re-run del script.
+            assert mock_rag_pipeline_ctor.call_count == 1
+
+    def test_shows_error_on_init_failure(self):
+        """Cubre CA-2.3 (Historia 2) — error comprensible si falla la inicialización."""
+        with patch(
+            "src.embeddings.embedder.Embedder",
+            side_effect=Exception("No se pudo cargar el vectorstore"),
+        ):
+            at = AppTest.from_file(APP_PATH)
+            at.run()
+
+            assert len(at.error) > 0
+            assert "Error al cargar el sistema" in at.error[0].value
