@@ -246,3 +246,28 @@ class TestRAGPipeline:
         list(pipeline.query_stream("pregunta"))
 
         assert pipeline.history == [("pregunta", "Hola mundo")]
+        
+    def test_query_saves_history(self):
+        """CA-5.1: cada consulta exitosa se agrega al historial (pregunta + respuesta)."""
+        pipeline, _, _ = self._make_pipeline("respuesta")
+        pipeline.query("pregunta 1")
+        assert pipeline.history == [("pregunta 1", "respuesta")]
+
+    def test_history_accumulates_across_multiple_queries(self):
+        """CA-5.2: el historial se acumula a lo largo de múltiples consultas."""
+        pipeline, _, _ = self._make_pipeline("respuesta")
+        pipeline.query("pregunta 1")
+        pipeline.query("pregunta 2")
+        assert len(pipeline.history) == 2
+
+    def test_failed_generation_is_not_saved_to_history(self):
+        """CA-5.3: si la generación falla, esa consulta no se agrega al historial."""
+        from src.llm.client import LLMResponse
+
+        pipeline, _, mock_llm = self._make_pipeline()
+        mock_llm.generate.return_value = LLMResponse(text="", model="test", ok=False)
+
+        resp = pipeline.query("pregunta")
+
+        assert not resp.ok
+        assert len(pipeline.history) == 0
