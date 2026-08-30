@@ -1,0 +1,14 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-docker
+        name: ruff (docker)
+        entry: docker compose run --rm lint
+        language: system
+        pass_filenames: false
+
+      - id: black-docker
+        name: black (docker)
+        entry: docker compose run --rm format
+        language: system
+        pass_filenames: false
