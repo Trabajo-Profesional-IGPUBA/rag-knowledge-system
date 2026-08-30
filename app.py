@@ -29,6 +29,7 @@ st.divider()
 
 @st.cache_resource(show_spinner="Cargando sistema RAG...")
 def load_pipeline():
+    """Inicializa el pipeline RAG una sola vez por sesión (cacheado)."""
     import logging
 
     from src.embeddings.embedder import Embedder
