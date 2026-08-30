@@ -192,3 +192,18 @@ class TestChatApp:
         finally:
             self._stop_patches(patches)
 
+    def test_streaming_response_progressive(self):
+        """Cubre CA-5.2 (Historia 5) — respuesta llega token a token y se arma completa."""
+        mock_pipeline, _, patches = self._patch_pipeline_internals(
+            stream_tokens=["La ", "presión ", "es 3500 psi"]
+        )
+        try:
+            at = AppTest.from_file(APP_PATH)
+            at.run()
+            at.chat_input[0].set_value("¿presión?").run()
+
+            final_message = at.session_state["messages"][-1]["content"]
+            assert final_message == "La presión es 3500 psi"
+            mock_pipeline.query_stream.assert_called_once_with("¿presión?")
+        finally:
+            self._stop_patches(patches)
