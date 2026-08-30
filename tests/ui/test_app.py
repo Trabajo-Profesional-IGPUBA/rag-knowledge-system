@@ -207,3 +207,18 @@ class TestChatApp:
             mock_pipeline.query_stream.assert_called_once_with("¿presión?")
         finally:
             self._stop_patches(patches)
+
+    def test_cursor_appears_during_streaming_and_disappears_after(self):
+        """Cubre CA-6.1, CA-6.2, CA-6.3 (Historia 6) — cursor visible durante streaming, ausente al final."""
+        from app import render_streaming_response
+
+        mock_placeholder = MagicMock()
+        tokens = iter(["Hola", " mundo"])
+
+        result = render_streaming_response(mock_placeholder, tokens)
+
+        calls = [c.args[0] for c in mock_placeholder.markdown.call_args_list]
+        assert calls[0] == "Hola▌"
+        assert calls[1] == "Hola mundo▌"
+        assert calls[-1] == "Hola mundo"
+        assert result == "Hola mundo"
