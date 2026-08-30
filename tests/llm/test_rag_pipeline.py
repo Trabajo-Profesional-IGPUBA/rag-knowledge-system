@@ -360,3 +360,19 @@ class TestRAGPipeline:
         resp.prompt.num_chunks = 2  # simula que el PromptBuilder solo usó 2 de los 3 chunks
         assert len(resp.sources) == 2
         assert {s["filename"] for s in resp.sources} == {"f1", "f2"}
+
+    def test_pretty_sources_with_sources(self):
+        """CA-10.1: pretty_sources genera texto legible con las fuentes."""
+        pipeline, _, _ = self._make_pipeline("respuesta")
+        resp = pipeline.query("pregunta")
+        text = resp.pretty_sources()
+        assert "PM104" in text
+        assert "ewrs" in text
+        assert "85%" in text
+
+    def test_pretty_sources_without_sources(self):
+        """CA-10.2: sin fuentes, devuelve un mensaje claro en lugar de salida vacía."""
+        pipeline, mock_retriever, _ = self._make_pipeline("respuesta")
+        mock_retriever.retrieve.return_value.chunks = []
+        resp = pipeline.query("pregunta")
+        assert resp.pretty_sources().strip() == "Sin fuentes"
