@@ -1,21 +1,19 @@
-from __future__ import annotations
-
 import json
 from pathlib import Path
 
 
-def cargar_documentos(data_dir: str = "data/processed") -> list[dict]:
+def load_documents(data_dir: str = "data/processed") -> list[dict]:
     docs = []
     base = Path(data_dir)
     if not base.exists():
-        raise FileNotFoundError(f"No existe el directorio {data_dir}")
+        raise FileNotFoundError(f"Directory {data_dir} does not exist")
 
     for path in sorted(base.rglob("*.json")):
         with open(path, encoding="utf-8") as f:
             try:
                 data = json.load(f)
             except json.JSONDecodeError as e:
-                print(f"⚠️  {path} no es JSON válido, se omite: {e}")
+                print(f"⚠️  {path} is not valid JSON, skipping: {e}")
                 continue
             data["_source_file"] = str(path)
             docs.append(data)
@@ -23,32 +21,32 @@ def cargar_documentos(data_dir: str = "data/processed") -> list[dict]:
     return docs
 
 
-def extraer_test_texts(docs: list[dict], max_docs: int | None = None) -> list[str]:
-    textos = [d["text"] for d in docs if d.get("text")]
+def extract_test_texts(docs: list[dict], max_docs: int | None = None) -> list[str]:
+    texts = [d["text"] for d in docs if d.get("text")]
     if max_docs:
-        textos = textos[:max_docs]
-    return textos
+        texts = texts[:max_docs]
+    return texts
 
 
-def resumen_por_doc_type(docs: list[dict]) -> dict[str, int]:
-    conteo: dict[str, int] = {}
+def summary_by_doc_type(docs: list[dict]) -> dict[str, int]:
+    count: dict[str, int] = {}
     for d in docs:
-        dt = d.get("doc_type", "desconocido")
-        conteo[dt] = conteo.get(dt, 0) + 1
-    return conteo
+        dt = d.get("doc_type", "unknown")
+        count[dt] = count.get(dt, 0) + 1
+    return count
 
 
-def detectar_posibles_duplicados(docs: list[dict]) -> list[tuple[str, str]]:
-    por_texto: dict[str, list[str]] = {}
+def detect_possible_duplicates(docs: list[dict]) -> list[tuple[str, str]]:
+    by_text: dict[str, list[str]] = {}
     for d in docs:
-        texto = d.get("text", "").strip()
-        if not texto:
+        text = d.get("text", "").strip()
+        if not text:
             continue
-        por_texto.setdefault(texto, []).append(d.get("doc_id", d.get("filename", "?")))
+        by_text.setdefault(text, []).append(d.get("doc_id", d.get("filename", "?")))
 
-    duplicados = []
-    for texto, ids in por_texto.items():
+    duplicates = []
+    for text, ids in by_text.items():
         if len(ids) > 1:
             for i in range(len(ids) - 1):
-                duplicados.append((ids[i], ids[i + 1]))
-    return duplicados
+                duplicates.append((ids[i], ids[i + 1]))
+    return duplicates
