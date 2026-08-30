@@ -165,4 +165,30 @@ class TestChatApp:
         finally:
             self._stop_patches(patches)
 
+    def test_messages_persist_in_session_state(self):
+        """Cubre CA-4.1, CA-4.2 (Historia 4) — mensajes se guardan y renderizan en orden."""
+        _, _, patches = self._patch_pipeline_internals(
+            stream_tokens=["Respuesta", " completa"]
+        )
+        try:
+            at = AppTest.from_file(APP_PATH)
+            at.run()
+            at.chat_input[0].set_value("pregunta 1").run()
+
+            assert len(at.session_state["messages"]) == 2
+            assert at.session_state["messages"][0]["role"] == "user"
+            assert at.session_state["messages"][1]["role"] == "assistant"
+        finally:
+            self._stop_patches(patches)
+
+    def test_history_starts_empty(self):
+        """Cubre CA-4.3 (Historia 4) — historial vacío si no hay conversación previa."""
+        _, _, patches = self._patch_pipeline_internals()
+        try:
+            at = AppTest.from_file(APP_PATH)
+            at.run()
+
+            assert at.session_state["messages"] == []
+        finally:
+            self._stop_patches(patches)
 
