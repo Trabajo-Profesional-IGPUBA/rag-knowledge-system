@@ -1,3 +1,3 @@
-from .embedder import Embedder, evaluate_models, DEFAULT_MODEL, EMBEDDING_DIM
+from .embedder import DEFAULT_MODEL, EMBEDDING_DIM, Embedder, evaluate_models
 
-__all__ = ["Embedder", "evaluate_models", "DEFAULT_MODEL", "EMBEDDING_DIM"]
+__all__ = ["DEFAULT_MODEL", "EMBEDDING_DIM", "Embedder", "evaluate_models"]

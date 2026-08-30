@@ -82,7 +82,11 @@ class PromptBuilder:
             context_parts.append(chunk_str)
             context_chars += len(chunk_str)
 
-        context_block = "\n".join(context_parts) if context_parts else "No se encontraron documentos relevantes."
+        context_block = (
+            "\n".join(context_parts)
+            if context_parts
+            else "No se encontraron documentos relevantes."
+        )
 
         prompt = _PROMPT_TEMPLATE.format(
             system_prompt=self._system_prompt,

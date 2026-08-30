@@ -1,11 +1,12 @@
 """Tests unitarios para PromptBuilder."""
+
 from __future__ import annotations
-import pytest
 
 
 class TestPromptBuilder:
     def setup_method(self):
         from src.llm.prompt_builder import PromptBuilder
+
         self.builder = PromptBuilder(max_context_chars=5000)
 
     def _make_chunk(self, text: str, score: float = 0.9, doc_id: str = "doc1") -> dict:
@@ -39,6 +40,7 @@ class TestPromptBuilder:
 
     def test_build_respects_max_context(self):
         from src.llm.prompt_builder import PromptBuilder
+
         builder = PromptBuilder(max_context_chars=100)
         big_chunks = [self._make_chunk("x" * 200, doc_id=f"doc{i}") for i in range(5)]
         result = builder.build("pregunta", big_chunks)

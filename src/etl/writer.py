@@ -1,7 +1,6 @@
 import json
 from dataclasses import asdict
 from pathlib import Path
-from typing import Union, List
 
 from .models import ProcessedDoc
 
@@ -26,7 +25,7 @@ def save_doc(doc: ProcessedDoc, processed_dir: Path) -> Path:
 
 
 def append_manifest_batch(
-    docs: Union[ProcessedDoc, List[ProcessedDoc], List[dict]], manifest_path: Path
+    docs: ProcessedDoc | list[ProcessedDoc] | list[dict], manifest_path: Path
 ) -> None:
 
     manifest_path.parent.mkdir(parents=True, exist_ok=True)

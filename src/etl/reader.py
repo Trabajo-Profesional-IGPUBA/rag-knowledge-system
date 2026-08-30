@@ -1,12 +1,13 @@
-import re
 import logging
+import re
 from datetime import datetime, timezone
 from pathlib import Path
+
 import pdfplumber
 
+from .cleaner import normalize
 from .models import PageData, ProcessedDoc
 from .ocr import extract_text_from_page
-from .cleaner import normalize
 
 log = logging.getLogger(__name__)
 
@@ -71,13 +72,18 @@ def extract(pdf_path: Path, raw_dir: Path) -> ProcessedDoc:
                 chunks.append(clean)
 
         if ocr_pages:
-            log.info("%s: %d/%d páginas procesadas con OCR", pdf_path.name, ocr_pages, doc.page_count)
+            log.info(
+                "%s: %d/%d páginas procesadas con OCR",
+                pdf_path.name,
+                ocr_pages,
+                doc.page_count,
+            )
 
         doc.pages = pages_data
         doc.text = "\n\n".join(chunks)
         doc.char_count = len(doc.text)
 
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — el reader debe seguir procesando el resto del corpus aunque un documento falle por cualquier motivo (formato corrupto, encoding, librería específica del tipo de archivo, etc.)
         doc.error = f"{type(exc).__name__}: {exc}"
 
     return doc

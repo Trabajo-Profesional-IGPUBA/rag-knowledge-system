@@ -16,8 +16,6 @@ Alternativas evaluadas:
 from __future__ import annotations
 
 import logging
-from pathlib import Path
-from typing import Iterable
 
 from sentence_transformers import SentenceTransformer
 
@@ -64,7 +62,11 @@ class Embedder:
         if not texts:
             return []
 
-        log.info("Generando embeddings para %d textos (batch_size=%d)", len(texts), batch_size)
+        log.info(
+            "Generando embeddings para %d textos (batch_size=%d)",
+            len(texts),
+            batch_size,
+        )
 
         vectors = self._model.encode(
             texts,
@@ -73,7 +75,11 @@ class Embedder:
             convert_to_numpy=True,
         )
 
-        log.info("Embeddings generados: %d vectores de dim %d", len(vectors), vectors.shape[1])
+        log.info(
+            "Embeddings generados: %d vectores de dim %d",
+            len(vectors),
+            vectors.shape[1],
+        )
         return [v.tolist() for v in vectors]
 
 
@@ -111,7 +117,7 @@ def evaluate_models(texts: list[str]) -> dict[str, dict]:
                 elapsed,
                 len(texts) / elapsed,
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 — si un modelo de embeddings falla, se registra el error y se sigue evaluando el resto de los modelos candidatos
             results[model_name] = {"error": str(e)}
 
     return results

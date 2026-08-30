@@ -1,0 +1,44 @@
+{
+  "paraphrase-multilingual-MiniLM-L12-v2": {
+    "model_name": "paraphrase-multilingual-MiniLM-L12-v2",
+    "ok": true,
+    "error": null,
+    "embedding_dim": 384,
+    "load_time_sec": 17.086,
+    "encode_time_sec": 0.288,
+    "texts_per_sec": 55.5,
+    "peak_ram_mb": 795.4,
+    "approx_disk_size_mb": 470,
+    "retrieval_accuracy": 0.8,
+    "avg_margin": 0.1052,
+    "avg_similarity_correct": 0.5537
+  },
+  "intfloat/multilingual-e5-base": {
+    "model_name": "intfloat/multilingual-e5-base",
+    "ok": true,
+    "error": null,
+    "embedding_dim": 768,
+    "load_time_sec": 22.752,
+    "encode_time_sec": 2.457,
+    "texts_per_sec": 6.5,
+    "peak_ram_mb": 422.1,
+    "approx_disk_size_mb": 1100,
+    "retrieval_accuracy": 0.8,
+    "avg_margin": 0.0277,
+    "avg_similarity_correct": 0.8627
+  },
+  "paraphrase-multilingual-mpnet-base-v2": {
+    "model_name": "paraphrase-multilingual-mpnet-base-v2",
+    "ok": true,
+    "error": null,
+    "embedding_dim": 768,
+    "load_time_sec": 23.455,
+    "encode_time_sec": 1.134,
+    "texts_per_sec": 14.1,
+    "peak_ram_mb": 69.2,
+    "approx_disk_size_mb": 970,
+    "retrieval_accuracy": 0.8,
+    "avg_margin": 0.0979,
+    "avg_similarity_correct": 0.6351
+  }
+}

@@ -126,13 +126,15 @@ class VectorStore:
         dists = results.get("distances", [[]])[0]
 
         for chunk_id, text, meta, dist in zip(ids, docs, metas, dists):
-            hits.append({
-                "chunk_id": chunk_id,
-                "text": text,
-                "metadata": meta,
-                "distance": round(dist, 4),
-                "score": round(1 - dist, 4),  # similitud coseno
-            })
+            hits.append(
+                {
+                    "chunk_id": chunk_id,
+                    "text": text,
+                    "metadata": meta,
+                    "distance": round(dist, 4),
+                    "score": round(1 - dist, 4),  # similitud coseno
+                }
+            )
 
         return hits
 

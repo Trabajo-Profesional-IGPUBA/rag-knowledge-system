@@ -13,9 +13,10 @@ import json
 import logging
 import logging.handlers
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Self
 
 
 def setup_logging(
@@ -57,7 +58,10 @@ def setup_logging(
 @dataclass
 class PipelineMetrics:
     """Acumula métricas del pipeline completo."""
-    started_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+    started_at: str = field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
     finished_at: str = ""
 
     # ETL
@@ -87,18 +91,29 @@ class PipelineMetrics:
     def save(self, path: Path) -> None:
         self.finish()
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(self.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
+        path.write_text(
+            json.dumps(self.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8"
+        )
         logging.getLogger(__name__).info("Métricas guardadas en %s", path)
 
     def log_summary(self) -> None:
         log = logging.getLogger(__name__)
         log.info("═" * 52)
         log.info("RESUMEN DEL PIPELINE")
-        log.info("  ETL     → OK=%d ERR=%d SKIP=%d OCR_PAGES=%d (%.2fs)",
-                 self.docs_ok, self.docs_error, self.docs_skipped,
-                 self.ocr_pages, self.etl_elapsed_sec)
+        log.info(
+            "  ETL     → OK=%d ERR=%d SKIP=%d OCR_PAGES=%d (%.2fs)",
+            self.docs_ok,
+            self.docs_error,
+            self.docs_skipped,
+            self.ocr_pages,
+            self.etl_elapsed_sec,
+        )
         log.info("  CHUNKS  → %d generados", self.chunks_generated)
-        log.info("  EMBED   → %d vectores (%.2fs)", self.embeddings_generated, self.embeddings_elapsed_sec)
+        log.info(
+            "  EMBED   → %d vectores (%.2fs)",
+            self.embeddings_generated,
+            self.embeddings_elapsed_sec,
+        )
         log.info("  VSTORE  → %d indexados", self.vectors_indexed)
         log.info("═" * 52)
 
@@ -110,7 +125,7 @@ class Timer:
         self.elapsed: float = 0.0
         self._start: float = 0.0
 
-    def __enter__(self) -> "Timer":
+    def __enter__(self) -> Self:
         self._start = time.perf_counter()
         return self
 

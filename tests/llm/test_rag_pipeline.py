@@ -1,13 +1,13 @@
 from __future__ import annotations
+
 from unittest.mock import MagicMock
-import pytest
 
 
 class TestRAGPipeline:
     def _make_pipeline(self, llm_text: str = "Respuesta de prueba"):
-        from src.llm.rag_pipeline import RAGPipeline, RAGConfig
-        from src.llm.prompt_builder import PromptBuilder
         from src.llm.client import LLMResponse
+        from src.llm.prompt_builder import PromptBuilder
+        from src.llm.rag_pipeline import RAGConfig, RAGPipeline
         from src.retrieval.retriever import RetrievalResult
 
         mock_retriever = MagicMock()
@@ -17,7 +17,11 @@ class TestRAGPipeline:
                 {
                     "chunk_id": "doc1::chunk_0",
                     "text": "Texto relevante del documento.",
-                    "metadata": {"doc_id": "doc1", "doc_type": "ewrs", "filename": "PM104"},
+                    "metadata": {
+                        "doc_id": "doc1",
+                        "doc_type": "ewrs",
+                        "filename": "PM104",
+                    },
                     "score": 0.85,
                     "distance": 0.15,
                 }
@@ -62,16 +66,28 @@ class TestRAGPipeline:
         assert len(pipeline.history) == 0
 
     def test_min_score_filters_chunks(self):
-        from src.llm.rag_pipeline import RAGPipeline, RAGConfig
         from src.llm.client import LLMResponse
+        from src.llm.rag_pipeline import RAGConfig, RAGPipeline
         from src.retrieval.retriever import RetrievalResult
 
         mock_retriever = MagicMock()
         mock_retriever.retrieve.return_value = RetrievalResult(
             query="test",
             chunks=[
-                {"chunk_id": "c1", "text": "bueno", "metadata": {}, "score": 0.8, "distance": 0.2},
-                {"chunk_id": "c2", "text": "malo", "metadata": {}, "score": 0.1, "distance": 0.9},
+                {
+                    "chunk_id": "c1",
+                    "text": "bueno",
+                    "metadata": {},
+                    "score": 0.8,
+                    "distance": 0.2,
+                },
+                {
+                    "chunk_id": "c2",
+                    "text": "malo",
+                    "metadata": {},
+                    "score": 0.1,
+                    "distance": 0.9,
+                },
             ],
             top_k=5,
         )

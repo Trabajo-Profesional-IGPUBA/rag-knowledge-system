@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
 
-
 from src.etl.models import PageData, ProcessedDoc
 from src.etl.writer import append_manifest_batch, save_doc
 

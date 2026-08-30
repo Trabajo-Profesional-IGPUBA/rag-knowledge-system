@@ -1,6 +1,8 @@
 from unittest.mock import MagicMock
+
 import pytest
-from src.retrieval.retriever import Retriever, RetrievalResult, evaluate_topk_accuracy
+
+from src.retrieval.retriever import RetrievalResult, Retriever, evaluate_topk_accuracy
 
 
 def _fake_embedding():
@@ -14,8 +16,20 @@ def mock_retriever():
 
     vectorstore = MagicMock()
     vectorstore.search.return_value = [
-        {"chunk_id": "doc1::chunk_0", "text": "texto relevante", "metadata": {"doc_id": "doc1", "doc_type": "ewrs"}, "score": 0.92, "distance": 0.08},
-        {"chunk_id": "doc2::chunk_0", "text": "otro texto", "metadata": {"doc_id": "doc2", "doc_type": "parte_diario"}, "score": 0.75, "distance": 0.25},
+        {
+            "chunk_id": "doc1::chunk_0",
+            "text": "texto relevante",
+            "metadata": {"doc_id": "doc1", "doc_type": "ewrs"},
+            "score": 0.92,
+            "distance": 0.08,
+        },
+        {
+            "chunk_id": "doc2::chunk_0",
+            "text": "otro texto",
+            "metadata": {"doc_id": "doc2", "doc_type": "parte_diario"},
+            "score": 0.75,
+            "distance": 0.25,
+        },
     ]
 
     return Retriever(embedder=embedder, vectorstore=vectorstore)
@@ -55,7 +69,10 @@ class TestEvaluateTopKAccuracy:
         retriever.retrieve.return_value = MagicMock(
             chunks=[{"metadata": {"doc_id": "doc1"}}, {"metadata": {"doc_id": "doc2"}}]
         )
-        queries = [("query1", ["doc1"]), ("query2", ["doc1"])]  # ambas esperan doc1 que siempre está en top-1
+        queries = [
+            ("query1", ["doc1"]),
+            ("query2", ["doc1"]),
+        ]  # ambas esperan doc1 que siempre está en top-1
         acc = evaluate_topk_accuracy(retriever, queries, k_values=[1, 2])
         assert acc["top_1"] == 1.0
 

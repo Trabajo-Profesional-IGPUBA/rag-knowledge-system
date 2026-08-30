@@ -12,11 +12,11 @@ import json
 import logging
 from pathlib import Path
 
+from src.embeddings.embedder import Embedder
 from src.etl.batch import run as etl_run
 from src.etl.chunker import split as chunk_split
-from src.embeddings.embedder import Embedder
-from src.retrieval.vectorstore import VectorStore
 from src.observability import PipelineMetrics, Timer
+from src.retrieval.vectorstore import VectorStore
 
 log = logging.getLogger(__name__)
 
@@ -61,7 +61,12 @@ def run_pipeline(
     metrics.docs_error = etl_result.total_errors
     metrics.docs_skipped = etl_result.total_skipped
     metrics.etl_elapsed_sec = t.elapsed
-    log.info("ETL completado: %d OK, %d errores, %d saltados", metrics.docs_ok, metrics.docs_error, metrics.docs_skipped)
+    log.info(
+        "ETL completado: %d OK, %d errores, %d saltados",
+        metrics.docs_ok,
+        metrics.docs_error,
+        metrics.docs_skipped,
+    )
 
     # ── Paso 2: Chunking + Embeddings + Indexación ─────────────────────────
     log.info("── Paso 2: Chunking → Embeddings → Indexación ───────────────")
@@ -83,7 +88,7 @@ def run_pipeline(
     for json_path in json_files:
         try:
             data = json.loads(json_path.read_text(encoding="utf-8"))
-        except Exception as e:
+        except (OSError, ValueError) as e:
             log.warning("No se pudo leer %s: %s", json_path, e)
             continue
 
@@ -97,13 +102,15 @@ def run_pipeline(
         for chunk in chunks:
             all_chunk_ids.append(chunk.chunk_id)
             all_texts.append(chunk.text)
-            all_metadatas.append({
-                "doc_id": chunk.doc_id,
-                "doc_type": chunk.doc_type,
-                "chunk_index": chunk.chunk_index,
-                "source_path": data.get("source_path", ""),
-                "filename": data.get("filename", ""),
-            })
+            all_metadatas.append(
+                {
+                    "doc_id": chunk.doc_id,
+                    "doc_type": chunk.doc_type,
+                    "chunk_index": chunk.chunk_index,
+                    "source_path": data.get("source_path", ""),
+                    "filename": data.get("filename", ""),
+                }
+            )
 
     log.info("Total chunks generados: %d", metrics.chunks_generated)
 
@@ -127,8 +134,10 @@ def run_pipeline(
     metrics.log_summary()
     return metrics
 
+
 if __name__ == "__main__":
     import logging
+
     logging.basicConfig(level=logging.INFO)
     run_pipeline(
         raw_dir=Path("data/raw"),
