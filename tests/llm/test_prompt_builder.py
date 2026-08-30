@@ -1,8 +1,4 @@
 """Tests unitarios para PromptBuilder."""
-
-from __future__ import annotations
-
-
 class TestPromptBuilder:
     def setup_method(self):
         from src.llm.prompt_builder import PromptBuilder

@@ -1,6 +1,3 @@
-from __future__ import annotations
-
-
 class TestEvaluator:
     def test_keyword_scoring(self):
         from src.llm.evaluator import _score_keywords

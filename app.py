@@ -29,6 +29,7 @@ st.divider()
 
 @st.cache_resource(show_spinner="Cargando sistema RAG...")
 def load_pipeline():
+    """Inicializa el pipeline RAG una sola vez por sesión (cacheado)."""
     import logging
 
     from src.embeddings.embedder import Embedder
@@ -53,6 +54,16 @@ def load_pipeline():
         config=RAGConfig(top_k=5, min_score=0.3),
     )
     return pipeline, llm_client
+
+
+def render_streaming_response(placeholder, token_iterator):
+    """Renderiza tokens progresivamente con cursor, y el texto final sin cursor."""
+    full_response = ""
+    for token in token_iterator:
+        full_response += token
+        placeholder.markdown(full_response + "▌")
+    placeholder.markdown(full_response)
+    return full_response
 
 
 try:
@@ -81,13 +92,9 @@ if prompt := st.chat_input("Escribí tu consulta técnica..."):
 
     with st.chat_message("assistant"):
         response_placeholder = st.empty()
-        full_response = ""
-
         with st.spinner("Buscando en documentos..."):
-            for token in pipeline.query_stream(prompt):
-                full_response += token
-                response_placeholder.markdown(full_response + "▌")
-
-        response_placeholder.markdown(full_response)
+            full_response = render_streaming_response(
+                response_placeholder, pipeline.query_stream(prompt)
+            )
 
     st.session_state.messages.append({"role": "assistant", "content": full_response})
