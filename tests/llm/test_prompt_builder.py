@@ -22,13 +22,6 @@ class TestPromptBuilder:
             "score": score,
         }
 
-    def test_build_with_history(self):
-        history = [("pregunta anterior", "respuesta anterior")]
-        chunks = [self._make_chunk("texto")]
-        result = self.builder.build_with_history("nueva pregunta", chunks, history)
-        assert "pregunta anterior" in result.prompt
-        assert "respuesta anterior" in result.prompt
-
     def test_system_prompt_defines_technical_role(self):
         """CA-1.1: el system prompt debe establecer el rol técnico especializado (IGPUBA)."""
         assert "asistente técnico" in SYSTEM_PROMPT
@@ -196,3 +189,39 @@ class TestPromptBuilder:
         """CA-6.2: si no se recupera ningún chunk relevante, el conteo de chunks incluidos en el resultado debe ser cero."""
         result = self.builder.build("pregunta", [])
         assert result.num_chunks == 0
+
+    def test_build_with_history(self):
+        """CA-7.1: el sistema debe permitir incluir el historial de la conversación dentro del prompt."""
+        history = [("pregunta anterior", "respuesta anterior")]
+        chunks = [self._make_chunk("texto")]
+        result = self.builder.build_with_history("nueva pregunta", chunks, history)
+        assert "HISTORIAL DE CONVERSACIÓN" in result.prompt
+        assert "pregunta anterior" in result.prompt
+        assert "respuesta anterior" in result.prompt
+
+    def test_history_preserves_chronological_order(self):
+        """CA-7.2: el historial incluido debe conservar el orden cronológico de los turnos."""
+        history = [
+            ("primera pregunta", "primera respuesta"),
+            ("segunda pregunta", "segunda respuesta"),
+        ]
+        chunks = [self._make_chunk("texto")]
+        result = self.builder.build_with_history("nueva pregunta", chunks, history)
+        pos_primera = result.prompt.find("primera pregunta")
+        pos_segunda = result.prompt.find("segunda pregunta")
+        assert pos_primera < pos_segunda
+
+    def test_history_distinguishes_user_and_assistant(self):
+        """CA-7.3: cada turno del historial debe distinguir claramente qué parte corresponde al usuario y cuál al asistente."""
+        history = [("pregunta anterior", "respuesta anterior")]
+        chunks = [self._make_chunk("texto")]
+        result = self.builder.build_with_history("nueva pregunta", chunks, history)
+        assert "Usuario: pregunta anterior" in result.prompt
+        assert "Asistente: respuesta anterior" in result.prompt
+
+    def test_no_history_builds_without_errors(self):
+        """CA-7.4: si no se provee historial, el prompt debe construirse igualmente sin esa sección y sin generar errores."""
+        chunks = [self._make_chunk("texto")]
+        result = self.builder.build_with_history("nueva pregunta", chunks, [])
+        assert "nueva pregunta" in result.prompt
+        assert "HISTORIAL DE CONVERSACIÓN" not in result.prompt
