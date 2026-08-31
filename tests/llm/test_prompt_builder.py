@@ -103,3 +103,51 @@ class TestPromptBuilder:
         result = self.builder.build("pregunta", [])
         assert result.num_chunks == 0
         assert "No se encontraron documentos relevantes." in result.prompt
+
+    def test_chunks_are_numbered_sequentially(self):
+        """CA-3.1: cada chunk incluido en el contexto debe numerarse de forma secuencial."""
+        chunks = [self._make_chunk(f"texto {i}", doc_id=f"doc{i}") for i in range(3)]
+        result = self.builder.build("pregunta", chunks)
+        assert "[1]" in result.prompt
+        assert "[2]" in result.prompt
+        assert "[3]" in result.prompt
+
+    def test_chunk_includes_filename(self):
+        """CA-3.2: cada chunk debe indicar el nombre del documento de origen."""
+        chunks = [self._make_chunk("texto")]
+        result = self.builder.build("pregunta", chunks)
+        assert "PM-104_EWRS" in result.prompt
+
+    def test_chunk_includes_doc_type(self):
+        """CA-3.3: cada chunk debe indicar el tipo de documento."""
+        chunks = [self._make_chunk("texto")]
+        result = self.builder.build("pregunta", chunks)
+        assert "end_of_well_report" in result.prompt
+
+    def test_chunk_includes_relevance_score_as_percentage(self):
+        """CA-3.4: cada chunk debe indicar el porcentaje de relevancia (score) con el que fue recuperado."""
+        chunks = [self._make_chunk("texto", score=0.87)]
+        result = self.builder.build("pregunta", chunks)
+        assert "87%" in result.prompt
+
+    def test_chunk_without_filename_falls_back_to_doc_id(self):
+        """CA-3.5: si un chunk no tiene filename, el sistema debe usar un identificador alternativo razonable (doc_id)."""
+        chunk = {
+            "chunk_id": "docX::chunk_0",
+            "text": "texto",
+            "metadata": {"doc_id": "docX", "doc_type": "end_of_well_report"},
+            "score": 0.9,
+        }
+        result = self.builder.build("pregunta", [chunk])
+        assert "docX" in result.prompt
+
+    def test_chunk_without_doc_type_uses_default_unknown(self):
+        """CA-3.6: si un chunk no tiene doc_type, el sistema debe indicar un valor por defecto que refleje 'desconocido'."""
+        chunk = {
+            "chunk_id": "docY::chunk_0",
+            "text": "texto",
+            "metadata": {"doc_id": "docY", "filename": "docY_file"},
+            "score": 0.9,
+        }
+        result = self.builder.build("pregunta", [chunk])
+        assert "desconocido" in result.prompt
