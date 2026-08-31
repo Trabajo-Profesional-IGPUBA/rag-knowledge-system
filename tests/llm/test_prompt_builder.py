@@ -260,3 +260,36 @@ class TestPromptBuilder:
         # default es 3: deben quedar las últimas 3 (pregunta 2, 3, 4)
         assert "pregunta 2" in result.prompt
         assert "pregunta 1" not in result.prompt
+
+    def test_result_has_consistent_structure(self):
+        """CA-9.1: el sistema debe entregar siempre un resultado con una estructura consistente que incluya el prompt final."""
+        chunks = [self._make_chunk("texto")]
+        result = self.builder.build("pregunta", chunks)
+        assert hasattr(result, "prompt")
+        assert hasattr(result, "query")
+        assert hasattr(result, "num_chunks")
+        assert hasattr(result, "context_chars")
+        assert hasattr(result, "total_chars")
+
+    def test_result_includes_original_query(self):
+        """CA-9.2: el resultado debe incluir la consulta original del usuario."""
+        result = self.builder.build("¿cuál es la presión?", [])
+        assert result.query == "¿cuál es la presión?"
+
+    def test_result_includes_num_chunks_used(self):
+        """CA-9.3: el resultado debe incluir la cantidad de chunks efectivamente incorporados al contexto."""
+        chunks = [self._make_chunk(f"texto {i}", doc_id=f"doc{i}") for i in range(3)]
+        result = self.builder.build("pregunta", chunks)
+        assert result.num_chunks == 3
+
+    def test_result_includes_context_chars_used(self):
+        """CA-9.4: el resultado debe incluir la cantidad de caracteres utilizados en el bloque de contexto."""
+        chunks = [self._make_chunk("texto")]
+        result = self.builder.build("pregunta", chunks)
+        assert result.context_chars > 0
+
+    def test_result_includes_total_prompt_chars(self):
+        """CA-9.5: el resultado debe incluir la cantidad total de caracteres del prompt final generado."""
+        chunks = [self._make_chunk("texto")]
+        result = self.builder.build("pregunta", chunks)
+        assert result.total_chars == len(result.prompt)
