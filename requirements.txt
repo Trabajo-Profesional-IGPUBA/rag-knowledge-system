@@ -18,3 +18,15 @@ python-dotenv>=1.0.0
 
 # Interfaz web
 streamlit>=1.30.0
+
+# Testing
+pytest>=8.0.0
+pytest-cov>=5.0.0
+
+# Calidad de código
+pre-commit>=3.7.0
+ruff>=0.6.0
+black>=24.0.0
+
+# Medición de recursos (scripts de evaluación, no la app en sí)
+psutil>=5.9.0

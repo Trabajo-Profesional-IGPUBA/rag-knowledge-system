@@ -84,7 +84,7 @@ docker compose run format   # aplica formato de black
 Instalar dependencias de desarrollo (una sola vez):
 
 ```bash
-pip install -r requirements-dev.txt
+pip install -r requirements.txt
 pre-commit install
 ```
 
