@@ -186,3 +186,13 @@ class TestPromptBuilder:
         chunks = [self._make_chunk("texto corto")]
         result = self.builder.build("pregunta", chunks)
         assert result.context_chars > 0
+
+    def test_no_chunks_shows_explicit_message(self):
+        """CA-6.1: si no se recupera ningún chunk relevante, el contexto debe incluir un mensaje explícito indicándolo."""
+        result = self.builder.build("pregunta", [])
+        assert "No se encontraron documentos relevantes." in result.prompt
+
+    def test_no_chunks_num_chunks_is_zero(self):
+        """CA-6.2: si no se recupera ningún chunk relevante, el conteo de chunks incluidos en el resultado debe ser cero."""
+        result = self.builder.build("pregunta", [])
+        assert result.num_chunks == 0
