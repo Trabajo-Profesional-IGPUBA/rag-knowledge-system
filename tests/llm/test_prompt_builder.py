@@ -20,23 +20,6 @@ class TestPromptBuilder:
             "score": score,
         }
 
-    def test_build_includes_query(self):
-        query = "¿Cuál es la presión del pozo?"
-        chunks = [self._make_chunk("La presión es 3500 psi.")]
-        result = self.builder.build(query, chunks)
-        assert query in result.prompt
-
-    def test_build_includes_chunk_text(self):
-        text = "Profundidad total: 2500 metros"
-        chunks = [self._make_chunk(text)]
-        result = self.builder.build("pregunta", chunks)
-        assert text in result.prompt
-
-    def test_build_empty_chunks(self):
-        result = self.builder.build("pregunta", [])
-        assert result.num_chunks == 0
-        assert "No se encontraron documentos" in result.prompt
-
     def test_build_respects_max_context(self):
 
         builder = PromptBuilder(max_context_chars=100)
@@ -84,3 +67,39 @@ class TestPromptBuilder:
     def test_system_prompt_handles_contradictions(self):
         """CA-1.6: el system prompt debe indicar que se mencionen las contradicciones entre documentos."""
         assert "contradictoria" in SYSTEM_PROMPT
+
+    def test_build_combines_system_context_and_query(self):
+        """CA-2.1: el sistema debe construir el prompt combinando system prompt, bloque de contexto y pregunta en un único texto."""
+        chunks = [self._make_chunk("dato técnico")]
+        result = self.builder.build("¿cuál es la presión?", chunks)
+        assert SYSTEM_PROMPT.strip() in result.prompt
+        assert "dato técnico" in result.prompt
+        assert "¿cuál es la presión?" in result.prompt
+
+    def test_build_includes_chunk_text(self):
+        """CA-2.1: el texto del chunk debe formar parte del bloque de contexto dentro del prompt combinado."""
+        text = "Profundidad total: 2500 metros"
+        chunks = [self._make_chunk(text)]
+        result = self.builder.build("pregunta", chunks)
+        assert text in result.prompt
+
+    def test_context_block_is_visually_delimited(self):
+        """CA-2.2: el bloque de contexto debe estar delimitado visualmente (separadores) del resto del prompt."""
+        chunks = [self._make_chunk("dato técnico")]
+        result = self.builder.build("pregunta", chunks)
+        assert "DOCUMENTOS DE CONTEXTO RECUPERADOS" in result.prompt
+        assert "═" in result.prompt
+
+    def test_build_includes_query(self):
+        """CA-2.3: el prompt final debe incluir la pregunta del usuario en una sección claramente identificada."""
+        query = "¿Cuál es la presión del pozo?"
+        chunks = [self._make_chunk("La presión es 3500 psi.")]
+        result = self.builder.build(query, chunks)
+        assert "PREGUNTA DEL USUARIO:" in result.prompt
+        assert query in result.prompt
+
+    def test_build_empty_chunks(self):
+        """CA-2.4: si no hay chunks recuperados, el bloque de contexto debe contener un mensaje indicándolo en lugar de quedar vacío."""
+        result = self.builder.build("pregunta", [])
+        assert result.num_chunks == 0
+        assert "No se encontraron documentos relevantes." in result.prompt
