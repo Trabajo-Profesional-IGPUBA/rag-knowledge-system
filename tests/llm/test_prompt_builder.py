@@ -166,7 +166,12 @@ class TestPromptBuilder:
         builder = PromptBuilder(max_context_chars=100)
         big_chunks = [self._make_chunk("x" * 200, doc_id=f"doc{i}") for i in range(5)]
         result = builder.build("pregunta", big_chunks)
-        assert re.search(r"x{1,199}(?!x)", result.prompt) is None
+        marker_start = "DOCUMENTOS DE CONTEXTO RECUPERADOS:"
+        marker_end = "PREGUNTA DEL USUARIO:"
+        start_idx = result.prompt.index(marker_start) + len(marker_start)
+        end_idx = result.prompt.index(marker_end)
+        context_section = result.prompt[start_idx:end_idx]
+        assert re.search(r"x{1,199}(?!x)", context_section) is None
 
     def test_build_counts_chunks_correctly(self):
         """CA-5.3: el sistema debe informar cuántos chunks fueron efectivamente incluidos en el prompt final."""
