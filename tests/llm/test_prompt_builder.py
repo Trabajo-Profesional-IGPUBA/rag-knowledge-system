@@ -230,3 +230,33 @@ class TestPromptBuilder:
         result = self.builder.build_with_history("nueva pregunta", chunks, [])
         assert "nueva pregunta" in result.prompt
         assert "HISTORIAL DE CONVERSACIÓN" not in result.prompt
+
+    def test_max_history_turns_is_configurable(self):
+        """CA-8.1: el sistema debe permitir configurar la cantidad máxima de turnos de historial a incluir en el prompt."""
+        history = [(f"pregunta {i}", f"respuesta {i}") for i in range(5)]
+        chunks = [self._make_chunk("texto")]
+        result = self.builder.build_with_history(
+            "nueva pregunta", chunks, history, max_history_turns=2
+        )
+        assert "pregunta 3" in result.prompt
+        assert "pregunta 4" in result.prompt
+        assert "pregunta 0" not in result.prompt
+
+    def test_only_most_recent_turns_included_when_exceeding_limit(self):
+        """CA-8.2: si el historial disponible supera el límite configurado, el sistema debe incluir solo los turnos más recientes."""
+        history = [(f"pregunta {i}", f"respuesta {i}") for i in range(5)]
+        chunks = [self._make_chunk("texto")]
+        result = self.builder.build_with_history(
+            "nueva pregunta", chunks, history, max_history_turns=1
+        )
+        assert "pregunta 4" in result.prompt
+        assert "pregunta 3" not in result.prompt
+
+    def test_default_max_history_turns_is_reasonable(self):
+        """CA-8.3: debe existir un valor por defecto razonable para la cantidad de turnos a incluir cuando no se especifica uno."""
+        history = [(f"pregunta {i}", f"respuesta {i}") for i in range(5)]
+        chunks = [self._make_chunk("texto")]
+        result = self.builder.build_with_history("nueva pregunta", chunks, history)
+        # default es 3: deben quedar las últimas 3 (pregunta 2, 3, 4)
+        assert "pregunta 2" in result.prompt
+        assert "pregunta 1" not in result.prompt
