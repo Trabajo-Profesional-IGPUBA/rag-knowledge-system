@@ -1,5 +1,7 @@
 """Tests unitarios para PromptBuilder."""
 
+import re
+
 from src.llm.prompt_builder import SYSTEM_PROMPT, PromptBuilder
 
 
@@ -19,11 +21,6 @@ class TestPromptBuilder:
             },
             "score": score,
         }
-
-    def test_build_counts_chunks_correctly(self):
-        chunks = [self._make_chunk(f"texto {i}", doc_id=f"doc{i}") for i in range(3)]
-        result = self.builder.build("pregunta", chunks)
-        assert result.num_chunks == 3
 
     def test_build_with_history(self):
         history = [("pregunta anterior", "respuesta anterior")]
@@ -161,3 +158,31 @@ class TestPromptBuilder:
         big_chunks = [self._make_chunk("x" * 200, doc_id=f"doc{i}") for i in range(5)]
         result = builder.build("pregunta", big_chunks)
         assert result.context_chars <= 100
+
+    def test_chunks_added_in_order_until_limit(self):
+        """CA-5.1: el sistema debe agregar chunks al contexto en orden hasta alcanzar el límite configurado."""
+        builder = PromptBuilder(max_context_chars=5000)
+        chunks = [self._make_chunk(f"texto {i}", doc_id=f"doc{i}") for i in range(3)]
+        result = builder.build("pregunta", chunks)
+        assert "texto 0" in result.prompt
+        assert "texto 1" in result.prompt
+        assert "texto 2" in result.prompt
+
+    def test_stops_without_cutting_chunk_in_half(self):
+        """CA-5.2: al llegar al límite, el sistema debe detener la incorporación de chunks sin cortar uno a la mitad."""
+        builder = PromptBuilder(max_context_chars=100)
+        big_chunks = [self._make_chunk("x" * 200, doc_id=f"doc{i}") for i in range(5)]
+        result = builder.build("pregunta", big_chunks)
+        assert re.search(r"x{1,199}(?!x)", result.prompt) is None
+
+    def test_build_counts_chunks_correctly(self):
+        """CA-5.3: el sistema debe informar cuántos chunks fueron efectivamente incluidos en el prompt final."""
+        chunks = [self._make_chunk(f"texto {i}", doc_id=f"doc{i}") for i in range(3)]
+        result = self.builder.build("pregunta", chunks)
+        assert result.num_chunks == 3
+
+    def test_reports_context_chars_used(self):
+        """CA-5.4: el sistema debe informar la cantidad de caracteres de contexto efectivamente utilizados."""
+        chunks = [self._make_chunk("texto corto")]
+        result = self.builder.build("pregunta", chunks)
+        assert result.context_chars > 0
