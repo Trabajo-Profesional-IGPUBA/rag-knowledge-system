@@ -20,13 +20,6 @@ class TestPromptBuilder:
             "score": score,
         }
 
-    def test_build_respects_max_context(self):
-
-        builder = PromptBuilder(max_context_chars=100)
-        big_chunks = [self._make_chunk("x" * 200, doc_id=f"doc{i}") for i in range(5)]
-        result = builder.build("pregunta", big_chunks)
-        assert result.context_chars <= 200
-
     def test_build_counts_chunks_correctly(self):
         chunks = [self._make_chunk(f"texto {i}", doc_id=f"doc{i}") for i in range(3)]
         result = self.builder.build("pregunta", chunks)
@@ -151,3 +144,20 @@ class TestPromptBuilder:
         }
         result = self.builder.build("pregunta", [chunk])
         assert "desconocido" in result.prompt
+
+    def test_max_context_chars_is_configurable(self):
+        """CA-4.1: el sistema debe permitir configurar un límite máximo de caracteres para el bloque de contexto."""
+        builder = PromptBuilder(max_context_chars=200)
+        assert builder._max_context_chars == 200
+
+    def test_default_max_context_chars_is_reasonable(self):
+        """CA-4.2: si no se especifica un límite, el sistema debe usar un valor por defecto razonable."""
+        builder = PromptBuilder()
+        assert builder._max_context_chars == 6000
+
+    def test_build_respects_max_context(self):
+        """CA-4.3: el límite configurado debe respetarse al construir el contexto, sin superarlo."""
+        builder = PromptBuilder(max_context_chars=100)
+        big_chunks = [self._make_chunk("x" * 200, doc_id=f"doc{i}") for i in range(5)]
+        result = builder.build("pregunta", big_chunks)
+        assert result.context_chars <= 100
