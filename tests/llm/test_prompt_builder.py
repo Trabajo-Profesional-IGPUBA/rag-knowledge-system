@@ -1,9 +1,10 @@
 """Tests unitarios para PromptBuilder."""
 
+from src.llm.prompt_builder import SYSTEM_PROMPT, PromptBuilder
+
 
 class TestPromptBuilder:
     def setup_method(self):
-        from src.llm.prompt_builder import PromptBuilder
 
         self.builder = PromptBuilder(max_context_chars=5000)
 
@@ -37,7 +38,6 @@ class TestPromptBuilder:
         assert "No se encontraron documentos" in result.prompt
 
     def test_build_respects_max_context(self):
-        from src.llm.prompt_builder import PromptBuilder
 
         builder = PromptBuilder(max_context_chars=100)
         big_chunks = [self._make_chunk("x" * 200, doc_id=f"doc{i}") for i in range(5)]
@@ -55,3 +55,32 @@ class TestPromptBuilder:
         result = self.builder.build_with_history("nueva pregunta", chunks, history)
         assert "pregunta anterior" in result.prompt
         assert "respuesta anterior" in result.prompt
+
+    def test_system_prompt_defines_technical_role(self):
+        """CA-1.1: el system prompt debe establecer el rol técnico especializado (IGPUBA)."""
+        assert "asistente técnico" in SYSTEM_PROMPT
+        assert "IGPUBA" in SYSTEM_PROMPT
+
+    def test_system_prompt_restricts_to_context(self):
+        """CA-1.2: el system prompt debe indicar que se basa exclusivamente en el contexto."""
+        assert "EXCLUSIVAMENTE" in SYSTEM_PROMPT
+        assert "conocimiento externo" in SYSTEM_PROMPT
+
+    def test_system_prompt_requires_spanish(self):
+        """CA-1.3: el system prompt debe indicar que se responde siempre en español."""
+        assert "Respondé siempre en español" in SYSTEM_PROMPT
+
+    def test_system_prompt_handles_missing_info(self):
+        """CA-1.4: el system prompt debe indicar qué decir cuando falta información en el contexto."""
+        assert (
+            "No encontré información sobre esto en los documentos disponibles"
+            in SYSTEM_PROMPT
+        )
+
+    def test_system_prompt_requires_source_citation(self):
+        """CA-1.5: el system prompt debe exigir citar la fuente de datos técnicos entre corchetes."""
+        assert "[Fuente: nombre_documento]" in SYSTEM_PROMPT
+
+    def test_system_prompt_handles_contradictions(self):
+        """CA-1.6: el system prompt debe indicar que se mencionen las contradicciones entre documentos."""
+        assert "contradictoria" in SYSTEM_PROMPT
