@@ -1,6 +1,9 @@
+"""Construcción de prompts para el sistema RAG de IGPUBA, combinando system prompt, contexto recuperado e historial."""
+
 from dataclasses import dataclass
 from typing import Any
 
+# Instrucciones base que definen el rol, el idioma y las reglas de uso del contexto para el asistente técnico.
 SYSTEM_PROMPT = """Sos un asistente técnico especializado en documentación de pozos petroleros y gasíferos del IGPUBA (Instituto de Gestión de Pozos Urbanos de Buenos Aires).
 
 Tu función es responder preguntas técnicas basándote EXCLUSIVAMENTE en los documentos de contexto proporcionados.
@@ -14,6 +17,7 @@ Reglas:
 6. Si hay información contradictoria entre documentos, mencionalo.
 """
 
+# Plantilla que ensambla el prompt final: system prompt + bloque de contexto + pregunta del usuario.
 _PROMPT_TEMPLATE = """{system_prompt}
 
 ═══════════════════════════════════════
@@ -27,6 +31,7 @@ PREGUNTA DEL USUARIO:
 
 RESPUESTA:"""
 
+# Plantilla para formatear cada chunk individual junto con su metadata (documento, tipo, relevancia).
 _CHUNK_TEMPLATE = """[{idx}] Documento: {filename} | Tipo: {doc_type} | Relevancia: {score:.0%}
 {text}
 """
@@ -34,6 +39,8 @@ _CHUNK_TEMPLATE = """[{idx}] Documento: {filename} | Tipo: {doc_type} | Relevanc
 
 @dataclass
 class BuiltPrompt:
+    """Resultado de construir un prompt: el texto final junto con metadatos sobre chunks y longitudes."""
+
     prompt: str
     query: str
     num_chunks: int
@@ -42,12 +49,14 @@ class BuiltPrompt:
 
 
 class PromptBuilder:
+    """Arma prompts para el LLM combinando la query del usuario con chunks de contexto recuperados, respetando un límite de caracteres."""
 
     def __init__(
         self,
         system_prompt: str = SYSTEM_PROMPT,
         max_context_chars: int = 6000,
     ) -> None:
+        """Guarda el system prompt y el límite máximo de caracteres permitidos para el bloque de contexto."""
         self._system_prompt = system_prompt
         self._max_context_chars = max_context_chars
 
@@ -56,6 +65,7 @@ class PromptBuilder:
         query: str,
         chunks: list[dict[str, Any]],
     ) -> BuiltPrompt:
+        """Construye el prompt final incorporando chunks uno a uno hasta llegar al límite de caracteres, sin cortar ninguno a la mitad."""
         context_parts: list[str] = []
         context_chars = 0
 
@@ -107,6 +117,7 @@ class PromptBuilder:
         history: list[tuple[str, str]],
         max_history_turns: int = 3,
     ) -> BuiltPrompt:
+        """Construye el prompt igual que build(), insertando además las últimas max_history_turns interacciones previas antes de la pregunta."""
         history_str = ""
         if history:
             recent = history[-max_history_turns:]

@@ -1,8 +1,9 @@
 """Tests unitarios para LLMClient."""
 
-
 from unittest.mock import MagicMock, patch
+
 import requests
+
 
 class TestLLMClient:
     def setup_method(self):
@@ -31,7 +32,7 @@ class TestLLMClient:
         client.is_available()
 
         called_url = mock_get.call_args[0][0]
-        assert called_url == f"{custom_url}/api/tags"    
+        assert called_url == f"{custom_url}/api/tags"
 
     def test_default_base_url_when_not_configured(self):
         """Cubre CA-1.3 (Historia 1) — usa una URL por defecto si no se configura ninguna."""
@@ -60,7 +61,7 @@ class TestLLMClient:
         resp = client.generate("prompt de prueba")
 
         assert resp.text == "Respuesta generada"
-        assert mock_post.call_count == 1    
+        assert mock_post.call_count == 1
 
     @patch("requests.post")
     def test_generate_reports_token_usage(self, mock_post):
@@ -176,7 +177,7 @@ class TestLLMClient:
             assert False, f"generate_stream() no debería lanzar excepción, lanzó: {e}"
 
         assert tokens == ["ok"]
-        
+
     def test_is_available_checks_server_before_use(self):
         """Cubre CA-4.1 (Historia 4) — permite verificar disponibilidad antes de usar el servidor."""
         client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
@@ -184,17 +185,6 @@ class TestLLMClient:
         result = client.is_available()
 
         assert isinstance(result, bool)
-
-    def test_is_available_returns_false_without_raising(self):
-        """Cubre CA-4.2 (Historia 4) — informa indisponibilidad sin lanzar excepción."""
-        client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
-
-        try:
-            result = client.is_available()
-        except Exception as e:
-            assert False, f"is_available() no debería lanzar excepción, lanzó: {e}"
-
-        assert result is False
 
     def test_is_available_returns_false_without_raising(self):
         """Cubre CA-4.2 (Historia 4) — informa indisponibilidad sin lanzar excepción."""
@@ -238,7 +228,9 @@ class TestLLMClient:
     @patch("requests.get")
     def test_list_models_returns_empty_list_on_error(self, mock_get):
         """Cubre CA-5.2 (Historia 5) — informa lista vacía en caso de error, sin fallar."""
-        mock_get.side_effect = requests.exceptions.ConnectionError("No se pudo conectar")
+        mock_get.side_effect = requests.exceptions.ConnectionError(
+            "No se pudo conectar"
+        )
 
         client = self.client_cls(self.config_cls())
 
@@ -267,7 +259,9 @@ class TestLLMClient:
     @patch("requests.post")
     def test_pull_model_handles_failure_without_crashing(self, mock_post):
         """Cubre CA-6.3 (Historia 6) — informa fallo de descarga sin interrumpirse abruptamente."""
-        mock_post.side_effect = requests.exceptions.ConnectionError("No se pudo conectar")
+        mock_post.side_effect = requests.exceptions.ConnectionError(
+            "No se pudo conectar"
+        )
 
         client = self.client_cls(self.config_cls())
 
@@ -278,19 +272,6 @@ class TestLLMClient:
 
         assert result is False
 
-    @patch("requests.post")
-    def test_pull_model_handles_failure_without_crashing(self, mock_post):
-        """Cubre CA-6.3 (Historia 6) — informa fallo de descarga sin interrumpirse abruptamente."""
-        mock_post.side_effect = requests.exceptions.ConnectionError("No se pudo conectar")
-
-        client = self.client_cls(self.config_cls())
-
-        try:
-            result = client.pull_model("llama3:8b")
-        except Exception as e:
-            assert False, f"pull_model() no debería lanzar excepción, lanzó: {e}"
-
-        assert result is False
     def test_generate_reports_failure_when_server_unavailable(self):
         """Cubre CA-7.1 (Historia 7) — informa el fallo de forma clara y estructurada."""
         client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
@@ -367,7 +348,9 @@ class TestLLMClient:
 
         success_fields = set(LLMResponse(text="ok", model="llama3:8b").__dict__.keys())
         failure_fields = set(
-            LLMResponse(text="", model="llama3:8b", ok=False, error="algo falló").__dict__.keys()
+            LLMResponse(
+                text="", model="llama3:8b", ok=False, error="algo falló"
+            ).__dict__.keys()
         )
 
         assert success_fields == failure_fields
@@ -408,13 +391,15 @@ class TestLLMClient:
         from src.llm.client import LLMResponse
 
         ok_resp = LLMResponse(text="Hola mundo", model="llama3:8b")
-        fail_resp = LLMResponse(text="", model="llama3:8b", ok=False, error="Ollama no disponible")
+        fail_resp = LLMResponse(
+            text="", model="llama3:8b", ok=False, error="Ollama no disponible"
+        )
 
         assert ok_resp.ok is True
         assert ok_resp.error is None
         assert fail_resp.ok is False
         assert fail_resp.error == "Ollama no disponible"
-           
+
     def test_is_available_false_when_no_server(self):
         client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
         assert client.is_available() is False

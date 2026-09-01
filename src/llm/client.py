@@ -189,7 +189,9 @@ class LLMClient:
                         try:
                             chunk = json.loads(line)
                         except json.JSONDecodeError:
-                            log.warning("Línea de streaming inválida, se ignora: %s", line)
+                            log.warning(
+                                "Línea de streaming inválida, se ignora: %s", line
+                            )
                             continue
 
                         token = chunk.get("response", "")
