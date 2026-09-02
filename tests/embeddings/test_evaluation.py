@@ -264,3 +264,25 @@ def test_evaluate_models_does_not_write_file_when_results_path_is_none(tmp_path)
             results_path=None,
         )
     assert "modelo-a" in results  # se evaluó igual, solo que no se persistió
+
+
+def test_evaluate_models_continues_when_one_candidate_fails():
+    """CA-8.2: Si la evaluación de un modelo falla, el sistema debe registrar
+    el error (ok=False, mensaje) y continuar evaluando los modelos restantes
+    sin interrumpir el proceso."""
+    fake_model_ok = make_fake_model()
+
+    def factory(name):
+        if name == "modelo-roto":
+            raise RuntimeError("boom")
+        return fake_model_ok
+
+    with patch("src.embeddings.evaluation.SentenceTransformer", side_effect=factory):
+        results = evaluate_models(
+            test_texts=["texto 1"],
+            evaluation_queries=EVAL_QUERIES,
+            candidates=["modelo-roto", "modelo-ok"],
+            results_path=None,
+        )
+    assert results["modelo-roto"].ok is False
+    assert results["modelo-ok"].ok is True
