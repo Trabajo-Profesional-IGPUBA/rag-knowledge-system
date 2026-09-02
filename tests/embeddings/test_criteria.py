@@ -11,6 +11,7 @@ from src.embeddings.criteria import (
     COMPARISON_CRITERIA,
     PERFORMANCE_METRICS,
     QUALITY_METRICS,
+    RESOURCE_METRICS,
 )
 
 # ---------------------------------------------------------------------------
@@ -109,3 +110,16 @@ def test_comparison_criteria_documents_local_execution_restriction():
     candidatos como text-embedding-ada-002."""
     assert "localmente" in COMPARISON_CRITERIA
     assert "text-embedding-ada-002" in COMPARISON_CRITERIA
+
+
+# ---------------------------------------------------------------------------
+# Métricas de consumo de recursos
+# ---------------------------------------------------------------------------
+
+
+def test_resource_metrics_define_peak_ram():
+    """CA-4.1: El sistema debe definir `peak_ram_mb` como el incremento de RAM
+    (RSS) del proceso entre antes y después de cargar el modelo y generar
+    embeddings."""
+    assert "peak_ram_mb" in RESOURCE_METRICS
+    assert "RSS" in RESOURCE_METRICS["peak_ram_mb"]
