@@ -12,6 +12,7 @@ Cubren la historia "Pruebas de modelos candidatos":
 Cubren la historia "Comparación y selección":
   - Comparación de calidad semántica              -> CA-9.1
   - Comparación de velocidad de generación        -> CA-10.1
+  - Comparación de consumo de recursos            -> CA-11.1
 
 """
 
