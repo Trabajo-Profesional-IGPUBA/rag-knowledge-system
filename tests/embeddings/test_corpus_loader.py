@@ -17,6 +17,7 @@ import json
 import pytest
 
 from src.embeddings.corpus_loader import (
+    detect_possible_duplicates,
     extract_test_texts,
     load_documents,
     summary_by_doc_type,
@@ -163,3 +164,52 @@ def test_summary_by_doc_type_returns_empty_dict_for_empty_corpus():
     """CA-13.4 (caso límite): con un corpus vacío, el resumen debe devolver
     un diccionario vacío, sin fallar."""
     assert summary_by_doc_type([]) == {}
+
+
+def test_detect_possible_duplicates_finds_identical_text_pairs():
+    """CA-13.5: El sistema debe detectar posibles documentos duplicados a
+    partir de coincidencia exacta de texto, devolviendo los identificadores
+    de los pares encontrados."""
+    docs = [
+        {"doc_id": "a", "text": "mismo contenido"},
+        {"doc_id": "b", "text": "mismo contenido"},
+        {"doc_id": "c", "text": "contenido distinto"},
+    ]
+    duplicates = detect_possible_duplicates(docs)
+    assert duplicates == [("a", "b")]
+
+
+def test_detect_possible_duplicates_ignores_empty_text():
+    """CA-13.5: El sistema debe detectar posibles documentos duplicados a
+    partir de coincidencia exacta de texto (documentos sin texto no se
+    consideran para esta detección)."""
+    docs = [
+        {"doc_id": "a", "text": ""},
+        {"doc_id": "b", "text": "  "},
+    ]
+    duplicates = detect_possible_duplicates(docs)
+    assert duplicates == []
+
+
+def test_detect_possible_duplicates_falls_back_to_filename_when_no_doc_id():
+    """CA-13.5: El sistema debe detectar posibles documentos duplicados a
+    partir de coincidencia exacta de texto, devolviendo los identificadores
+    de los pares encontrados (usando 'filename' si falta doc_id)."""
+    docs = [
+        {"filename": "a.json", "text": "repetido"},
+        {"filename": "b.json", "text": "repetido"},
+    ]
+    duplicates = detect_possible_duplicates(docs)
+    assert duplicates == [("a.json", "b.json")]
+
+
+def test_detect_possible_duplicates_handles_three_or_more_identical_documents():
+    """CA-13.5 (caso extendido): si hay más de dos documentos con el mismo
+    texto, se deben reportar todos los pares consecutivos como duplicados."""
+    docs = [
+        {"doc_id": "a", "text": "repetido"},
+        {"doc_id": "b", "text": "repetido"},
+        {"doc_id": "c", "text": "repetido"},
+    ]
+    duplicates = detect_possible_duplicates(docs)
+    assert duplicates == [("a", "b"), ("b", "c")]
