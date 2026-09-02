@@ -9,6 +9,7 @@ Cubren la historia "Pruebas de modelos candidatos":
   - Ejecución de consultas de evaluación    -> CA-7.1, CA-7.2
 """
 
+import json
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -222,3 +223,27 @@ def test_measure_quality_returns_none_metrics_when_no_queries():
         "avg_margin": None,
         "avg_similarity_correct": None,
     }
+
+
+# ---------------------------------------------------------------------------
+# Registro de resultados obtenidos
+# ---------------------------------------------------------------------------
+
+
+def test_evaluate_models_persists_results_to_json(tmp_path):
+    """CA-8.1: El sistema debe persistir los resultados de todos los modelos
+    evaluados en un archivo JSON (results_path)."""
+    fake_model = make_fake_model()
+    output_file = tmp_path / "resultados.json"
+    with patch(
+        "src.embeddings.evaluation.SentenceTransformer", return_value=fake_model
+    ):
+        evaluate_models(
+            test_texts=["texto 1"],
+            evaluation_queries=EVAL_QUERIES,
+            candidates=["modelo-a", "modelo-b"],
+            results_path=str(output_file),
+        )
+    assert output_file.exists()
+    data = json.loads(output_file.read_text(encoding="utf-8"))
+    assert set(data.keys()) == {"modelo-a", "modelo-b"}
