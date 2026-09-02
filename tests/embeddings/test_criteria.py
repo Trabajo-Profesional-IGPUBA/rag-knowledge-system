@@ -8,6 +8,8 @@ Cubren la historia "Definición de criterios de evaluación":
 """
 
 from src.embeddings.criteria import (
+    APPROX_DISK_SIZE_MB,
+    CANDIDATE_MODELS,
     COMPARISON_CRITERIA,
     PERFORMANCE_METRICS,
     QUALITY_METRICS,
@@ -130,3 +132,11 @@ def test_resource_metrics_define_disk_size():
     aproximado del modelo en disco, documentado manualmente por modelo."""
     assert "approx_disk_size_mb" in RESOURCE_METRICS
     assert "disco" in RESOURCE_METRICS["approx_disk_size_mb"].lower()
+
+
+def test_approx_disk_size_has_entry_for_every_candidate_model():
+    """CA-4.2 (extensión): cada modelo listado en CANDIDATE_MODELS debe tener
+    su entrada correspondiente en APPROX_DISK_SIZE_MB, para que la métrica
+    esté efectivamente disponible y no solo definida en teoría."""
+    candidate_names = {c["name"] for c in CANDIDATE_MODELS}
+    assert candidate_names.issubset(APPROX_DISK_SIZE_MB.keys())
