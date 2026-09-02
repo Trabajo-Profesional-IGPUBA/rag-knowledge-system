@@ -1,5 +1,8 @@
 """
 Tests para src/embeddings/evaluation.py
+
+Cubren la historia "Pruebas de modelos candidatos":
+  - Integración de modelos candidatos       -> CA-5.1, CA-5.2
 """
 
 from unittest.mock import MagicMock, patch
