@@ -369,3 +369,21 @@ def test_generate_report_includes_ram_and_disk_of_selected_model():
     report = generate_report(results, accuracy_threshold=0.75)
     assert "123.4" in report
     assert "470" in report
+
+
+# ---------------------------------------------------------------------------
+# Documentación y justificación de la selección
+# ---------------------------------------------------------------------------
+
+
+def test_generate_report_recommends_expanding_queries_when_no_valid_model():
+    """CA-12.1: Si ningún modelo alcanza el umbral mínimo de calidad, el
+    reporte debe indicarlo explícitamente y recomendar ampliar
+    EVALUATION_QUERIES antes de decidir."""
+    results = {
+        "modelo-x": ModelEvaluationResult(
+            model_name="modelo-x", retrieval_accuracy=0.3
+        ),
+    }
+    report = generate_report(results, accuracy_threshold=0.75)
+    assert "ampliar el set de EVALUATION_QUERIES" in report
