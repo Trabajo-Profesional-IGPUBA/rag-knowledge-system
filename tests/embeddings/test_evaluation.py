@@ -170,3 +170,15 @@ def test_evaluate_candidate_model_uses_median_of_repetitions(monkeypatch):
         result = evaluate_candidate_model("modelo-x", ["texto 1"], [], n_repeticiones=3)
     # La mediana de [0.10, 0.20, 0.90] es 0.20, no el promedio (0.40)
     assert result.encode_time_sec == pytest.approx(0.20, abs=0.01)
+
+
+def test_evaluate_candidate_model_returns_embedding_dim():
+    """Test auxiliar (no corresponde a un CA textual propio): verifica que el
+    embedding_dim devuelto por el modelo coincida con la dimensión real de los
+    vectores generados, complementando la definición de CA-2.3."""
+    fake_model = make_fake_model(dim=12)
+    with patch(
+        "src.embeddings.evaluation.SentenceTransformer", return_value=fake_model
+    ):
+        result = evaluate_candidate_model("modelo-x", ["texto 1"], [], n_repeticiones=1)
+    assert result.embedding_dim == 12
