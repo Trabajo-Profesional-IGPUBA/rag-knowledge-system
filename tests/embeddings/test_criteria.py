@@ -4,7 +4,7 @@ Tests para src/embeddings/criteria.py
 Cubren la historia "Definición de criterios de evaluación":
   - Identificación de métricas de calidad       -> CA-1.1, CA-1.2, CA-1.3
   - Identificación de métricas de rendimiento    -> CA-2.1, CA-2.2, CA-2.3
-
+  - Documentación de criterios de comparación    -> CA-3.1, CA-3.2, CA-3.3
 """
 
 from src.embeddings.criteria import (
