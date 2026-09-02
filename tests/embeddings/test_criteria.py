@@ -88,6 +88,12 @@ def test_performance_metrics_define_embedding_dim():
 # ---------------------------------------------------------------------------
 
 
+def test_comparison_criteria_documents_speed_and_resource_weight():
+    """CA-3.1: El sistema debe documentar el peso relativo de cada criterio de
+    comparación: calidad (alto), velocidad y recursos (medio)."""
+    assert COMPARISON_CRITERIA.count("peso medio") == 2
+
+
 def test_comparison_criteria_documents_quality_weight_and_threshold():
     """CA-3.2: El sistema debe documentar el umbral mínimo aceptado de
     retrieval_accuracy >= 0.75, con la justificación de su ajuste (de 0.85 a
