@@ -37,3 +37,14 @@ def test_quality_metrics_define_avg_similarity_correct():
     assert "avg_similarity_correct" in QUALITY_METRICS
     desc = QUALITY_METRICS["avg_similarity_correct"].lower()
     assert "comprima" in desc or "compresión" in desc or "irrelevante" in desc
+
+
+def test_quality_metrics_has_exactly_three_metrics():
+    """Test auxiliar (no corresponde a un CA textual propio): verifica que las
+    tres métricas de calidad de CA-1.1, CA-1.2 y CA-1.3 sean exactamente las
+    que están definidas, sin faltantes ni agregados sin documentar."""
+    assert set(QUALITY_METRICS.keys()) == {
+        "retrieval_accuracy",
+        "avg_margin",
+        "avg_similarity_correct",
+    }
