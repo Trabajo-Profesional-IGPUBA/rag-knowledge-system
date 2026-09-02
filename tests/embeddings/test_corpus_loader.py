@@ -8,6 +8,7 @@ Cubren dos tareas técnicas distintas:
 
 "Preparación y validación del corpus de evaluación":
   - load_documents()             -> CA-13.1, CA-13.2, CA-13.3
+  - summary_by_doc_type()        -> CA-13.4
 
 """
 
