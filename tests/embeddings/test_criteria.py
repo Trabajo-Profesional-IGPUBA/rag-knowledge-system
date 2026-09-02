@@ -71,3 +71,10 @@ def test_performance_metrics_define_throughput():
     tiempo total y throughput de generación de embeddings."""
     assert "texts_per_sec" in PERFORMANCE_METRICS
     assert "textos" in PERFORMANCE_METRICS["texts_per_sec"].lower()
+
+
+def test_performance_metrics_define_embedding_dim():
+    """CA-2.3: El sistema debe definir `embedding_dim` como la dimensión del
+    vector resultante."""
+    assert "embedding_dim" in PERFORMANCE_METRICS
+    assert "dimensión" in PERFORMANCE_METRICS["embedding_dim"].lower()
