@@ -6,6 +6,7 @@ Cubren la historia "Definición de criterios de evaluación":
 """
 
 from src.embeddings.criteria import (
+    PERFORMANCE_METRICS,
     QUALITY_METRICS,
 )
 
@@ -51,3 +52,15 @@ def test_quality_metrics_has_exactly_three_metrics():
         "avg_margin",
         "avg_similarity_correct",
     }
+
+
+# ---------------------------------------------------------------------------
+# Identificación de métricas de rendimiento
+# ---------------------------------------------------------------------------
+
+
+def test_performance_metrics_define_load_and_encode_time():
+    """CA-2.1: El sistema debe definir `load_time_sec` como el tiempo de carga
+    del modelo en memoria."""
+    assert "load_time_sec" in PERFORMANCE_METRICS
+    assert "encode_time_sec" in PERFORMANCE_METRICS
