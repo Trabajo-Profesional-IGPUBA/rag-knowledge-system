@@ -209,3 +209,15 @@ def test_measure_quality_counts_miss_when_incorrect_doc_more_similar():
     fake_model = make_fake_model(accuracy_correct_wins=False)
     result = measure_quality(fake_model, EVAL_QUERIES)
     assert result["retrieval_accuracy"] == 0.0
+
+
+def test_measure_quality_returns_none_metrics_when_no_queries():
+    """CA-7.2: Si no hay consultas de evaluación cargadas, el sistema debe
+    devolver las métricas de calidad en None en lugar de fallar."""
+    fake_model = make_fake_model()
+    result = measure_quality(fake_model, [])
+    assert result == {
+        "retrieval_accuracy": None,
+        "avg_margin": None,
+        "avg_similarity_correct": None,
+    }
