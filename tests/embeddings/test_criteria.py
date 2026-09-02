@@ -1,0 +1,143 @@
+"""
+Tests para src/embeddings/criteria.py
+
+Cubren "Definición de criterios de evaluación":
+  - Identificación de métricas de calidad       -> CA-1.1, CA-1.2, CA-1.3
+  - Identificación de métricas de rendimiento    -> CA-2.1, CA-2.2, CA-2.3
+  - Documentación de criterios de comparación    -> CA-3.1, CA-3.2, CA-3.3
+  - Métricas de consumo de recursos              -> CA-4.1, CA-4.2
+"""
+
+from src.embeddings.criteria import (
+    APPROX_DISK_SIZE_MB,
+    CANDIDATE_MODELS,
+    COMPARISON_CRITERIA,
+    PERFORMANCE_METRICS,
+    QUALITY_METRICS,
+    RESOURCE_METRICS,
+)
+
+# ---------------------------------------------------------------------------
+# Identificación de métricas de calidad
+# ---------------------------------------------------------------------------
+
+
+def test_quality_metrics_define_retrieval_accuracy():
+    """CA-1.1: El sistema debe definir `retrieval_accuracy` como la proporción de
+    consultas donde la similitud coseno al documento correcto supera a la del
+    incorrecto (acierto top-1)."""
+    assert "retrieval_accuracy" in QUALITY_METRICS
+    desc = QUALITY_METRICS["retrieval_accuracy"].lower()
+    assert "top-1" in desc or "top 1" in desc
+    assert "similitud" in desc
+
+
+def test_quality_metrics_define_avg_margin():
+    """CA-1.2: El sistema debe definir `avg_margin` como la diferencia promedio
+    entre la similitud del documento correcto y la del incorrecto."""
+    assert "avg_margin" in QUALITY_METRICS
+    desc = QUALITY_METRICS["avg_margin"].lower()
+    assert "diferencia" in desc
+    assert "promedio" in desc
+
+
+def test_quality_metrics_define_avg_similarity_correct():
+    """CA-1.3: El sistema debe definir `avg_similarity_correct` como la similitud
+    promedio al documento correcto, para detectar modelos que compriman el
+    espacio vectorial (similitud alta indiscriminadamente)."""
+    assert "avg_similarity_correct" in QUALITY_METRICS
+    desc = QUALITY_METRICS["avg_similarity_correct"].lower()
+    assert "comprima" in desc or "compresión" in desc or "irrelevante" in desc
+
+
+def test_quality_metrics_has_exactly_three_metrics():
+    """Test auxiliar (no corresponde a un CA textual propio): verifica que las
+    tres métricas de calidad de CA-1.1, CA-1.2 y CA-1.3 sean exactamente las
+    que están definidas, sin faltantes ni agregados sin documentar."""
+    assert set(QUALITY_METRICS.keys()) == {
+        "retrieval_accuracy",
+        "avg_margin",
+        "avg_similarity_correct",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Identificación de métricas de rendimiento
+# ---------------------------------------------------------------------------
+
+
+def test_performance_metrics_define_load_and_encode_time():
+    """CA-2.1: El sistema debe definir `load_time_sec` como el tiempo de carga
+    del modelo en memoria."""
+    assert "load_time_sec" in PERFORMANCE_METRICS
+    assert "encode_time_sec" in PERFORMANCE_METRICS
+
+
+def test_performance_metrics_define_throughput():
+    """CA-2.2: El sistema debe definir `encode_time_sec` y `texts_per_sec` como
+    tiempo total y throughput de generación de embeddings."""
+    assert "texts_per_sec" in PERFORMANCE_METRICS
+    assert "textos" in PERFORMANCE_METRICS["texts_per_sec"].lower()
+
+
+def test_performance_metrics_define_embedding_dim():
+    """CA-2.3: El sistema debe definir `embedding_dim` como la dimensión del
+    vector resultante."""
+    assert "embedding_dim" in PERFORMANCE_METRICS
+    assert "dimensión" in PERFORMANCE_METRICS["embedding_dim"].lower()
+
+
+# ---------------------------------------------------------------------------
+# Documentación de criterios de comparación
+# ---------------------------------------------------------------------------
+
+
+def test_comparison_criteria_documents_speed_and_resource_weight():
+    """CA-3.1: El sistema debe documentar el peso relativo de cada criterio de
+    comparación: calidad (alto), velocidad y recursos (medio)."""
+    assert COMPARISON_CRITERIA.count("peso medio") == 2
+
+
+def test_comparison_criteria_documents_quality_weight_and_threshold():
+    """CA-3.2: El sistema debe documentar el umbral mínimo aceptado de
+    retrieval_accuracy >= 0.75, con la justificación de su ajuste (de 0.85 a
+    0.75) basada en el análisis de casos reales del dominio."""
+    assert "peso alto" in COMPARISON_CRITERIA
+    assert "retrieval_accuracy >= 0.75" in COMPARISON_CRITERIA
+    assert "0.85" in COMPARISON_CRITERIA
+
+
+def test_comparison_criteria_documents_local_execution_restriction():
+    """CA-3.3: El sistema debe documentar la restricción no negociable de
+    ejecución local del modelo (sin llamadas a API externas), excluyendo
+    candidatos como text-embedding-ada-002."""
+    assert "localmente" in COMPARISON_CRITERIA
+    assert "text-embedding-ada-002" in COMPARISON_CRITERIA
+
+
+# ---------------------------------------------------------------------------
+# Métricas de consumo de recursos
+# ---------------------------------------------------------------------------
+
+
+def test_resource_metrics_define_peak_ram():
+    """CA-4.1: El sistema debe definir `peak_ram_mb` como el incremento de RAM
+    (RSS) del proceso entre antes y después de cargar el modelo y generar
+    embeddings."""
+    assert "peak_ram_mb" in RESOURCE_METRICS
+    assert "RSS" in RESOURCE_METRICS["peak_ram_mb"]
+
+
+def test_resource_metrics_define_disk_size():
+    """CA-4.2: El sistema debe definir `approx_disk_size_mb` como el tamaño
+    aproximado del modelo en disco, documentado manualmente por modelo."""
+    assert "approx_disk_size_mb" in RESOURCE_METRICS
+    assert "disco" in RESOURCE_METRICS["approx_disk_size_mb"].lower()
+
+
+def test_approx_disk_size_has_entry_for_every_candidate_model():
+    """CA-4.2 (extensión): cada modelo listado en CANDIDATE_MODELS debe tener
+    su entrada correspondiente en APPROX_DISK_SIZE_MB, para que la métrica
+    esté efectivamente disponible y no solo definida en teoría."""
+    candidate_names = {c["name"] for c in CANDIDATE_MODELS}
+    assert candidate_names.issubset(APPROX_DISK_SIZE_MB.keys())
