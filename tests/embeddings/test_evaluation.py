@@ -13,6 +13,7 @@ Cubren la historia "Comparación y selección":
   - Comparación de calidad semántica              -> CA-9.1
   - Comparación de velocidad de generación        -> CA-10.1
   - Comparación de consumo de recursos            -> CA-11.1
+  - Documentación y justificación de la selección -> CA-12.1, CA-12.2
 
 """
 
