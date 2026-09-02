@@ -9,6 +9,9 @@ Cubren la historia "Pruebas de modelos candidatos":
   - Ejecución de consultas de evaluación    -> CA-7.1, CA-7.2
   - Registro de resultados obtenidos        -> CA-8.1, CA-8.2
 
+Cubren la historia "Comparación y selección":
+  - Comparación de calidad semántica              -> CA-9.1
+
 """
 
 import json
