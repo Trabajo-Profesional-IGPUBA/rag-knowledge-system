@@ -247,3 +247,20 @@ def test_evaluate_models_persists_results_to_json(tmp_path):
     assert output_file.exists()
     data = json.loads(output_file.read_text(encoding="utf-8"))
     assert set(data.keys()) == {"modelo-a", "modelo-b"}
+
+
+def test_evaluate_models_does_not_write_file_when_results_path_is_none(tmp_path):
+    """CA-8.1 (caso límite): la persistencia en JSON es condicional a que se
+    pase results_path; si es None, la evaluación debe completarse igual sin
+    intentar escribir el archivo."""
+    fake_model = make_fake_model()
+    with patch(
+        "src.embeddings.evaluation.SentenceTransformer", return_value=fake_model
+    ):
+        results = evaluate_models(
+            test_texts=["texto 1"],
+            evaluation_queries=EVAL_QUERIES,
+            candidates=["modelo-a"],
+            results_path=None,
+        )
+    assert "modelo-a" in results  # se evaluó igual, solo que no se persistió
