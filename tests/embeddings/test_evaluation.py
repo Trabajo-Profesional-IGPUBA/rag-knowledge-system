@@ -11,6 +11,7 @@ import numpy as np
 
 from src.embeddings.criteria import CANDIDATE_MODELS
 from src.embeddings.evaluation import (
+    evaluate_candidate_model,
     evaluate_models,
 )
 
@@ -110,3 +111,27 @@ def test_english_only_model_not_present_in_candidate_models():
     exclusión documentada."""
     candidate_names = {c["name"] for c in CANDIDATE_MODELS}
     assert "all-MiniLM-L6-v2" not in candidate_names
+
+
+# ---------------------------------------------------------------------------
+# Generación de embeddings de prueba
+# CA-6.1 y CA-6.2 (extracción de textos con extract_test_texts) se testean
+# en test_corpus_loader.py, ya que ese código vive en corpus_loader.py, no
+# en evaluation.py. Acá solo se cubren CA-6.3 y CA-6.4.
+# ---------------------------------------------------------------------------
+
+
+def test_evaluate_candidate_model_calls_encode_for_warmup_and_repetitions():
+    """CA-6.3: El sistema debe ejecutar una corrida de warmup no medida antes
+    de las corridas de medición, para evitar que la carga inicial distorsione
+    el tiempo."""
+    fake_model = make_fake_model()
+    with patch(
+        "src.embeddings.evaluation.SentenceTransformer", return_value=fake_model
+    ):
+        evaluate_candidate_model(
+            "modelo-x", ["texto 1", "texto 2"], EVAL_QUERIES, n_repeticiones=3
+        )
+    # 1 warmup + 3 repeticiones + 2 llamadas internas de measure_quality (una por query)
+    warmup_y_repeticiones = 1 + 3
+    assert fake_model.encode.call_count >= warmup_y_repeticiones
