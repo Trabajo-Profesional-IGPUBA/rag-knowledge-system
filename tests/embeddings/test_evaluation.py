@@ -8,6 +8,7 @@ Cubren la historia "Pruebas de modelos candidatos":
 from unittest.mock import MagicMock, patch
 
 import numpy as np
+import pytest
 
 from src.embeddings.criteria import CANDIDATE_MODELS
 from src.embeddings.evaluation import (
@@ -135,3 +136,37 @@ def test_evaluate_candidate_model_calls_encode_for_warmup_and_repetitions():
     # 1 warmup + 3 repeticiones + 2 llamadas internas de measure_quality (una por query)
     warmup_y_repeticiones = 1 + 3
     assert fake_model.encode.call_count >= warmup_y_repeticiones
+
+
+def test_evaluate_candidate_model_uses_median_of_repetitions(monkeypatch):
+    """CA-6.4: El sistema debe calcular encode_time_sec como la mediana de
+    n_repeticiones corridas de generación de embeddings."""
+    fake_model = make_fake_model()
+    fake_times = iter(
+        [0.0, 0.10, 0.20, 0.90]
+    )  # warmup + 3 corridas (una muy alta, outlier)
+
+    def fake_perf_counter():
+        try:
+            return next(fake_times)
+        except StopIteration:
+            return 0.90
+
+    with patch(
+        "src.embeddings.evaluation.SentenceTransformer", return_value=fake_model
+    ), patch(
+        "src.embeddings.evaluation.time.perf_counter",
+        side_effect=[
+            0.0,
+            0.0,  # load_time (t0, luego resta)
+            0.0,
+            0.10,  # repetición 1: 0.10
+            0.10,
+            0.30,  # repetición 2: 0.20
+            0.30,
+            1.20,  # repetición 3: 0.90 (outlier)
+        ],
+    ):
+        result = evaluate_candidate_model("modelo-x", ["texto 1"], [], n_repeticiones=3)
+    # La mediana de [0.10, 0.20, 0.90] es 0.20, no el promedio (0.40)
+    assert result.encode_time_sec == pytest.approx(0.20, abs=0.01)
