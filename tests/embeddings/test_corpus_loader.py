@@ -18,6 +18,7 @@ import pytest
 from src.embeddings.corpus_loader import (
     extract_test_texts,
     load_documents,
+    summary_by_doc_type,
 )
 
 
@@ -127,3 +128,37 @@ def test_load_documents_skips_malformed_json_without_crashing(tmp_path, capsys):
     assert docs[0]["doc_id"] == "1"
     captured = capsys.readouterr()
     assert "not valid JSON" in captured.out
+
+
+# ---------------------------------------------------------------------------
+# Preparación y validación del corpus de evaluación
+# Resumen y control de calidad del corpus
+# ---------------------------------------------------------------------------
+
+
+def test_summary_by_doc_type_counts_documents_per_type():
+    """CA-13.4: El sistema debe generar un resumen de la cantidad de
+    documentos por cada valor de doc_type, usando "unknown" cuando el campo
+    falta."""
+    docs = [
+        {"doc_type": "informe"},
+        {"doc_type": "informe"},
+        {"doc_type": "reporte"},
+    ]
+    summary = summary_by_doc_type(docs)
+    assert summary == {"informe": 2, "reporte": 1}
+
+
+def test_summary_by_doc_type_uses_unknown_when_field_missing():
+    """CA-13.4: El sistema debe generar un resumen de la cantidad de
+    documentos por cada valor de doc_type, usando "unknown" cuando el campo
+    falta."""
+    docs = [{"doc_id": "1"}, {"doc_id": "2"}]
+    summary = summary_by_doc_type(docs)
+    assert summary == {"unknown": 2}
+
+
+def test_summary_by_doc_type_returns_empty_dict_for_empty_corpus():
+    """CA-13.4 (caso límite): con un corpus vacío, el resumen debe devolver
+    un diccionario vacío, sin fallar."""
+    assert summary_by_doc_type([]) == {}
