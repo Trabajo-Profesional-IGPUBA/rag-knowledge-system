@@ -64,3 +64,10 @@ def test_performance_metrics_define_load_and_encode_time():
     del modelo en memoria."""
     assert "load_time_sec" in PERFORMANCE_METRICS
     assert "encode_time_sec" in PERFORMANCE_METRICS
+
+
+def test_performance_metrics_define_throughput():
+    """CA-2.2: El sistema debe definir `encode_time_sec` y `texts_per_sec` como
+    tiempo total y throughput de generación de embeddings."""
+    assert "texts_per_sec" in PERFORMANCE_METRICS
+    assert "textos" in PERFORMANCE_METRICS["texts_per_sec"].lower()
