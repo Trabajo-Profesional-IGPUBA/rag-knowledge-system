@@ -4,6 +4,8 @@ Tests para src/embeddings/corpus_loader.py
 
 import json
 
+import pytest
+
 from src.embeddings.corpus_loader import (
     extract_test_texts,
     load_documents,
@@ -78,3 +80,12 @@ def test_load_documents_adds_source_file_field(tmp_path):
     docs = load_documents(str(tmp_path))
 
     assert docs[0]["_source_file"].endswith("doc1.json")
+
+
+def test_load_documents_raises_when_directory_does_not_exist(tmp_path):
+    """CA-13.2: Si el directorio especificado no existe, el sistema debe
+    lanzar un error explícito (FileNotFoundError)."""
+    missing_dir = tmp_path / "no_existe"
+
+    with pytest.raises(FileNotFoundError):
+        load_documents(str(missing_dir))
