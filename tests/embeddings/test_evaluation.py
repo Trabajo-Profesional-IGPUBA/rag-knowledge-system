@@ -6,6 +6,7 @@ Cubren la historia "Pruebas de modelos candidatos":
   - Generación de embeddings de prueba      -> CA-6.3, CA-6.4
     (CA-6.1 y CA-6.2 pertenecen a extract_test_texts en corpus_loader.py,
     y se testean en test_corpus_loader.py)
+  - Ejecución de consultas de evaluación    -> CA-7.1, CA-7.2
 """
 
 from unittest.mock import MagicMock, patch
