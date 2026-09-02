@@ -1,7 +1,7 @@
 """
 Tests para src/embeddings/evaluation.py
 
-Cubren la historia "Pruebas de modelos candidatos":
+Cubren "Pruebas de modelos candidatos":
   - Integración de modelos candidatos       -> CA-5.1, CA-5.2
   - Generación de embeddings de prueba      -> CA-6.3, CA-6.4
     (CA-6.1 y CA-6.2 pertenecen a extract_test_texts en corpus_loader.py,
@@ -9,7 +9,7 @@ Cubren la historia "Pruebas de modelos candidatos":
   - Ejecución de consultas de evaluación    -> CA-7.1, CA-7.2
   - Registro de resultados obtenidos        -> CA-8.1, CA-8.2
 
-Cubren la historia "Comparación y selección":
+Cubren "Comparación y selección":
   - Comparación de calidad semántica              -> CA-9.1
   - Comparación de velocidad de generación        -> CA-10.1
   - Comparación de consumo de recursos            -> CA-11.1

@@ -1,5 +1,14 @@
 """
 Tests para src/embeddings/corpus_loader.py
+
+Cubren dos tareas técnicas distintas:
+
+"Generación de embeddings de prueba":
+  - extract_test_texts()   -> CA-6.1, CA-6.2
+
+"Preparación y validación del corpus de evaluación":
+  - load_documents()             -> CA-13.1, CA-13.2, CA-13.3
+
 """
 
 import json
