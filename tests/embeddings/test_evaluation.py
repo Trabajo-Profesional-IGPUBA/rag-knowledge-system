@@ -83,3 +83,27 @@ def test_evaluate_models_uses_candidate_models_list_by_default():
         )
     expected_names = {c["name"] for c in CANDIDATE_MODELS}
     assert set(results.keys()) == expected_names
+
+
+def test_evaluate_models_respects_explicit_candidates_list():
+    """CA-5.1 (extensión): la lista de modelos candidatos debe poder acotarse
+    explícitamente sin perder la definición por defecto de CANDIDATE_MODELS."""
+    fake_model = make_fake_model()
+    with patch(
+        "src.embeddings.evaluation.SentenceTransformer", return_value=fake_model
+    ):
+        results = evaluate_models(
+            test_texts=["texto 1"],
+            evaluation_queries=EVAL_QUERIES,
+            candidates=["modelo-x"],
+            results_path=None,
+        )
+    assert set(results.keys()) == {"modelo-x"}
+
+
+def test_english_only_model_not_present_in_candidate_models():
+    """CA-5.2: Los modelos que no soportan español (ej. modelos solo-inglés
+    como all-MiniLM-L6-v2) deben quedar excluidos de la lista, con la
+    exclusión documentada."""
+    candidate_names = {c["name"] for c in CANDIDATE_MODELS}
+    assert "all-MiniLM-L6-v2" not in candidate_names
