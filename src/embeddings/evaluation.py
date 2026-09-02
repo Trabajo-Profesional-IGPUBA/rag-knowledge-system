@@ -1,12 +1,12 @@
 """
 Evaluación y comparación de modelos de embeddings candidatos.
 
-Historia: "Pruebas de modelos candidatos"
+Pruebas de modelos candidatos"
   - evaluate_candidate_model(): genera embeddings de prueba, ejecuta las
     consultas de evaluación y registra los resultados de un modelo.
   - evaluate_models(): corre todos los candidatos y persiste resultados.
 
-Historia: "Comparación y selección"
+"Comparación y selección"
   - measure_quality(): comparación de calidad semántica.
   - evaluate_candidate_model(): también mide velocidad y consumo de RAM.
 """

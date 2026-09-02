@@ -434,3 +434,19 @@ def test_generate_report_lists_other_valid_models_as_discarded():
     report = generate_report(results, accuracy_threshold=0.75)
     assert "modelo-descartado" in report
     assert "descartados por menor velocidad" in report
+
+
+# ---------------------------------------------------------------------------
+# CA-1.2 avg_margin debe calcularse como la diferencia promedio
+# entre la similitud del documento correcto y la del incorrecto.
+# Se testea acá y no en test_criteria.py porque necesita el mock del modelo
+# (make_fake_model) para poder ejercitar measure_quality().
+# ---------------------------------------------------------------------------
+
+
+def test_measure_quality_computes_avg_margin_as_mean_difference():
+    """CA-1.2: El sistema debe definir avg_margin como la diferencia promedio
+    entre la similitud del documento correcto y la del incorrecto."""
+    fake_model = make_fake_model(accuracy_correct_wins=True)
+    result = measure_quality(fake_model, EVAL_QUERIES)
+    assert result["avg_margin"] > 0  # correcto siempre gana => margen promedio positivo
