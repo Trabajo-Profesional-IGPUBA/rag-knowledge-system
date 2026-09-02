@@ -123,3 +123,10 @@ def test_resource_metrics_define_peak_ram():
     embeddings."""
     assert "peak_ram_mb" in RESOURCE_METRICS
     assert "RSS" in RESOURCE_METRICS["peak_ram_mb"]
+
+
+def test_resource_metrics_define_disk_size():
+    """CA-4.2: El sistema debe definir `approx_disk_size_mb` como el tamaño
+    aproximado del modelo en disco, documentado manualmente por modelo."""
+    assert "approx_disk_size_mb" in RESOURCE_METRICS
+    assert "disco" in RESOURCE_METRICS["approx_disk_size_mb"].lower()
