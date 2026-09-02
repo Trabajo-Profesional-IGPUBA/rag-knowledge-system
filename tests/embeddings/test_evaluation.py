@@ -409,3 +409,27 @@ def test_generate_report_includes_failed_models_with_their_error_in_table():
     report = generate_report(results, accuracy_threshold=0.75)
     assert "ERROR: timeout de red" in report
     assert "modelo-roto" in report
+
+
+def test_generate_report_lists_other_valid_models_as_discarded():
+    """CA-12.2 (extensión): el texto de justificación debe explicar por qué se
+    descartaron los demás modelos válidos frente al seleccionado."""
+    results = {
+        "modelo-elegido": ModelEvaluationResult(
+            model_name="modelo-elegido",
+            retrieval_accuracy=0.9,
+            texts_per_sec=100,
+            peak_ram_mb=50,
+            approx_disk_size_mb=400,
+        ),
+        "modelo-descartado": ModelEvaluationResult(
+            model_name="modelo-descartado",
+            retrieval_accuracy=0.85,
+            texts_per_sec=40,
+            peak_ram_mb=80,
+            approx_disk_size_mb=900,
+        ),
+    }
+    report = generate_report(results, accuracy_threshold=0.75)
+    assert "modelo-descartado" in report
+    assert "descartados por menor velocidad" in report
