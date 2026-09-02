@@ -15,6 +15,13 @@ Cubren "Comparación y selección":
   - Comparación de consumo de recursos            -> CA-11.1
   - Documentación y justificación de la selección -> CA-12.1, CA-12.2
 
+También incluye un test de CA-1.2 (definido en "Definición de criterios de
+evaluación"), porque necesita el mock del modelo para poder verificar el
+comportamiento real de measure_quality(), no solo su definición.
+
+Los modelos reales (SentenceTransformer) se mockean para no depender de
+descargar pesos ni de tiempos de ejecución reales.
+
 """
 
 import json
