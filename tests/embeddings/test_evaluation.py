@@ -7,6 +7,8 @@ Cubren la historia "Pruebas de modelos candidatos":
     (CA-6.1 y CA-6.2 pertenecen a extract_test_texts en corpus_loader.py,
     y se testean en test_corpus_loader.py)
   - Ejecución de consultas de evaluación    -> CA-7.1, CA-7.2
+  - Registro de resultados obtenidos        -> CA-8.1, CA-8.2
+
 """
 
 import json
