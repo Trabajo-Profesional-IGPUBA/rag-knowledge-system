@@ -3,6 +3,9 @@ Tests para src/embeddings/evaluation.py
 
 Cubren la historia "Pruebas de modelos candidatos":
   - Integración de modelos candidatos       -> CA-5.1, CA-5.2
+  - Generación de embeddings de prueba      -> CA-6.3, CA-6.4
+    (CA-6.1 y CA-6.2 pertenecen a extract_test_texts en corpus_loader.py,
+    y se testean en test_corpus_loader.py)
 """
 
 from unittest.mock import MagicMock, patch
