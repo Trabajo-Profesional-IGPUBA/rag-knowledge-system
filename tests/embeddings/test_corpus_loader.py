@@ -82,6 +82,21 @@ def test_load_documents_adds_source_file_field(tmp_path):
     assert docs[0]["_source_file"].endswith("doc1.json")
 
 
+def test_load_documents_uses_default_data_dir_when_not_specified(tmp_path, monkeypatch):
+    """CA-13.1 (valor por defecto): si no se especifica data_dir, el sistema
+    debe usar 'data/processed' como directorio por defecto."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "data" / "processed").mkdir(parents=True)
+    _write_json(
+        tmp_path / "data" / "processed" / "doc1.json", {"doc_id": "1", "text": "hola"}
+    )
+
+    docs = load_documents()
+
+    assert len(docs) == 1
+    assert docs[0]["doc_id"] == "1"
+
+
 def test_load_documents_raises_when_directory_does_not_exist(tmp_path):
     """CA-13.2: Si el directorio especificado no existe, el sistema debe
     lanzar un error explícito (FileNotFoundError)."""
@@ -89,3 +104,17 @@ def test_load_documents_raises_when_directory_does_not_exist(tmp_path):
 
     with pytest.raises(FileNotFoundError):
         load_documents(str(missing_dir))
+
+
+def test_load_documents_skips_malformed_json_without_crashing(tmp_path, capsys):
+    """CA-13.3: Si un archivo JSON está mal formado, el sistema debe omitirlo
+    con una advertencia, sin interrumpir la carga del resto del corpus."""
+    _write_json(tmp_path / "bueno.json", {"doc_id": "1", "text": "ok"})
+    (tmp_path / "malo.json").write_text("{ esto no es json valido", encoding="utf-8")
+
+    docs = load_documents(str(tmp_path))
+
+    assert len(docs) == 1
+    assert docs[0]["doc_id"] == "1"
+    captured = capsys.readouterr()
+    assert "not valid JSON" in captured.out
