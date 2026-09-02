@@ -316,3 +316,32 @@ def test_generate_report_discards_models_below_accuracy_threshold():
     report = generate_report(results, accuracy_threshold=0.75)
     assert "Ningún modelo alcanzó el umbral" in report
     assert "Modelo seleccionado" not in report
+
+
+# ---------------------------------------------------------------------------
+# Comparación de velocidad de generación
+# ---------------------------------------------------------------------------
+
+
+def test_generate_report_selects_fastest_among_valid_models():
+    """CA-10.1: Entre los modelos que superan el umbral de calidad, el sistema
+    debe seleccionar el que tenga mayor texts_per_sec."""
+    results = {
+        "modelo-lento": ModelEvaluationResult(
+            model_name="modelo-lento",
+            retrieval_accuracy=0.80,
+            texts_per_sec=10,
+            peak_ram_mb=100,
+            approx_disk_size_mb=500,
+        ),
+        "modelo-rapido": ModelEvaluationResult(
+            model_name="modelo-rapido",
+            retrieval_accuracy=0.78,
+            texts_per_sec=50,
+            peak_ram_mb=100,
+            approx_disk_size_mb=500,
+        ),
+    }
+    report = generate_report(results, accuracy_threshold=0.75)
+    assert "`modelo-rapido`" in report
+    assert "modelo-lento" in report  # mencionado como descartado, pero no seleccionado
