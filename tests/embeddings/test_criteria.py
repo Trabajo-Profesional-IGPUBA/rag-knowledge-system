@@ -28,3 +28,12 @@ def test_quality_metrics_define_avg_margin():
     desc = QUALITY_METRICS["avg_margin"].lower()
     assert "diferencia" in desc
     assert "promedio" in desc
+
+
+def test_quality_metrics_define_avg_similarity_correct():
+    """CA-1.3: El sistema debe definir `avg_similarity_correct` como la similitud
+    promedio al documento correcto, para detectar modelos que compriman el
+    espacio vectorial (similitud alta indiscriminadamente)."""
+    assert "avg_similarity_correct" in QUALITY_METRICS
+    desc = QUALITY_METRICS["avg_similarity_correct"].lower()
+    assert "comprima" in desc or "compresión" in desc or "irrelevante" in desc
