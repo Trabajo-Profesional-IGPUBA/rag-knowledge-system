@@ -346,3 +346,25 @@ def test_generate_report_selects_fastest_among_valid_models():
     report = generate_report(results, accuracy_threshold=0.75)
     assert "`modelo-rapido`" in report
     assert "modelo-lento" in report  # mencionado como descartado, pero no seleccionado
+
+
+# ---------------------------------------------------------------------------
+# Comparación de consumo de recursos
+# ---------------------------------------------------------------------------
+
+
+def test_generate_report_includes_ram_and_disk_of_selected_model():
+    """CA-11.1: El reporte final debe incluir peak_ram_mb y approx_disk_size_mb
+    del modelo seleccionado como información de respaldo de la decisión."""
+    results = {
+        "modelo-a": ModelEvaluationResult(
+            model_name="modelo-a",
+            retrieval_accuracy=0.9,
+            texts_per_sec=30,
+            peak_ram_mb=123.4,
+            approx_disk_size_mb=470,
+        ),
+    }
+    report = generate_report(results, accuracy_threshold=0.75)
+    assert "123.4" in report
+    assert "470" in report
