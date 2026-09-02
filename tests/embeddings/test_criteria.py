@@ -19,3 +19,12 @@ def test_quality_metrics_define_retrieval_accuracy():
     desc = QUALITY_METRICS["retrieval_accuracy"].lower()
     assert "top-1" in desc or "top 1" in desc
     assert "similitud" in desc
+
+
+def test_quality_metrics_define_avg_margin():
+    """CA-1.2: El sistema debe definir `avg_margin` como la diferencia promedio
+    entre la similitud del documento correcto y la del incorrecto."""
+    assert "avg_margin" in QUALITY_METRICS
+    desc = QUALITY_METRICS["avg_margin"].lower()
+    assert "diferencia" in desc
+    assert "promedio" in desc
