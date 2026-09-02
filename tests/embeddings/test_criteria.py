@@ -101,3 +101,11 @@ def test_comparison_criteria_documents_quality_weight_and_threshold():
     assert "peso alto" in COMPARISON_CRITERIA
     assert "retrieval_accuracy >= 0.75" in COMPARISON_CRITERIA
     assert "0.85" in COMPARISON_CRITERIA
+
+
+def test_comparison_criteria_documents_local_execution_restriction():
+    """CA-3.3: El sistema debe documentar la restricción no negociable de
+    ejecución local del modelo (sin llamadas a API externas), excluyendo
+    candidatos como text-embedding-ada-002."""
+    assert "localmente" in COMPARISON_CRITERIA
+    assert "text-embedding-ada-002" in COMPARISON_CRITERIA
