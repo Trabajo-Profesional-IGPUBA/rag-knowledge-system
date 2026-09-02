@@ -8,6 +8,7 @@ Cubren la historia "Definición de criterios de evaluación":
 """
 
 from src.embeddings.criteria import (
+    COMPARISON_CRITERIA,
     PERFORMANCE_METRICS,
     QUALITY_METRICS,
 )
@@ -80,3 +81,17 @@ def test_performance_metrics_define_embedding_dim():
     vector resultante."""
     assert "embedding_dim" in PERFORMANCE_METRICS
     assert "dimensión" in PERFORMANCE_METRICS["embedding_dim"].lower()
+
+
+# ---------------------------------------------------------------------------
+# Documentación de criterios de comparación
+# ---------------------------------------------------------------------------
+
+
+def test_comparison_criteria_documents_quality_weight_and_threshold():
+    """CA-3.2: El sistema debe documentar el umbral mínimo aceptado de
+    retrieval_accuracy >= 0.75, con la justificación de su ajuste (de 0.85 a
+    0.75) basada en el análisis de casos reales del dominio."""
+    assert "peso alto" in COMPARISON_CRITERIA
+    assert "retrieval_accuracy >= 0.75" in COMPARISON_CRITERIA
+    assert "0.85" in COMPARISON_CRITERIA
