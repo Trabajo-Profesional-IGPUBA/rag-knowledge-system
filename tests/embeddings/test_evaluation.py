@@ -387,3 +387,25 @@ def test_generate_report_recommends_expanding_queries_when_no_valid_model():
     }
     report = generate_report(results, accuracy_threshold=0.75)
     assert "ampliar el set de EVALUATION_QUERIES" in report
+
+
+def test_generate_report_includes_failed_models_with_their_error_in_table():
+    """CA-12.2: El reporte debe incluir una tabla comparativa con todos los
+    modelos evaluados (incluidos los que fallaron, con su error) y un texto de
+    justificación explicando por qué se eligió el modelo seleccionado frente a
+    los demás válidos."""
+    results = {
+        "modelo-roto": ModelEvaluationResult(
+            model_name="modelo-roto", ok=False, error="timeout de red"
+        ),
+        "modelo-ok": ModelEvaluationResult(
+            model_name="modelo-ok",
+            retrieval_accuracy=0.9,
+            texts_per_sec=20,
+            peak_ram_mb=10,
+            approx_disk_size_mb=100,
+        ),
+    }
+    report = generate_report(results, accuracy_threshold=0.75)
+    assert "ERROR: timeout de red" in report
+    assert "modelo-roto" in report
