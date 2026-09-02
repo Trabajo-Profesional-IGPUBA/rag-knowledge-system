@@ -19,8 +19,10 @@ import pytest
 
 from src.embeddings.criteria import CANDIDATE_MODELS
 from src.embeddings.evaluation import (
+    ModelEvaluationResult,
     evaluate_candidate_model,
     evaluate_models,
+    generate_report,
     measure_quality,
 )
 
@@ -288,3 +290,26 @@ def test_evaluate_models_continues_when_one_candidate_fails():
         )
     assert results["modelo-roto"].ok is False
     assert results["modelo-ok"].ok is True
+
+
+# ---------------------------------------------------------------------------
+# Comparación de calidad semántica
+# ---------------------------------------------------------------------------
+
+
+def test_generate_report_discards_models_below_accuracy_threshold():
+    """CA-9.1: El sistema debe descartar de la selección los modelos cuyo
+    retrieval_accuracy sea menor al umbral definido (accuracy_threshold,
+    default 0.75)."""
+    results = {
+        "modelo-bajo": ModelEvaluationResult(
+            model_name="modelo-bajo",
+            retrieval_accuracy=0.5,
+            texts_per_sec=100,
+            peak_ram_mb=50,
+            approx_disk_size_mb=200,
+        ),
+    }
+    report = generate_report(results, accuracy_threshold=0.75)
+    assert "Ningún modelo alcanzó el umbral" in report
+    assert "Modelo seleccionado" not in report
