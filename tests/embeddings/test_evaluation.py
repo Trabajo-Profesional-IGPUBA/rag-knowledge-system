@@ -17,6 +17,7 @@ from src.embeddings.criteria import CANDIDATE_MODELS
 from src.embeddings.evaluation import (
     evaluate_candidate_model,
     evaluate_models,
+    measure_quality,
 )
 
 # ---------------------------------------------------------------------------
@@ -185,3 +186,26 @@ def test_evaluate_candidate_model_returns_embedding_dim():
     ):
         result = evaluate_candidate_model("modelo-x", ["texto 1"], [], n_repeticiones=1)
     assert result.embedding_dim == 12
+
+
+# ---------------------------------------------------------------------------
+# Ejecución de consultas de evaluación
+# ---------------------------------------------------------------------------
+
+
+def test_measure_quality_counts_hit_when_correct_doc_more_similar():
+    """CA-7.1: Para cada consulta de EVALUATION_QUERIES, el sistema debe
+    vectorizar query, documento correcto y documento incorrecto, y verificar
+    cuál obtiene mayor similitud coseno con la query."""
+    fake_model = make_fake_model(accuracy_correct_wins=True)
+    result = measure_quality(fake_model, EVAL_QUERIES)
+    assert result["retrieval_accuracy"] == 1.0
+
+
+def test_measure_quality_counts_miss_when_incorrect_doc_more_similar():
+    """CA-7.1 (caso complementario): verifica que la comparación de similitud
+    coseno no cuente como acierto cuando el documento incorrecto queda más
+    cerca de la query."""
+    fake_model = make_fake_model(accuracy_correct_wins=False)
+    result = measure_quality(fake_model, EVAL_QUERIES)
+    assert result["retrieval_accuracy"] == 0.0
