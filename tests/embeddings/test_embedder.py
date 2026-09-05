@@ -1,3 +1,13 @@
+"""
+Tests para src/embeddings/embedder.py
+
+Cubren "Integración del modelo seleccionado":
+  - Implementación del servicio de embeddings -> CA-3.1 a CA-3.7
+
+El modelo real (SentenceTransformer) se mockea en todos los casos para no
+depender de descargar pesos ni de tiempos de carga reales.
+"""
+
 from unittest.mock import MagicMock, patch
 
 import numpy as np
