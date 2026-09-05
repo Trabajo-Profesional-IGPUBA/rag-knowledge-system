@@ -3,6 +3,7 @@ Tests para src/embeddings/embedder.py
 
 Cubren "Integración del modelo seleccionado":
   - Implementación del servicio de embeddings -> CA-3.1 a CA-3.7
+  - Validación inicial del funcionamiento  -> CA-4.1, CA-4.2, CA-4.3
 
 El modelo real (SentenceTransformer) se mockea en todos los casos para no
 depender de descargar pesos ni de tiempos de carga reales.
