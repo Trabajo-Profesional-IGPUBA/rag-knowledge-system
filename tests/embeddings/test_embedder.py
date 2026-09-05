@@ -161,3 +161,9 @@ def test_queried_dimension_reflects_loaded_model_not_a_fixed_value(mock_embedder
     """CA-4.1: Al consultar la dimensión de los embeddings, el sistema debe devolver la dimensión real reportada por el modelo actualmente cargado, no un valor fijo definido de antemano."""
     mock_embedder._model.get_sentence_embedding_dimension.return_value = 999
     assert mock_embedder.get_dimension() == 999
+
+
+def test_vector_has_expected_number_of_components_with_default_model(mock_embedder):
+    """CA-4.2: Al vectorizar un texto con el modelo por defecto, el vector resultante debe tener exactamente la cantidad de componentes definida como dimensión esperada del sistema."""
+    result = mock_embedder.embed("texto")
+    assert len(result) == EMBEDDING_DIM
