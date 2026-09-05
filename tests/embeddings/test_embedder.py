@@ -112,3 +112,24 @@ def test_vectorizing_list_of_texts_preserves_order(mock_embedder):
     assert result[0][0] == 0.0
     assert result[1][0] == 1.0
     assert result[2][0] == 2.0
+
+
+def test_batch_size_and_progress_flag_are_configurable(mock_embedder):
+    """CA-3.6: El sistema debe permitir configurar el tamaño de lote y si se muestra o no una barra de progreso al vectorizar múltiples textos, y aplicar esa configuración durante la generación."""
+    mock_embedder._model.encode.return_value = np.ones(
+        (2, EMBEDDING_DIM), dtype="float32"
+    )
+    mock_embedder.embed_batch(["a", "b"], batch_size=8, show_progress=True)
+    _, kwargs = mock_embedder._model.encode.call_args
+    assert kwargs["batch_size"] == 8
+    assert kwargs["show_progress_bar"] is True
+
+
+def test_default_batch_size_applied_when_not_specified(mock_embedder):
+    """CA-3.6: El sistema debe permitir configurar el tamaño de lote y si se muestra o no una barra de progreso al vectorizar múltiples textos, y aplicar esa configuración durante la generación."""
+    mock_embedder._model.encode.return_value = np.ones(
+        (1, EMBEDDING_DIM), dtype="float32"
+    )
+    mock_embedder.embed_batch(["a"])
+    _, kwargs = mock_embedder._model.encode.call_args
+    assert kwargs["batch_size"] == 32
