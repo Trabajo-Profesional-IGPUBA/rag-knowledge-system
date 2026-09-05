@@ -167,3 +167,19 @@ def test_vector_has_expected_number_of_components_with_default_model(mock_embedd
     """CA-4.2: Al vectorizar un texto con el modelo por defecto, el vector resultante debe tener exactamente la cantidad de componentes definida como dimensión esperada del sistema."""
     result = mock_embedder.embed("texto")
     assert len(result) == EMBEDDING_DIM
+
+
+def test_embedding_components_are_native_python_floats(mock_embedder):
+    """CA-4.3: Cada componente de un embedding generado, ya sea individual o en lote, debe quedar representado como número de punto flotante nativo, de forma que pueda serializarse correctamente a JSON o ser almacenado en la base vectorial."""
+    single = mock_embedder.embed("texto")
+    assert all(isinstance(v, float) and not isinstance(v, np.floating) for v in single)
+
+    mock_embedder._model.encode.return_value = np.ones(
+        (2, EMBEDDING_DIM), dtype="float32"
+    )
+    batch = mock_embedder.embed_batch(["a", "b"])
+    assert all(
+        isinstance(v, float) and not isinstance(v, np.floating)
+        for vec in batch
+        for v in vec
+    )
