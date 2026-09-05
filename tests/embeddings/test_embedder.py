@@ -94,3 +94,10 @@ def test_can_query_currently_loaded_model(mock_embedder):
     assert mock_embedder.model_name == DEFAULT_MODEL
     custom_embedder = Embedder(model_name="un-modelo-custom")
     assert custom_embedder.model_name == "un-modelo-custom"
+
+
+def test_vectorizing_single_text_returns_list_of_floats(mock_embedder):
+    """CA-3.4: Al vectorizar un texto individual, el sistema debe devolver el embedding resultante como una lista de números de punto flotante."""
+    result = mock_embedder.embed("texto de prueba")
+    assert isinstance(result, list)
+    assert all(isinstance(v, float) for v in result)
