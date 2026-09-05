@@ -76,3 +76,14 @@ def test_uses_default_model_when_not_specified():
         MockST.return_value = mock_model
         Embedder()
         MockST.assert_called_once_with(DEFAULT_MODEL)
+
+
+def test_model_loaded_once_and_reused_across_calls(mock_embedder):
+    """CA-3.2: El modelo debe cargarse una única vez al inicializar el servicio, y esa misma instancia debe reutilizarse en todas las generaciones de embeddings posteriores, sin recargar el modelo en cada uso."""
+    mock_embedder.embed("a")
+    mock_embedder.embed("b")
+    mock_embedder._model.encode.return_value = np.ones(
+        (2, EMBEDDING_DIM), dtype="float32"
+    )
+    mock_embedder.embed_batch(["c", "d"])
+    assert mock_embedder._model.encode.call_count == 3
