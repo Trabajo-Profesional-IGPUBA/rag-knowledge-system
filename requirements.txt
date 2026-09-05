@@ -1,11 +1,5 @@
-# ETL y procesamiento de documentos
-pdfplumber>=0.11.0
-fpdf2>=2.7.0
-
-# OCR (opcional — solo necesario para PDFs escaneados)
-# pytesseract>=0.3.10
-# Pillow>=10.0.0
-# pdf2image>=1.16.3
+# Procesamiento de documentos
+docling
 
 # Embeddings
 sentence-transformers>=3.0.0

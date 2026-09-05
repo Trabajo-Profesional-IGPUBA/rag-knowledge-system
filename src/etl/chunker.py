@@ -1,119 +1,138 @@
 """
 Módulo de chunking: divide el texto de un documento en fragmentos indexables.
 
-Estrategia: chunking por párrafos con ventana deslizante (overlap).
-  - Divide por párrafos (doble newline).
-  - Agrupa párrafos hasta alcanzar MAX_CHARS.
-  - Superpone OVERLAP_CHARS del chunk anterior para preservar contexto.
-
-Esta estrategia respeta la estructura natural de los documentos técnicos
-(cada párrafo suele describir un evento o dato coherente).
+Estrategia: HybridChunker de Docling, tiene en cuenta la jerarquia del documento al momento
+de crear los chunks.
 """
 
-from __future__ import annotations
+import re
+import logging
+from dataclasses import dataclass
+from pathlib import Path
+from docling_core.transforms.chunker.hybrid_chunker import HybridChunker
+from docling.document_converter import DocumentConverter
+from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
+from transformers import AutoTokenizer
+from src.etl.cleaner import normalize
 
-from dataclasses import dataclass, field
+logger = logging.getLogger()
 
 # Tamaño máximo de cada chunk en caracteres
-MAX_CHARS = 800
-# Superposición entre chunks consecutivos en caracteres
-OVERLAP_CHARS = 150
+MAX_TOKENS = 800
+
+DEFAULT_EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+
+_PATTERNS: dict[str, re.Pattern] = {
+    "well": re.compile(
+        r"(?:pozo)\s*[:\-–]?\s*"
+        r"([A-Z]{1,4}-\d{1,4}[A-Z]?"
+        r"|\d{3,4}/\d{1,2}-\d{1,2})",
+        re.IGNORECASE,
+    ),
+    "section": re.compile(r"(?:seccion|sección)[:\s]+(.+?)(?:\n|$)", re.IGNORECASE),
+}
+
+
+@dataclass
+class ChunkMeta:
+    well: str | None
+    section: str | None
 
 
 @dataclass
 class Chunk:
-    chunk_id: str  # "{doc_id}::chunk_{n}"
-    doc_id: str
-    doc_type: str
     text: str
-    char_count: int = field(init=False)
-    chunk_index: int = 0  # posición dentro del documento
+    contextualized_text: str
+    source_file: str
+    source_hash: str
+    page: int | None
+    section: str | None
+    chunk_index: int
+    well: str | None
 
-    def __post_init__(self) -> None:
-        self.char_count = len(self.text)
+    @property
+    def meta(self):
+        return {
+            "well": self.well,
+            "section": self.section,
+            "source_file": self.source_file,
+            "source_hash": self.source_hash,
+            "page": self.page,
+        }
+
+    @property
+    def chunk_id(self):
+        return f"{self.source_hash}::{self.chunk_index}"
+
+    @property
+    def char_count(self):
+        return len(self.text)
 
 
-def split(
-    doc_id: str,
-    doc_type: str,
-    text: str,
-    max_chars: int = MAX_CHARS,
-    overlap_chars: int = OVERLAP_CHARS,
-) -> list[Chunk]:
+class DoclingHybridChunker:
     """
-    Divide el texto en chunks con overlap.
-
-    Args:
-        doc_id: identificador del documento origen.
-        doc_type: tipo de documento (end_of_well_report, parte_diario, etc.).
-        text: texto completo normalizado.
-        max_chars: tamaño máximo de cada chunk.
-        overlap_chars: cantidad de caracteres de overlap entre chunks.
-
-    Returns:
-        Lista de Chunk ordenados por posición en el documento.
+    Convierte un PDF en una secuencia de Chunks usando el HybridChunker de Docling.
     """
-    if not text.strip():
-        return []
 
-    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+    def __init__(
+        self,
+        embedding_model: str = DEFAULT_EMBEDDING_MODEL,
+        max_tokens: int = MAX_TOKENS,
+    ):
+        """
+        Inicializa el chunker
 
-    chunks: list[Chunk] = []
-    current_parts: list[str] = []
-    current_len = 0
-    overlap_tail = ""
+        Es importante que el modelo de embedding utilizado en el tokenizer sea el mismo que el del embedder.
+        """
+        tokenizer = HuggingFaceTokenizer(
+            tokenizer=AutoTokenizer.from_pretrained(embedding_model),
+            max_tokens=max_tokens,
+        )
+        self._chunker = HybridChunker(tokenizer=tokenizer, merge_peers=True)
+        self._converter = DocumentConverter()
+        logger.debug("Chunker initialized successfully")
 
-    def _flush(idx: int) -> None:
-        nonlocal current_parts, current_len, overlap_tail
-        body = "\n\n".join(current_parts)
-        if overlap_tail:
-            body = overlap_tail + "\n\n" + body
-        body = body.strip()
-        if body:
-            chunks.append(
-                Chunk(
-                    chunk_id=f"{doc_id}::chunk_{idx}",
-                    doc_id=doc_id,
-                    doc_type=doc_type,
-                    text=body,
-                    chunk_index=idx,
-                )
+    def chunk(self, filename: Path):
+        """
+        Parsea un PDF y genera Chunks con metadatos.
+        """
+
+        doc = self._converter.convert(filename).document
+        for index, chunk in enumerate(self._chunker.chunk(dl_doc=doc)):
+            contextualized_text = self._chunker.contextualize(chunk)
+            # al contener datos de la jerarquia del documento conviene usar el texto contextualizado
+            # para extraer la metadata
+            meta = self.extract_chunk_metadata(contextualized_text)
+            page = self.extract_page_no(chunk)
+
+            yield Chunk(
+                source_file=str(filename),
+                source_hash=str(chunk.meta.origin.binary_hash),  # type: ignore
+                text=normalize(chunk.text),
+                contextualized_text=contextualized_text,
+                chunk_index=index,
+                page=page,
+                section=meta.section,
+                well=meta.well,
             )
-        # Calcular overlap para el siguiente chunk
-        overlap_tail = body[-overlap_chars:] if len(body) > overlap_chars else body
-        current_parts = []
-        current_len = 0
 
-    chunk_idx = 0
-    for para in paragraphs:
-        para_len = len(para)
+    @staticmethod
+    def extract_page_no(chunk):
+        try:
+            page = chunk.meta.doc_items[0].prov[0].page_no  # type: ignore
+        except IndexError:
+            page = None
+        return page
 
-        # Si el párrafo solo ya excede MAX_CHARS, lo partimos por frases
-        if para_len > max_chars:
-            if current_parts:
-                _flush(chunk_idx)
-                chunk_idx += 1
+    @staticmethod
+    def extract_chunk_metadata(text: str) -> ChunkMeta:
+        well_m = _PATTERNS["well"].search(text)
+        well = well_m.group(1).strip() if well_m is not None else None
 
-            # Partir por oraciones (punto + espacio)
-            sentences = [
-                s.strip() for s in para.replace(". ", ".|").split("|") if s.strip()
-            ]
-            for sentence in sentences:
-                if current_len + len(sentence) + 2 > max_chars and current_parts:
-                    _flush(chunk_idx)
-                    chunk_idx += 1
-                current_parts.append(sentence)
-                current_len += len(sentence) + 2
-            continue
+        section_m = _PATTERNS["section"].search(text)
+        section = section_m.group(1).strip() if section_m is not None else None
 
-        if current_len + para_len + 2 > max_chars and current_parts:
-            _flush(chunk_idx)
-            chunk_idx += 1
-
-        current_parts.append(para)
-        current_len += para_len + 2
-
-    if current_parts:
-        _flush(chunk_idx)
-
-    return chunks
+        return ChunkMeta(
+            well=well,
+            section=section,
+        )

@@ -1,91 +1,40 @@
-import argparse
-import logging
-import sys
 from pathlib import Path
 
-from src.etl import BatchResult, run
+from src.observability import setup_logging
 
 ROOT_DIR = Path(__file__).parent
 RAW_DIR = ROOT_DIR / "data" / "raw"
-PROCESSED_DIR = ROOT_DIR / "data" / "processed"
-MANIFEST_PATH = ROOT_DIR / "data" / "manifest.jsonl"
-LOG_DIR = ROOT_DIR / "logs"
+VECTOR_STORE_PATH = ROOT_DIR / "data" / "vectorstore"
+LOG_DIR = ROOT_DIR / "logss"
 
 
-def setup_logging(log_dir: Path) -> None:
-    log_dir.mkdir(parents=True, exist_ok=True)
+def run():
+    from src.embeddings.embedder import Embedder
+    from src.etl import DoclingHybridChunker
+    from src.etl import DocumentProcessor
+    from src.retrieval.vectorstore import VectorStore
+    import logging
 
-    from datetime import datetime
-
-    log_file = (
-        log_dir / f"etl_{datetime.now().astimezone().strftime('%Y%m%d_%H%M%S')}.log"
-    )
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
-        handlers=[
-            logging.FileHandler(log_file, encoding="utf-8"),
-            logging.StreamHandler(sys.stdout),
-        ],
-    )
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="ETL PDF pipeline")
-
-    parser.add_argument(
-        "--workers",
-        type=int,
-        default=None,
-        help="Número de workers (default CPU cores)",
-    )
-
-    parser.add_argument(
-        "--full",
-        action="store_true",
-        help="Reprocesar todo ignorando incremental",
-    )
-
-    return parser.parse_args()
-
-
-def main() -> int:
-    args = parse_args()
-    setup_logging(LOG_DIR)
-
-    log = logging.getLogger(__name__)
-
-    log.info("═" * 52)
-    log.info("Iniciando pipeline ETL")
-    log.info(f"raw_dir      : {RAW_DIR}")
-    log.info(f"processed_dir: {PROCESSED_DIR}")
-    log.info(f"manifest     : {MANIFEST_PATH}")
-    log.info(f"workers      : {args.workers or 'auto'}")
-    log.info(f"incremental  : {not args.full}")
-    log.info("═" * 52)
+    logger = logging.getLogger()
 
     if not RAW_DIR.exists():
-        log.error(f"No existe {RAW_DIR}")
-        return 1
+        logger.error(f"No existe {RAW_DIR}")
+        return
 
-    result: BatchResult = run(
-        raw_dir=RAW_DIR,
-        processed_dir=PROCESSED_DIR,
-        manifest_path=MANIFEST_PATH,
-        max_workers=args.workers,
-        incremental=not args.full,
+    chunker = DoclingHybridChunker()
+    vector_store = VectorStore(VECTOR_STORE_PATH)
+    embedder = Embedder()
+    document_processor = DocumentProcessor(
+        chunker=chunker,
+        vector_repository=vector_store,
+        embedder=embedder,
     )
 
-    log.info(
-        f"FIN → OK={result.total_ok} "
-        f"ERR={result.total_errors} "
-        f"SKIP={result.total_skipped} "
-        f"TIME={result.elapsed_sec:.2f}s"
-    )
-
-    return 0
+    for file in RAW_DIR.rglob("*.pdf"):
+        document_processor.process_file(file)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    setup_logging(LOG_DIR)
+
+    run()
