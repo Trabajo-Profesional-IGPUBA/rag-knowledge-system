@@ -150,3 +150,14 @@ def test_vectorizing_empty_list_returns_empty_without_generating(mock_embedder):
     result = mock_embedder.embed_batch([])
     assert result == []
     mock_embedder._model.encode.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Validación inicial del funcionamiento
+# ---------------------------------------------------------------------------
+
+
+def test_queried_dimension_reflects_loaded_model_not_a_fixed_value(mock_embedder):
+    """CA-4.1: Al consultar la dimensión de los embeddings, el sistema debe devolver la dimensión real reportada por el modelo actualmente cargado, no un valor fijo definido de antemano."""
+    mock_embedder._model.get_sentence_embedding_dimension.return_value = 999
+    assert mock_embedder.get_dimension() == 999
