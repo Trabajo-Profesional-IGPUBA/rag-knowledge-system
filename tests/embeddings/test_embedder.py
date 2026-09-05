@@ -133,3 +133,10 @@ def test_default_batch_size_applied_when_not_specified(mock_embedder):
     mock_embedder.embed_batch(["a"])
     _, kwargs = mock_embedder._model.encode.call_args
     assert kwargs["batch_size"] == 32
+
+
+def test_vectorizing_empty_list_returns_empty_without_generating(mock_embedder):
+    """CA-3.7: Al vectorizar una lista vacía de textos, el sistema debe devolver una lista vacía sin ejecutar ninguna generación de embeddings."""
+    result = mock_embedder.embed_batch([])
+    assert result == []
+    mock_embedder._model.encode.assert_not_called()
