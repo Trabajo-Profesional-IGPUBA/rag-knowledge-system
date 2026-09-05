@@ -87,3 +87,10 @@ def test_model_loaded_once_and_reused_across_calls(mock_embedder):
     )
     mock_embedder.embed_batch(["c", "d"])
     assert mock_embedder._model.encode.call_count == 3
+
+
+def test_can_query_currently_loaded_model(mock_embedder):
+    """CA-3.3: El servicio de embeddings debe exponer el modelo actualmente cargado."""
+    assert mock_embedder.model_name == DEFAULT_MODEL
+    custom_embedder = Embedder(model_name="un-modelo-custom")
+    assert custom_embedder.model_name == "un-modelo-custom"
