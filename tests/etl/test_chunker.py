@@ -1,4 +1,4 @@
-from src.etl.chunker import MAX_CHARS, OVERLAP_CHARS, Chunk, split
+from src.etl.chunker import MAX_CHARS, OVERLAP_CHARS, split
 
 
 class TestSplit:
