@@ -89,7 +89,9 @@ class TestExtractTextFromPage:
                 assert used_ocr is True
                 assert isinstance(text, str)
             except ImportError:
-                pytest.skip("Import mock no interceptó correctamente — comportamiento cubierto en test_ca13_ocr_failure_returns_empty_string")
+                pytest.skip(
+                    "Import mock no interceptó correctamente — comportamiento cubierto en test_ca13_ocr_failure_returns_empty_string"
+                )
 
 
 class TestNeedsOcr:
@@ -155,5 +157,9 @@ class TestNeedsOcr:
         with patch("src.etl.ocr._ocr_page", return_value="texto ocr"):
             result_scanned = extract_text_from_page(page_scanned)
 
-        assert isinstance(result_digital[0], str) and isinstance(result_digital[1], bool)
-        assert isinstance(result_scanned[0], str) and isinstance(result_scanned[1], bool)
+        assert isinstance(result_digital[0], str) and isinstance(
+            result_digital[1], bool
+        )
+        assert isinstance(result_scanned[0], str) and isinstance(
+            result_scanned[1], bool
+        )

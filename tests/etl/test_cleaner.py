@@ -43,6 +43,7 @@ class TestNormalize:
 
     def test_unicode_nfc(self):
         import unicodedata
+
         composed = unicodedata.normalize("NFC", "é")
         decomposed = unicodedata.normalize("NFD", "é")
         assert normalize(decomposed) == composed
