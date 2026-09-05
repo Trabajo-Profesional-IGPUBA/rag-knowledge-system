@@ -101,3 +101,14 @@ def test_vectorizing_single_text_returns_list_of_floats(mock_embedder):
     result = mock_embedder.embed("texto de prueba")
     assert isinstance(result, list)
     assert all(isinstance(v, float) for v in result)
+
+
+def test_vectorizing_list_of_texts_preserves_order(mock_embedder):
+    """CA-3.5: Al vectorizar una lista de textos, el sistema debe devolver una lista de embeddings, uno por cada texto, respetando el mismo orden en que fueron entregados."""
+    vectors = np.stack([np.full(EMBEDDING_DIM, i, dtype="float32") for i in range(3)])
+    mock_embedder._model.encode.return_value = vectors
+    result = mock_embedder.embed_batch(["a", "b", "c"])
+    assert len(result) == 3
+    assert result[0][0] == 0.0
+    assert result[1][0] == 1.0
+    assert result[2][0] == 2.0
