@@ -226,3 +226,27 @@ class TestVectorStore:
         )
         s2 = VectorStore(path)
         assert s2.count() == 1
+
+    # -----------------------------------------------------------------
+    # Validación de integridad de datos
+    # -----------------------------------------------------------------
+
+    def test_batch_indexing_validates_matching_lengths(self, store):
+        """CA-11.1: Antes de indexar un lote, el sistema debe validar que la cantidad de identificadores, textos, embeddings y metadatas coincida entre sí, fallando de forma explícita si alguna de esas listas tiene una longitud distinta."""
+        with pytest.raises(ValueError, match="misma longitud"):
+            store.add_batch(
+                chunk_ids=["doc1::chunk_0", "doc1::chunk_1"],
+                texts=["solo un texto"],
+                embeddings=[_fake_embedding(), _fake_embedding()],
+                metadatas=[{"doc_id": "doc1"}, {"doc_id": "doc1"}],
+            )
+
+    def test_batch_indexing_with_matching_lengths_still_works(self, store):
+        """CA-11.1 (regresión): la validación agregada no debe romper el caso normal, donde chunk_ids, texts, embeddings y metadatas sí coinciden en longitud."""
+        store.add_batch(
+            chunk_ids=["doc1::chunk_0", "doc1::chunk_1"],
+            texts=["texto A", "texto B"],
+            embeddings=[_fake_embedding(), _fake_embedding()],
+            metadatas=[{"doc_id": "doc1"}, {"doc_id": "doc1"}],
+        )
+        assert store.count() == 2
