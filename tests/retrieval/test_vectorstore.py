@@ -4,6 +4,7 @@ Cubren "Persistencia de resultados":
   - Asociación entre chunk y embedding     -> CA-9.1, CA-9.2
   - Almacenamiento de embeddings generados -> CA-10.1 a CA-10.4
   - Validación de integridad de datos      -> CA-11.1, CA-11.2, CA-11.3
+  - Reprocesamiento de documentos fallidos -> CA-12.1, CA-12.2, CA-12.3
 """
 
 import pytest
