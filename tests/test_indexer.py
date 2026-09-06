@@ -128,3 +128,30 @@ def test_batch_embedding_generation_is_a_single_massive_operation_timed(
 
     assert mock_embedder.embed_batch.call_count == 1
     assert metrics.embeddings_elapsed_sec >= 0
+
+
+def test_reports_total_embeddings_generated_at_end_of_step(
+    processed_dir_with_docs, tmp_path
+):
+    """CA-6.3: Al finalizar la generación de embeddings, el sistema debe reportar la cantidad total de embeddings generados."""
+    from src.indexer import run_pipeline
+
+    mock_embedder = MagicMock()
+    mock_embedder.embed_batch.return_value = [[0.1] * 384] * 5
+    mock_vectorstore = MagicMock()
+    mock_vectorstore.count.return_value = 5
+
+    with patch("src.indexer.etl_run") as mock_etl_run:
+        mock_etl_run.return_value = MagicMock(
+            total_found=2, total_ok=2, total_errors=0, total_skipped=0
+        )
+        metrics = run_pipeline(
+            raw_dir=tmp_path / "raw",
+            processed_dir=processed_dir_with_docs,
+            vectorstore_dir=tmp_path / "vs",
+            manifest_path=tmp_path / "manifest.jsonl",
+            embedder=mock_embedder,
+            vectorstore=mock_vectorstore,
+        )
+
+    assert metrics.embeddings_generated == 5
