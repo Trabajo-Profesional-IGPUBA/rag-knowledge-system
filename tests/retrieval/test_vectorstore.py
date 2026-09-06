@@ -166,3 +166,17 @@ class TestVectorStore:
         result = store.search(_fake_embedding(), n_results=1)[0]
         for field in ("doc_id", "doc_type", "chunk_index", "source_path", "filename"):
             assert field in result["metadata"]
+
+    # -----------------------------------------------------------------
+    # Almacenamiento de embeddings generados
+    # -----------------------------------------------------------------
+
+    def test_can_index_single_fragment_with_text_embedding_and_metadata(self, store):
+        """CA-10.1: El sistema debe permitir indexar un fragmento individual (con su texto, embedding y metadata) en la base vectorial."""
+        store.add(
+            chunk_id="doc1::chunk_0",
+            text="Pérdida de circulación en Quintuco.",
+            embedding=_fake_embedding(),
+            metadata={"doc_id": "doc1", "doc_type": "ewrs"},
+        )
+        assert store.count() == 1
