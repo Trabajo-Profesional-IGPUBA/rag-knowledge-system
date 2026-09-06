@@ -1,5 +1,8 @@
 """
 Tests para src/indexer.py (run_pipeline)
+Cubren "Procesamiento de documentos":
+  - Generación de embeddings para chunks -> CA-5.1, CA-5.2
+  - Procesamiento batch de documentos    -> CA-6.1, CA-6.2, CA-6.3, CA-6.4
 """
 
 import json
