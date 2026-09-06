@@ -281,3 +281,22 @@ class TestVectorStore:
         """CA-11.3: El sistema no debe solicitar más resultados de los que existen actualmente en el índice, para evitar fallas cuando la base de datos contiene pocos elementos."""
         results = store.search(_fake_embedding(), n_results=5)
         assert results == []
+
+    # -----------------------------------------------------------------
+    # Reprocesamiento de documentos fallidos
+    # -----------------------------------------------------------------
+
+    def test_can_delete_all_fragments_of_a_specific_document(self, store):
+        """CA-12.1: El sistema debe permitir eliminar todos los fragmentos asociados a un documento específico, de modo que ese documento pueda reindexarse desde cero si su contenido cambió."""
+        store.add_batch(
+            chunk_ids=["doc1::chunk_0", "doc1::chunk_1", "doc2::chunk_0"],
+            texts=["texto 1", "texto 2", "texto 3"],
+            embeddings=[_fake_embedding()] * 3,
+            metadatas=[
+                {"doc_id": "doc1", "doc_type": "ewrs"},
+                {"doc_id": "doc1", "doc_type": "ewrs"},
+                {"doc_id": "doc2", "doc_type": "ewrs"},
+            ],
+        )
+        store.delete_by_doc("doc1")
+        assert store.count() == 1
