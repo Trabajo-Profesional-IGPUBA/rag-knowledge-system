@@ -6,7 +6,7 @@ logging.basicConfig(level=logging.INFO)
 
 from src.embeddings.corpus_loader import extract_test_texts, load_documents
 
-documents = load_documents("data/processed")
+documents = load_documents("data/processed.jsonl")
 test_texts = extract_test_texts(documents, max_docs=40)
 results = evaluate_models(test_texts)
 report = generate_report(results)
