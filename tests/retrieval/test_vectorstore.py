@@ -199,3 +199,16 @@ class TestVectorStore:
         """CA-10.2: El sistema debe permitir indexar un lote completo de fragmentos en una sola operación, sin realizar ninguna acción cuando el lote está vacío."""
         store.add_batch([], [], [], [])
         assert store.count() == 0
+
+    def test_storage_is_idempotent_reindexing_updates_not_duplicates(self, store):
+        """CA-10.3: El almacenamiento debe ser idempotente: volver a indexar un fragmento ya existente debe actualizar su contenido, no crear un registro duplicado."""
+        emb = _fake_embedding()
+        store.add("doc1::chunk_0", "texto", emb, {"doc_id": "doc1", "doc_type": "ewrs"})
+        store.add(
+            "doc1::chunk_0",
+            "texto actualizado",
+            emb,
+            {"doc_id": "doc1", "doc_type": "ewrs"},
+        )
+        assert store.count() == 1
+        assert store.search(emb, n_results=1)[0]["text"] == "texto actualizado"
