@@ -1,6 +1,6 @@
-from pathlib import Path
-import json
 import argparse
+import json
+from pathlib import Path
 
 DEFAULT_OUTPUT = Path("data/processed.jsonl")
 DEFAULT_DATA_DIR = Path("data/raw")

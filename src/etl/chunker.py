@@ -5,14 +5,16 @@ Estrategia: HybridChunker de Docling, tiene en cuenta la jerarquia del documento
 de crear los chunks.
 """
 
-import re
 import logging
+import re
 from dataclasses import dataclass
 from pathlib import Path
-from docling_core.transforms.chunker.hybrid_chunker import HybridChunker
+
 from docling.document_converter import DocumentConverter
+from docling_core.transforms.chunker.hybrid_chunker import HybridChunker
 from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
 from transformers import AutoTokenizer
+
 from src.etl.cleaner import normalize
 
 logger = logging.getLogger()

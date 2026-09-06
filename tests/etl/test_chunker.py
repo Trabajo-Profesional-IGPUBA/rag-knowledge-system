@@ -2,21 +2,21 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.etl.chunker import Chunk, DoclingHybridChunker, _PATTERNS
+from src.etl.chunker import _PATTERNS, Chunk, DoclingHybridChunker
 
 
 def make_chunk(**kwargs) -> Chunk:
     """Builds a Chunk with sensible defaults for unit tests."""
-    defaults = dict(
-        text="Loss of circulation detected in Quintuco formation.",
-        contextualized_text="Section: Operational Incidents\nLoss of circulation detected in Quintuco.",
-        source_file="data/ewr/EWR_PM104_2012.pdf",
-        source_hash="abc123",
-        page=1,
-        section="Operational Incidents",
-        chunk_index=0,
-        well="PM-104",
-    )
+    defaults = {
+        "text": "Loss of circulation detected in Quintuco formation.",
+        "contextualized_text": "Section: Operational Incidents\nLoss of circulation detected in Quintuco.",
+        "source_file": "data/ewr/EWR_PM104_2012.pdf",
+        "source_hash": "abc123",
+        "page": 1,
+        "section": "Operational Incidents",
+        "chunk_index": 0,
+        "well": "PM-104",
+    }
     defaults.update(kwargs)
     return Chunk(**defaults)
 

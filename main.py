@@ -9,11 +9,11 @@ LOG_DIR = ROOT_DIR / "logs"
 
 
 def run():
-    from src.embeddings.embedder import Embedder
-    from src.etl import DoclingHybridChunker
-    from src.etl import DocumentProcessor
-    from src.retrieval.vectorstore import VectorStore
     import logging
+
+    from src.embeddings.embedder import Embedder
+    from src.etl import DoclingHybridChunker, DocumentProcessor
+    from src.retrieval.vectorstore import VectorStore
 
     logger = logging.getLogger()
 
