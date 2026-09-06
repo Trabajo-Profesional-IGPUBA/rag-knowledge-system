@@ -212,3 +212,16 @@ class TestVectorStore:
         )
         assert store.count() == 1
         assert store.search(emb, n_results=1)[0]["text"] == "texto actualizado"
+
+    def test_stored_data_persists_across_separate_instances(self, tmp_path):
+        """CA-10.4: Los datos almacenados deben persistir en disco y estar disponibles en corridas o procesos posteriores, sin necesidad de mantener viva la misma instancia del componente de almacenamiento entre ejecuciones."""
+        path = tmp_path / "vs"
+        s1 = VectorStore(path)
+        s1.add(
+            "doc1::chunk_0",
+            "texto",
+            _fake_embedding(),
+            {"doc_id": "doc1", "doc_type": "ewrs"},
+        )
+        s2 = VectorStore(path)
+        assert s2.count() == 1
