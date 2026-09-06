@@ -250,3 +250,17 @@ class TestVectorStore:
             metadatas=[{"doc_id": "doc1"}, {"doc_id": "doc1"}],
         )
         assert store.count() == 2
+
+    def test_search_result_includes_all_expected_fields_even_with_few_items(
+        self, store
+    ):
+        """CA-11.2: Al buscar fragmentos relevantes, cada resultado devuelto debe incluir el identificador del fragmento, su texto, su metadata, la distancia calculada y el puntaje de similitud correspondiente, incluso cuando la base de datos tiene muy pocos elementos indexados."""
+        store.add(
+            "doc1::chunk_0",
+            "texto",
+            _fake_embedding(),
+            {"doc_id": "doc1", "doc_type": "ewrs"},
+        )
+        result = store.search(_fake_embedding(), n_results=1)[0]
+        for key in ("chunk_id", "text", "metadata", "distance", "score"):
+            assert key in result
