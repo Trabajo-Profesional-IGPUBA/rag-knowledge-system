@@ -5,7 +5,7 @@ from src.observability import setup_logging
 ROOT_DIR = Path(__file__).parent
 RAW_DIR = ROOT_DIR / "data" / "raw"
 VECTOR_STORE_PATH = ROOT_DIR / "data" / "vectorstore"
-LOG_DIR = ROOT_DIR / "logss"
+LOG_DIR = ROOT_DIR / "logs"
 
 
 def run():
