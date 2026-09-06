@@ -2,6 +2,7 @@
 Tests para src/retrieval/vectorstore.py
 Cubren "Persistencia de resultados":
   - Asociación entre chunk y embedding     -> CA-9.1, CA-9.2
+  - Almacenamiento de embeddings generados -> CA-10.1 a CA-10.4
 """
 
 import pytest
