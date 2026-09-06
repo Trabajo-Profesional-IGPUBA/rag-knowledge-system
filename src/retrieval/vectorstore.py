@@ -76,7 +76,17 @@ class VectorStore:
         """
         if not chunk_ids:
             return
-
+        lengths = {
+            "chunk_ids": len(chunk_ids),
+            "texts": len(texts),
+            "embeddings": len(embeddings),
+            "metadatas": len(metadatas),
+        }
+        if len(set(lengths.values())) > 1:
+            raise ValueError(
+                f"add_batch: chunk_ids, texts, embeddings y metadatas deben "
+                f"tener la misma longitud. Recibido: {lengths}"
+            )
         self._collection.upsert(
             ids=chunk_ids,
             documents=texts,
