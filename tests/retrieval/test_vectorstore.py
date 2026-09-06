@@ -180,3 +180,22 @@ class TestVectorStore:
             metadata={"doc_id": "doc1", "doc_type": "ewrs"},
         )
         assert store.count() == 1
+
+    def test_can_index_full_batch_in_single_operation(self, store):
+        """CA-10.2: El sistema debe permitir indexar un lote completo de fragmentos en una sola operación, sin realizar ninguna acción cuando el lote está vacío."""
+        store.add_batch(
+            chunk_ids=["doc1::chunk_0", "doc1::chunk_1", "doc2::chunk_0"],
+            texts=["texto 1", "texto 2", "texto 3"],
+            embeddings=[_fake_embedding()] * 3,
+            metadatas=[
+                {"doc_id": "doc1", "doc_type": "ewrs"},
+                {"doc_id": "doc1", "doc_type": "ewrs"},
+                {"doc_id": "doc2", "doc_type": "parte_diario"},
+            ],
+        )
+        assert store.count() == 3
+
+    def test_indexing_empty_batch_does_nothing(self, store):
+        """CA-10.2: El sistema debe permitir indexar un lote completo de fragmentos en una sola operación, sin realizar ninguna acción cuando el lote está vacío."""
+        store.add_batch([], [], [], [])
+        assert store.count() == 0
