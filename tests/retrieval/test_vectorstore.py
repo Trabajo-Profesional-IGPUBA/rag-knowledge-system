@@ -146,3 +146,21 @@ class TestVectorStore:
         result = store.search([0.9] * 384, n_results=1)[0]
         assert result["chunk_id"] == "doc1::chunk_1"
         assert result["text"] == "texto B"
+
+    def test_stored_metadata_includes_minimum_required_fields(self, store):
+        """CA-9.2: La metadata almacenada junto a cada fragmento debe incluir como mínimo el identificador del documento, su tipo, la posición del fragmento dentro del documento, la ruta de origen y el nombre de archivo."""
+        store.add(
+            chunk_id="doc1::chunk_0",
+            text="texto",
+            embedding=_fake_embedding(),
+            metadata={
+                "doc_id": "doc1",
+                "doc_type": "ewrs",
+                "chunk_index": 0,
+                "source_path": "/raw/doc1.pdf",
+                "filename": "doc1.pdf",
+            },
+        )
+        result = store.search(_fake_embedding(), n_results=1)[0]
+        for field in ("doc_id", "doc_type", "chunk_index", "source_path", "filename"):
+            assert field in result["metadata"]
