@@ -1,3 +1,7 @@
+"""
+Tests para src/retrieval/vectorstore.py
+"""
+
 import pytest
 
 from src.retrieval.vectorstore import VectorStore
@@ -126,3 +130,19 @@ class TestVectorStore:
         )
         s2 = VectorStore(path)
         assert s2.count() == 1
+
+    # -----------------------------------------------------------------
+    # Asociación entre chunk y embedding
+    # -----------------------------------------------------------------
+
+    def test_embedding_associated_to_fragment_by_position_before_storing(self, store):
+        """CA-9.1: Antes de almacenar los resultados, cada embedding generado debe quedar asociado a su fragmento de origen (identificador, texto y metadata correspondientes), manteniendo esa correspondencia por posición."""
+        store.add_batch(
+            chunk_ids=["doc1::chunk_0", "doc1::chunk_1"],
+            texts=["texto A", "texto B"],
+            embeddings=[[0.1] * 384, [0.9] * 384],
+            metadatas=[{"doc_id": "doc1"}, {"doc_id": "doc1"}],
+        )
+        result = store.search([0.9] * 384, n_results=1)[0]
+        assert result["chunk_id"] == "doc1::chunk_1"
+        assert result["text"] == "texto B"
