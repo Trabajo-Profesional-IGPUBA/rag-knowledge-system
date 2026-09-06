@@ -22,3 +22,18 @@ def test_one_embedding_generated_per_fragment_with_correspondence():
 
     assert len(embeddings) == len(chunks)
     assert all(c.chunk_id.startswith("doc1::chunk_") for c in chunks)
+
+
+def test_vectorized_content_is_full_fragment_including_overlap():
+    """CA-5.2: El texto que se vectoriza debe ser el contenido completo de cada fragmento (incluyendo la superposición agregada entre fragmentos consecutivos), no el texto original del documento sin dividir."""
+    text = "A" * 500 + "\n\n" + "B" * 500 + "\n\n" + "C" * 500
+    chunks = chunk_split(
+        doc_id="doc1", doc_type="ewrs", text=text, max_chars=600, overlap_chars=100
+    )
+    embedder = MagicMock()
+    texts_sent = [c.text for c in chunks]
+    embedder.embed_batch(texts_sent)
+
+    called_texts = embedder.embed_batch.call_args[0][0]
+    assert called_texts == texts_sent
+    assert any(t != text for t in called_texts)
