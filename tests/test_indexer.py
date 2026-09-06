@@ -155,3 +155,38 @@ def test_reports_total_embeddings_generated_at_end_of_step(
         )
 
     assert metrics.embeddings_generated == 5
+
+
+def test_unreadable_document_skipped_with_warning_without_aborting(tmp_path, caplog):
+    """CA-6.4: Si un documento procesado no puede leerse o su contenido está mal formado, el sistema debe omitirlo con una advertencia y continuar generando embeddings para el resto del corpus, sin abortar el proceso completo."""
+    from src.indexer import run_pipeline
+
+    processed_dir = tmp_path / "processed"
+    processed_dir.mkdir()
+    (processed_dir / "bueno.json").write_text(
+        json.dumps({"doc_id": "d1", "doc_type": "ewrs", "text": "texto ok"}),
+        encoding="utf-8",
+    )
+    (processed_dir / "roto.json").write_text("{esto no es json", encoding="utf-8")
+
+    mock_embedder = MagicMock()
+    mock_embedder.embed_batch.return_value = [[0.1] * 384]
+    mock_vectorstore = MagicMock()
+    mock_vectorstore.count.return_value = 1
+
+    with patch("src.indexer.etl_run") as mock_etl_run:
+        mock_etl_run.return_value = MagicMock(
+            total_found=2, total_ok=2, total_errors=0, total_skipped=0
+        )
+        with caplog.at_level("WARNING"):
+            run_pipeline(
+                raw_dir=tmp_path / "raw",
+                processed_dir=processed_dir,
+                vectorstore_dir=tmp_path / "vs",
+                manifest_path=tmp_path / "manifest.jsonl",
+                embedder=mock_embedder,
+                vectorstore=mock_vectorstore,
+            )
+
+    assert "roto.json" in caplog.text or "No se pudo leer" in caplog.text
+    mock_embedder.embed_batch.assert_called_once()
