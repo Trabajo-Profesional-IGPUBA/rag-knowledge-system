@@ -100,3 +100,31 @@ def test_indexing_process_gathers_parallel_sets_before_vectorizing(
         == len(add_batch_kwargs["texts"])
         == len(add_batch_kwargs["metadatas"])
     )
+
+
+def test_batch_embedding_generation_is_a_single_massive_operation_timed(
+    processed_dir_with_docs, tmp_path
+):
+    """CA-6.2: La generación de embeddings de todo el lote de documentos debe realizarse en una sola operación de vectorización masiva, registrando el tiempo total que demanda ese paso."""
+    from src.indexer import run_pipeline
+
+    mock_embedder = MagicMock()
+    mock_embedder.embed_batch.return_value = [[0.1] * 384] * 10
+    mock_vectorstore = MagicMock()
+    mock_vectorstore.count.return_value = 4
+
+    with patch("src.indexer.etl_run") as mock_etl_run:
+        mock_etl_run.return_value = MagicMock(
+            total_found=2, total_ok=2, total_errors=0, total_skipped=0
+        )
+        metrics = run_pipeline(
+            raw_dir=tmp_path / "raw",
+            processed_dir=processed_dir_with_docs,
+            vectorstore_dir=tmp_path / "vs",
+            manifest_path=tmp_path / "manifest.jsonl",
+            embedder=mock_embedder,
+            vectorstore=mock_vectorstore,
+        )
+
+    assert mock_embedder.embed_batch.call_count == 1
+    assert metrics.embeddings_elapsed_sec >= 0
