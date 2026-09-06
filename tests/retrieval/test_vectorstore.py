@@ -264,3 +264,19 @@ class TestVectorStore:
         result = store.search(_fake_embedding(), n_results=1)[0]
         for key in ("chunk_id", "text", "metadata", "distance", "score"):
             assert key in result
+
+    def test_does_not_request_more_results_than_available_in_index(self, store):
+        """CA-11.3: El sistema no debe solicitar más resultados de los que existen actualmente en el índice, para evitar fallas cuando la base de datos contiene pocos elementos."""
+        store.add(
+            "doc1::chunk_0",
+            "texto",
+            _fake_embedding(),
+            {"doc_id": "doc1", "doc_type": "ewrs"},
+        )
+        results = store.search(_fake_embedding(), n_results=50)
+        assert len(results) == 1
+
+    def test_searching_empty_index_does_not_raise(self, store):
+        """CA-11.3: El sistema no debe solicitar más resultados de los que existen actualmente en el índice, para evitar fallas cuando la base de datos contiene pocos elementos."""
+        results = store.search(_fake_embedding(), n_results=5)
+        assert results == []
