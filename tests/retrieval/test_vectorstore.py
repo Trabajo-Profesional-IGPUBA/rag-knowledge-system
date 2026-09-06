@@ -300,3 +300,14 @@ class TestVectorStore:
         )
         store.delete_by_doc("doc1")
         assert store.count() == 1
+
+    def test_can_clear_and_recreate_entire_index(self, store):
+        """CA-12.2: El sistema debe permitir vaciar y recrear por completo el índice, para reprocesar todo el corpus en caso de cambiar el modelo de embeddings (y por lo tanto la dimensión de los vectores)."""
+        store.add(
+            "doc1::chunk_0",
+            "texto",
+            _fake_embedding(),
+            {"doc_id": "doc1", "doc_type": "ewrs"},
+        )
+        store.reset()
+        assert store.count() == 0
