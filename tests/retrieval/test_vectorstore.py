@@ -8,8 +8,9 @@ Cubren "Épica: Migración del motor de base de datos vectorial: ChromaDB → Qd
 """
 
 import pytest
+from qdrant_client.models import FieldCondition, Filter, MatchAny, MatchValue
 
-from src.retrieval.vectorstore import VectorStore, _to_point_id
+from src.retrieval.vectorstore import VectorStore, _build_filter, _to_point_id
 
 
 @pytest.fixture
@@ -115,3 +116,35 @@ class TestVectorStore:
         """CA-3.4: Indexar un lote vacío no debe producir error ni efecto alguno."""
         store.add_batch([], [], [], [])
         assert store.count() == 0
+
+    # -----------------------------------------------------------------
+    # Filtrado por metadata
+    # -----------------------------------------------------------------
+
+    def test_build_filter_exact_match(self):
+        """CA-4.1: El sistema debe permitir filtrar resultados por un valor exacto de metadata."""
+        filters = {"doc_type": "parte_diario"}
+        expected = Filter(
+            must=[
+                FieldCondition(key="doc_type", match=MatchValue(value="parte_diario"))
+            ]
+        )
+        assert _build_filter(filters) == expected
+
+    def test_build_filter_in_set_match(self):
+        """CA-4.2: El sistema debe permitir filtrar resultados por pertenencia a un conjunto de valores posibles de metadata."""
+        filters = {"doc_type": {"$in": ["ewrs", "workover_report"]}}
+        expected = Filter(
+            must=[
+                FieldCondition(
+                    key="doc_type",
+                    match=MatchAny(any=["ewrs", "workover_report"]),
+                )
+            ]
+        )
+        assert _build_filter(filters) == expected
+
+    def test_build_filter_returns_none_when_empty(self):
+        """CA-4.3: Una búsqueda sin filtros debe comportarse igual que antes de introducir el soporte de filtrado."""
+        assert _build_filter(None) is None
+        assert _build_filter({}) is None
