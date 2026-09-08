@@ -50,3 +50,7 @@ class VectorStore:
 
     def count(self) -> int:
         return self._client.count(collection_name=COLLECTION_NAME).count
+
+    def close(self) -> None:
+        """Cierra la conexión del cliente Qdrant explícitamente."""
+        self._client.close()
