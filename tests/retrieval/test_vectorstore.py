@@ -250,6 +250,26 @@ class TestVectorStore:
         assert len(store.search(_fake_embedding(), n_results=50)) == 1
 
     # -----------------------------------------------------------------
+    # Borrado de la base vectorial
+    # -----------------------------------------------------------------
+
+    def test_can_delete_all_fragments_of_a_document(self, store):
+        """CA-6.1: permite eliminar todos los chunks de un documento específico."""
+        store.add_batch(
+            chunk_ids=["doc1::chunk_0", "doc2::chunk_0"],
+            texts=["texto 1", "texto 2"],
+            embeddings=[_fake_embedding()] * 2,
+            metadatas=[{"doc_id": "doc1"}, {"doc_id": "doc2"}],
+        )
+        store.delete_by_doc("doc1")
+        assert store.count() == 1
+
+    def test_deleting_nonexistent_doc_does_not_raise(self, store):
+        """CA-6.2: borrar un documento inexistente no produce error."""
+        store.delete_by_doc("doc_que_no_existe")
+        assert store.count() == 0
+
+    # -----------------------------------------------------------------
     # Cierre de recursos
     # -----------------------------------------------------------------
 
