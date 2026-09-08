@@ -6,6 +6,8 @@ Cubren "Épica: Migración del motor de base de datos vectorial: ChromaDB → Qd
   - Identificación de chunks  -> CA-2.1 a CA-2.3
   - Indexación de chunks  -> CA-3.1 a CA-3.4
   - Filtrado por metadata -> CA-4.1 a CA-4.3
+  - Recuperación semántica -> CA-5.1 a CA-5.5
+  - Cierre de recursos -> CA-7.1 a CA-7.2
 """
 
 import pytest
