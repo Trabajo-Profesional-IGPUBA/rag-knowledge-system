@@ -270,6 +270,14 @@ class TestVectorStore:
         store.delete_by_doc("doc_que_no_existe")
         assert store.count() == 0
 
+    def test_can_reset_index_completely(self, store):
+        """CA-6.3: permite reiniciar completamente la base vectorial."""
+        store.add("doc1::chunk_0", "texto", _fake_embedding(), {"doc_id": "doc1"})
+        store.reset()
+        assert store.count() == 0
+        store.add("doc1::chunk_0", "texto", _fake_embedding(), {"doc_id": "doc1"})
+        assert store.count() == 1
+
     # -----------------------------------------------------------------
     # Cierre de recursos
     # -----------------------------------------------------------------
