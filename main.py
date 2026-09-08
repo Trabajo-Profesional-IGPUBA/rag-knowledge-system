@@ -30,8 +30,11 @@ def run():
         embedder=embedder,
     )
 
-    for file in RAW_DIR.rglob("*.pdf"):
-        document_processor.process_file(file)
+    try:
+        for file in RAW_DIR.rglob("*.pdf"):
+            document_processor.process_file(file)
+    finally:
+        vector_store.close()
 
 
 if __name__ == "__main__":
