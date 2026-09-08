@@ -131,6 +131,48 @@ class VectorStore:
         self._client.upsert(collection_name=COLLECTION_NAME, points=points)
         log.info("Indexados %d chunks en vectorstore", len(chunk_ids))
 
+    # ── Recuperación semántica ───────────────────────────────────────────
+
+    def search(
+        self,
+        query_embedding: list[float],
+        n_results: int = 5,
+        filters: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        """
+        Recupera los chunks más relevantes por similitud semántica.
+        Devuelve: chunk_id, text, metadata, distance, score.
+        """
+        total = self.count()
+        if total == 0:
+            return []
+
+        results = self._client.query_points(
+            collection_name=COLLECTION_NAME,
+            query=query_embedding,
+            limit=min(n_results, total),
+            query_filter=_build_filter(filters),
+            with_payload=True,
+        ).points
+
+        hits = []
+        for point in results:
+            payload = dict(point.payload or {})
+            chunk_id = payload.pop("chunk_id", str(point.id))
+            text = payload.pop("text", "")
+            score = round(point.score, 4)
+            distance = round(1 - point.score, 4)
+            hits.append(
+                {
+                    "chunk_id": chunk_id,
+                    "text": text,
+                    "metadata": payload,
+                    "distance": distance,
+                    "score": score,
+                }
+            )
+        return hits
+
     def close(self) -> None:
         """Cierra la conexión del cliente Qdrant explícitamente."""
         self._client.close()
