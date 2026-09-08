@@ -8,8 +8,19 @@ sin mockear nada: simula el ciclo de vida completo tal como lo usaría el pipeli
 from src.retrieval.vectorstore import VectorStore
 
 
-def _fake_embedding(seed: float, dim: int = 384) -> list[float]:
-    return [seed] * dim
+def _direction_a(dim: int = 384) -> list[float]:
+    """Vector base: dirección A."""
+    return [1.0, 0.0] * (dim // 2)
+
+
+def _direction_a_close(dim: int = 384) -> list[float]:
+    """Vector muy cercano a la dirección A (alta similitud coseno)."""
+    return [0.95, 0.05] * (dim // 2)
+
+
+def _direction_b_orthogonal(dim: int = 384) -> list[float]:
+    """Vector ortogonal a A (similitud coseno ≈ 0)."""
+    return [0.0, 1.0] * (dim // 2)
 
 
 class TestVectorStoreIntegration:
@@ -32,6 +43,10 @@ class TestVectorStoreIntegration:
         store = VectorStore(path)
         assert store.count() == 0
 
+        query_vector = _direction_a()
+        close_vector = _direction_a_close()
+        far_vector = _direction_b_orthogonal()
+
         # 2. Indexación de un lote mixto
         store.add_batch(
             chunk_ids=["ewr_001::chunk_0", "ewr_001::chunk_1", "parte_002::chunk_0"],
@@ -40,11 +55,7 @@ class TestVectorStoreIntegration:
                 "Se detecta gas en superficie, monitoreo continuo.",
                 "Parte diario: turno noche sin novedades.",
             ],
-            embeddings=[
-                _fake_embedding(0.9),
-                _fake_embedding(0.85),
-                _fake_embedding(0.1),
-            ],
+            embeddings=[close_vector, far_vector, far_vector],
             metadatas=[
                 {"doc_id": "ewr_001", "doc_type": "ewrs", "chunk_index": 0},
                 {"doc_id": "ewr_001", "doc_type": "ewrs", "chunk_index": 1},
@@ -54,11 +65,11 @@ class TestVectorStoreIntegration:
         assert store.count() == 3
 
         # 3. Búsqueda semántica con filtro
-        results = store.search(
-            _fake_embedding(0.9), n_results=5, filters={"doc_type": "ewrs"}
-        )
+        results = store.search(query_vector, n_results=5, filters={"doc_type": "ewrs"})
         assert len(results) == 2
-        assert results[0]["chunk_id"] == "ewr_001::chunk_0"  # más cercano al query
+        # chunk_0 (close_vector) es inequívocamente más similar a query_vector
+        # que chunk_1 (far_vector, ortogonal) — no hay empate de score posible.
+        assert results[0]["chunk_id"] == "ewr_001::chunk_0"
         for key in ("chunk_id", "text", "metadata", "distance", "score"):
             assert key in results[0]
         assert all(r["metadata"]["doc_type"] == "ewrs" for r in results)
@@ -70,7 +81,7 @@ class TestVectorStoreIntegration:
         store.add(
             "ewr_001::chunk_0",
             "Pérdida de circulación corregida y ampliada.",
-            _fake_embedding(0.9),
+            close_vector,
             {"doc_id": "ewr_001", "doc_type": "ewrs", "chunk_index": 0},
         )
         assert store.count() == 2  # no duplica, reemplaza
@@ -79,13 +90,13 @@ class TestVectorStoreIntegration:
         store.close()
         store_reopened = VectorStore(path)
         assert store_reopened.count() == 2
-        reopened_result = store_reopened.search(_fake_embedding(0.9), n_results=1)[0]
+        reopened_result = store_reopened.search(query_vector, n_results=1)[0]
         assert reopened_result["text"] == "Pérdida de circulación corregida y ampliada."
 
         # 6. Reinicio completo del índice (ej. cambio de modelo de embeddings)
         store_reopened.reset()
         assert store_reopened.count() == 0
-        assert store_reopened.search(_fake_embedding(0.9), n_results=5) == []
+        assert store_reopened.search(query_vector, n_results=5) == []
 
         # 7. Cierre explícito sin errores
         store_reopened.close()
