@@ -25,6 +25,7 @@ from qdrant_client.models import (
     Distance,
     FieldCondition,
     Filter,
+    FilterSelector,
     MatchAny,
     MatchValue,
     VectorParams,
@@ -172,6 +173,20 @@ class VectorStore:
                 }
             )
         return hits
+
+    # ── Borrado ───────────────────────────────────────────────
+
+    def delete_by_doc(self, doc_id: str) -> None:
+        """Elimina todos los chunks de un documento."""
+        self._client.delete(
+            collection_name=COLLECTION_NAME,
+            points_selector=FilterSelector(
+                filter=Filter(
+                    must=[FieldCondition(key="doc_id", match=MatchValue(value=doc_id))]
+                )
+            ),
+        )
+        log.info("Chunks eliminados para doc_id=%s", doc_id)
 
     def close(self) -> None:
         """Cierra la conexión del cliente Qdrant explícitamente."""
