@@ -1,16 +1,35 @@
 """
 Módulo de base de datos vectorial.
 
-Motor seleccionado: ChromaDB (modo embebido)
-  - Corre 100% local sin Docker ni servidor externo.
-  - Persiste automáticamente con SQLite.
-  - Soporte nativo de filtros por metadata (doc_type, doc_id, chunk_index).
-  - Integración directa con sentence-transformers.
+Motor seleccionado: Qdrant
+  - Corre 100% local sin servidor externo (QdrantClient(path=...)).
+  - Persiste automáticamente en disco.
+  - Soporte nativo de filtros por metadata (doc_type, doc_id, chunk_index)
+    vía Filter/FieldCondition.
+  - Mismo código funciona en modo local o contra un servidor Qdrant real
+    (Docker o Qdrant Cloud) cambiando únicamente la inicialización del
+    cliente (path= vs host/port o url=).
+  - Los embeddings se generan externamente (componente Embedder, basado en
+    sentence-transformers) y se reciben ya calculados en add()/add_batch().
+    Se optó por este diseño para desacoplar la generación de embeddings
+    del motor de almacenamiento: permite migrar de backend vectorial
+    (como ya ocurrió de Chroma a Qdrant) sin reescribir ni regenerar el
+    corpus, y facilita testear el store con vectores fijos/determinísticos.
+    Este módulo no usa el soporte de embebido automático que trae
+    qdrant-client (FastEmbed, basado en ONNX Runtime, no en
+    sentence-transformers) ni ninguna integración directa con esa librería.
 
-Alternativas evaluadas (ver épica #9):
-  - FAISS: sin persistencia nativa ni filtros de metadata, descartado.
-  - Qdrant: mejor para producción con filtros complejos, candidato futuro.
-  - Weaviate: requiere Docker, overhead innecesario para esta etapa.
+Motor anterior: ChromaDB
+  - Persistía en modo local usando SQLite.
+  - Este módulo tampoco usaba su soporte de embebido automático
+    (EmbeddingFunction): los embeddings ya llegaban calculados.
+  - Se migra a Qdrant sin cambiar la interfaz pública de esta clase, por
+    lo que el resto del pipeline no requiere modificaciones.
+
+Alternativas evaluadas:
+  - FAISS: no incluye persistencia en disco ni filtrado por metadata
+    como funcionalidad propia; descartada.
+  - Weaviate: overhead innecesario para esta etapa.
 """
 
 from __future__ import annotations
