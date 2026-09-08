@@ -16,6 +16,7 @@ Alternativas evaluadas (ver épica #9):
 from __future__ import annotations
 
 import logging
+import uuid
 from pathlib import Path
 
 from qdrant_client import QdrantClient
@@ -24,6 +25,13 @@ from qdrant_client.models import Distance, VectorParams
 log = logging.getLogger(__name__)
 
 COLLECTION_NAME = "rag_knowledge"
+
+_ID_NAMESPACE = uuid.UUID("6f8f0b1e-6b8b-4e2f-9f1e-1a2b3c4d5e6f")
+
+
+def _to_point_id(chunk_id: str) -> str:
+    """Convierte un chunk_id arbitrario en un UUID determinístico válido para Qdrant."""
+    return str(uuid.uuid5(_ID_NAMESPACE, chunk_id))
 
 
 class VectorStore:
