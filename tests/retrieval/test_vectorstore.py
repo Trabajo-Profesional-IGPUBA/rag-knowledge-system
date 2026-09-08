@@ -48,9 +48,69 @@ class TestVectorStore:
     # Identificación de chunks
     # -----------------------------------------------------------------
 
+    def test_accepts_domain_defined_chunk_id_format(self, store):
+        """CA-2.1: El sistema debe admitir identificadores de chunk definidos por el dominio,
+        incluso si el motor subyacente exige un formato de identificador distinto."""
+        store.add("doc1::chunk_0", "texto", _fake_embedding(), {"doc_id": "doc1"})
+        assert store.count() == 1
+
+    def test_domain_chunk_id_is_recoverable(self, store):
+        """CA-2.2: El identificador de dominio debe conservarse y ser recuperable en los resultados
+        de búsqueda, independientemente del identificador interno usado por el motor."""
+        store.add("doc1::chunk_0", "texto", _fake_embedding(), {"doc_id": "doc1"})
+        assert store.count() == 1
+
+    def test_same_chunk_id_maps_to_same_internal_record(self, store):
+        """CA-2.3: El mismo identificador de chunk debe mapear siempre al mismo
+        registro interno, para sostener la idempotencia de la indexación."""
+        emb = _fake_embedding()
+        store.add("doc1::chunk_0", "texto", emb, {"doc_id": "doc1"})
+        store.add("doc1::chunk_0", "texto actualizado", emb, {"doc_id": "doc1"})
+        assert store.count() == 1
+
     def test_to_point_id_is_deterministic(self):
         """CA-2.3: El mismo identificador de chunk debe mapear siempre al mismo
         registro interno, para sostener la idempotencia de la indexación."""
         uuid1 = _to_point_id("doc1::chunk_0")
         uuid2 = _to_point_id("doc1::chunk_0")
         assert uuid1 == uuid2
+
+    # -----------------------------------------------------------------
+    # Indexación de chunks
+    # -----------------------------------------------------------------
+
+    def test_can_index_single_chunk(self, store):
+        """CA-3.1: El sistema debe permitir indexar un chunk individual."""
+        store.add(
+            "doc1::chunk_0",
+            "Pérdida de circulación en Quintuco.",
+            _fake_embedding(),
+            {"doc_id": "doc1", "doc_type": "ewrs"},
+        )
+        assert store.count() == 1
+
+    def test_can_index_batch_in_single_operation(self, store):
+        """CA-3.2: El sistema debe permitir indexar un lote de chunks en una sola operación."""
+        store.add_batch(
+            chunk_ids=["doc1::chunk_0", "doc1::chunk_1", "doc2::chunk_0"],
+            texts=["texto 1", "texto 2", "texto 3"],
+            embeddings=[_fake_embedding()] * 3,
+            metadatas=[
+                {"doc_id": "doc1", "doc_type": "ewrs"},
+                {"doc_id": "doc1", "doc_type": "ewrs"},
+                {"doc_id": "doc2", "doc_type": "parte_diario"},
+            ],
+        )
+        assert store.count() == 3
+
+    def test_reindexing_is_idempotent_not_duplicated(self, store):
+        """CA-3.3: Reprocesar un chunk ya indexado no debe generar duplicados (comportamiento idempotente)."""
+        emb = _fake_embedding()
+        store.add("doc1::chunk_0", "texto", emb, {"doc_id": "doc1"})
+        store.add("doc1::chunk_0", "texto actualizado", emb, {"doc_id": "doc1"})
+        assert store.count() == 1
+
+    def test_indexing_empty_batch_has_no_effect(self, store):
+        """CA-3.4: Indexar un lote vacío no debe producir error ni efecto alguno."""
+        store.add_batch([], [], [], [])
+        assert store.count() == 0
