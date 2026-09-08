@@ -18,9 +18,13 @@ from __future__ import annotations
 import logging
 import uuid
 from pathlib import Path
+from typing import Any
 
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams
+from qdrant_client.models import (
+    Distance,
+    VectorParams,
+)
 
 log = logging.getLogger(__name__)
 
@@ -58,6 +62,49 @@ class VectorStore:
 
     def count(self) -> int:
         return self._client.count(collection_name=COLLECTION_NAME).count
+
+    # ── Indexación ────────────────────────────────────────────────────────
+
+    def add(
+        self,
+        chunk_id: str,
+        text: str,
+        embedding: list[float],
+        metadata: dict[str, Any],
+    ) -> None:
+        """Indexa un chunk individual."""
+        self.add_batch(
+            chunk_ids=[chunk_id],
+            texts=[text],
+            embeddings=[embedding],
+            metadatas=[metadata],
+        )
+
+    def add_batch(
+        self,
+        chunk_ids: list[str],
+        texts: list[str],
+        embeddings: list[list[float]],
+        metadatas: list[dict[str, Any]],
+    ) -> None:
+        """Indexa un lote de chunks. Idempotente vía upsert."""
+        if not chunk_ids:
+            return
+
+        from qdrant_client.models import PointStruct
+
+        points = [
+            PointStruct(
+                id=_to_point_id(chunk_id),
+                vector=embedding,
+                payload={**metadata, "chunk_id": chunk_id, "text": text},
+            )
+            for chunk_id, embedding, metadata, text in zip(
+                chunk_ids, embeddings, metadatas, texts
+            )
+        ]
+        self._client.upsert(collection_name=COLLECTION_NAME, points=points)
+        log.info("Indexados %d chunks en vectorstore", len(chunk_ids))
 
     def close(self) -> None:
         """Cierra la conexión del cliente Qdrant explícitamente."""
