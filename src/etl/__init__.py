@@ -1,20 +1,10 @@
-from .batch import BatchResult, run
-from .chunker import Chunk, split
-from .cleaner import extract_metadata_hints, normalize
-from .models import PageData, ProcessedDoc
-from .ocr import extract_text_from_page, needs_ocr
-from .reader import extract
+from .chunker import Chunk, DoclingHybridChunker
+from .cleaner import normalize
+from .document_processor import DocumentProcessor
 
 __all__ = [
-    "BatchResult",
     "Chunk",
-    "PageData",
-    "ProcessedDoc",
-    "extract",
-    "extract_metadata_hints",
-    "extract_text_from_page",
-    "needs_ocr",
+    "DoclingHybridChunker",
+    "DocumentProcessor",
     "normalize",
-    "run",
-    "split",
 ]

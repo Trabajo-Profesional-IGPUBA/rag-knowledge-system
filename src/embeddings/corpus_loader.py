@@ -2,22 +2,24 @@ import json
 from pathlib import Path
 
 
-def load_documents(data_dir: str = "data/processed") -> list[dict]:
+def load_documents(data_path: str = "data/processed.jsonl") -> list[dict]:
     """Carga todos los JSON de data_dir (recursivamente) como lista de dicts, agregando la ruta de origen en '_source_file'."""
-    docs = []
-    base = Path(data_dir)
-    if not base.exists():
-        raise FileNotFoundError(f"Directory {data_dir} does not exist")
+    path = Path(data_path)
+    if not path.exists():
+        raise FileNotFoundError(f"File {data_path} does not exist")
 
-    for path in sorted(base.rglob("*.json")):
-        with open(path, encoding="utf-8") as f:
-            try:
-                data = json.load(f)
-            except json.JSONDecodeError as e:
-                print(f"⚠️  {path} is not valid JSON, skipping: {e}")
-                continue
-            data["_source_file"] = str(path)
-            docs.append(data)
+    docs = []
+    for i, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            data = json.loads(line)
+        except json.JSONDecodeError as e:
+            print(f"⚠️  Line {i} is not valid JSON, skipping: {e}")
+            continue
+        data["_source_file"] = str(path)
+        docs.append(data)
 
     return docs
 

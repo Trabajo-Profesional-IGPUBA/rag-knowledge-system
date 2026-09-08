@@ -60,27 +60,3 @@ def normalize(text: str) -> str:
     text = _MULTI_NEWLINE.sub("\n\n", text)
 
     return text.strip()
-
-
-def extract_metadata_hints(text: str) -> dict[str, str]:
-    """
-    Intenta extraer hints de metadata del texto normalizado.
-    Busca patrones como 'POZO: PM-104', 'AÑO: 2021', etc.
-    """
-    hints: dict[str, str] = {}
-
-    patterns = {
-        "pozo": re.compile(r"(?:POZO|Pozo)[:\s]+([A-Z]{2,4}-\d{2,4})", re.IGNORECASE),
-        "año": re.compile(r"(?:AÑO|Año)[:\s]+(\d{4})", re.IGNORECASE),
-        "tipo": re.compile(r"(?:TIPO|Tipo)[:\s]+(.+?)(?:\n|$)", re.IGNORECASE),
-        "seccion": re.compile(
-            r"(?:SECCIÓN|SECCION|Sección)[:\s]+(.+?)(?:\n|$)", re.IGNORECASE
-        ),
-    }
-
-    for key, pattern in patterns.items():
-        m = pattern.search(text)
-        if m:
-            hints[key] = m.group(1).strip()
-
-    return hints

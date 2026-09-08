@@ -70,38 +70,32 @@ def test_extract_test_texts_returns_all_when_max_docs_not_set():
 # ---------------------------------------------------------------------------
 
 
-def test_load_documents_reads_all_json_files_recursively(tmp_path):
-    """CA-13.1: El sistema debe cargar todos los documentos JSON de un
-    directorio de forma recursiva, agregando la ruta de origen (_source_file)
-    a cada documento cargado."""
-    (tmp_path / "sub").mkdir()
-    _write_json(tmp_path / "doc1.json", {"doc_id": "1", "text": "hola"})
-    _write_json(tmp_path / "sub" / "doc2.json", {"doc_id": "2", "text": "mundo"})
+def test_load_documents_reads_all_jsonl_documents(tmp_path):
+    """Carga todos los documentos JSON de un archivo JSONL."""
+    jsonl = tmp_path / "processed.jsonl"
+    jsonl.write_text(
+        '{"doc_id": "1", "text": "hola"}\n' '{"doc_id": "2", "text": "mundo"}\n',
+        encoding="utf-8",
+    )
 
-    docs = load_documents(str(tmp_path))
+    docs = load_documents(str(jsonl))
 
     assert len(docs) == 2
     assert {d["doc_id"] for d in docs} == {"1", "2"}
 
 
-def test_load_documents_adds_source_file_field(tmp_path):
-    """CA-13.1: El sistema debe cargar todos los documentos JSON de un
-    directorio de forma recursiva, agregando la ruta de origen (_source_file)
-    a cada documento cargado."""
-    _write_json(tmp_path / "doc1.json", {"doc_id": "1", "text": "hola"})
-
-    docs = load_documents(str(tmp_path))
-
-    assert docs[0]["_source_file"].endswith("doc1.json")
-
-
-def test_load_documents_uses_default_data_dir_when_not_specified(tmp_path, monkeypatch):
-    """CA-13.1 (valor por defecto): si no se especifica data_dir, el sistema
-    debe usar 'data/processed' como directorio por defecto."""
+def test_load_documents_uses_default_data_path_when_not_specified(
+    tmp_path, monkeypatch
+):
+    """Si no se especifica data_path, usa data/processed.jsonl."""
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "data" / "processed").mkdir(parents=True)
-    _write_json(
-        tmp_path / "data" / "processed" / "doc1.json", {"doc_id": "1", "text": "hola"}
+
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+
+    (data_dir / "processed.jsonl").write_text(
+        '{"doc_id": "1", "text": "hola"}\n',
+        encoding="utf-8",
     )
 
     docs = load_documents()
@@ -110,27 +104,51 @@ def test_load_documents_uses_default_data_dir_when_not_specified(tmp_path, monke
     assert docs[0]["doc_id"] == "1"
 
 
-def test_load_documents_raises_when_directory_does_not_exist(tmp_path):
-    """CA-13.2: Si el directorio especificado no existe, el sistema debe
-    lanzar un error explícito (FileNotFoundError)."""
-    missing_dir = tmp_path / "no_existe"
+def test_load_documents_raises_when_file_does_not_exist(tmp_path):
+    """Si el archivo especificado no existe, lanza FileNotFoundError."""
+    missing_file = tmp_path / "no_existe.jsonl"
 
     with pytest.raises(FileNotFoundError):
-        load_documents(str(missing_dir))
+        load_documents(str(missing_file))
 
 
 def test_load_documents_skips_malformed_json_without_crashing(tmp_path, capsys):
-    """CA-13.3: Si un archivo JSON está mal formado, el sistema debe omitirlo
-    con una advertencia, sin interrumpir la carga del resto del corpus."""
-    _write_json(tmp_path / "bueno.json", {"doc_id": "1", "text": "ok"})
-    (tmp_path / "malo.json").write_text("{ esto no es json valido", encoding="utf-8")
+    """Omite líneas JSON mal formadas sin interrumpir la carga."""
+    jsonl = tmp_path / "processed.jsonl"
 
-    docs = load_documents(str(tmp_path))
+    jsonl.write_text(
+        '{"doc_id": "1", "text": "ok"}\n'
+        "{ esto no es json valido\n"
+        '{"doc_id": "2", "text": "también ok"}\n',
+        encoding="utf-8",
+    )
 
-    assert len(docs) == 1
-    assert docs[0]["doc_id"] == "1"
+    docs = load_documents(str(jsonl))
+
+    assert len(docs) == 2
+    assert {d["doc_id"] for d in docs} == {"1", "2"}
+
     captured = capsys.readouterr()
-    assert "not valid JSON" in captured.out
+    assert "Line 2 is not valid JSON" in captured.out
+
+
+def test_load_documents_skips_empty_lines(tmp_path):
+    """Ignora líneas vacías del archivo JSONL."""
+    jsonl = tmp_path / "processed.jsonl"
+
+    jsonl.write_text(
+        "\n"
+        '{"doc_id": "1", "text": "hola"}\n'
+        "\n"
+        '{"doc_id": "2", "text": "mundo"}\n'
+        "\n",
+        encoding="utf-8",
+    )
+
+    docs = load_documents(str(jsonl))
+
+    assert len(docs) == 2
+    assert {d["doc_id"] for d in docs} == {"1", "2"}
 
 
 # ---------------------------------------------------------------------------

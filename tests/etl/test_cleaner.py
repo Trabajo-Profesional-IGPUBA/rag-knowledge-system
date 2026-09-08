@@ -1,4 +1,4 @@
-from src.etl.cleaner import extract_metadata_hints, normalize
+from src.etl.cleaner import normalize
 
 
 class TestNormalize:
@@ -53,21 +53,3 @@ class TestNormalize:
         assert "línea 1" in result
         assert "línea 2" in result
         assert "párrafo 2" in result
-
-
-class TestExtractMetadataHints:
-    def test_extracts_pozo(self):
-        hints = extract_metadata_hints("POZO: PM-104\ncontenido")
-        assert hints.get("pozo") == "PM-104"
-
-    def test_extracts_año(self):
-        hints = extract_metadata_hints("AÑO: 2021\ncontenido")
-        assert hints.get("año") == "2021"
-
-    def test_returns_empty_dict_when_no_hints(self):
-        hints = extract_metadata_hints("texto sin metadata estructurada")
-        assert hints == {}
-
-    def test_case_insensitive(self):
-        hints = extract_metadata_hints("pozo: LL-205")
-        assert "pozo" in hints
