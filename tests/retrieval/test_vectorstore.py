@@ -4,7 +4,8 @@ Tests para src/retrieval/vectorstore.py
 Cubren "Épica: Migración del motor de base de datos vectorial: ChromaDB → Qdrant":
   - Inicialización del motor -> CA-1.1 a CA-1.2
   - Identificación de chunks  -> CA-2.1 a CA-2.3
-  - Indexación de chunks  -> CA-3.1 a CA-3.2
+  - Indexación de chunks  -> CA-3.1 a CA-3.4
+  - Filtrado por metadata -> CA-4.1 a CA-4.3
 """
 
 import pytest
