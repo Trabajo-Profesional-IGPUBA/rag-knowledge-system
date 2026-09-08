@@ -1,6 +1,8 @@
 # tests/retrieval/test_vectorstore.py
 """
 Tests para src/retrieval/vectorstore.py
+Cubren "Épica: Migración del motor de base de datos vectorial: ChromaDB":
+  - Inicialización del motor -> CA-1.1 a CA-1.2
 """
 
 import pytest
