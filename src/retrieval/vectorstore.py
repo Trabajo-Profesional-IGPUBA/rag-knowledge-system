@@ -174,7 +174,7 @@ class VectorStore:
             )
         return hits
 
-    # ── Borrado ───────────────────────────────────────────────
+    # ── Borrado y reinicio ───────────────────────────────────────────────
 
     def delete_by_doc(self, doc_id: str) -> None:
         """Elimina todos los chunks de un documento."""
@@ -187,6 +187,17 @@ class VectorStore:
             ),
         )
         log.info("Chunks eliminados para doc_id=%s", doc_id)
+
+    def reset(self) -> None:
+        """Elimina y recrea la colección. Útil para reprocesar todo."""
+        self._client.delete_collection(COLLECTION_NAME)
+        self._client.create_collection(
+            collection_name=COLLECTION_NAME,
+            vectors_config=VectorParams(
+                size=self._embedding_dim, distance=Distance.COSINE
+            ),
+        )
+        log.info("VectorStore reiniciado")
 
     def close(self) -> None:
         """Cierra la conexión del cliente Qdrant explícitamente."""
