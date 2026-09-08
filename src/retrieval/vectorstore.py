@@ -23,6 +23,10 @@ from typing import Any
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Distance,
+    FieldCondition,
+    Filter,
+    MatchAny,
+    MatchValue,
     VectorParams,
 )
 
@@ -36,6 +40,27 @@ _ID_NAMESPACE = uuid.UUID("6f8f0b1e-6b8b-4e2f-9f1e-1a2b3c4d5e6f")
 def _to_point_id(chunk_id: str) -> str:
     """Convierte un chunk_id arbitrario en un UUID determinístico válido para Qdrant."""
     return str(uuid.uuid5(_ID_NAMESPACE, chunk_id))
+
+
+def _build_filter(filters: dict[str, Any] | None) -> Filter | None:
+    """
+    Traduce el formato de filtros usado en el dominio (dict simple, con
+    soporte de {"$in": [...]}"} a un Filter nativo de Qdrant.
+
+    Ej: {"doc_type": "parte_diario"}
+    Ej: {"doc_type": {"$in": ["ewrs", "workover_report"]}}
+    """
+    if not filters:
+        return None
+
+    conditions = []
+    for key, value in filters.items():
+        if isinstance(value, dict) and "$in" in value:
+            conditions.append(FieldCondition(key=key, match=MatchAny(any=value["$in"])))
+        else:
+            conditions.append(FieldCondition(key=key, match=MatchValue(value=value)))
+
+    return Filter(must=conditions)
 
 
 class VectorStore:
