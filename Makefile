@@ -3,7 +3,6 @@ TEST_IMAGE = rag-app-test
 UID       := $(shell id -u)
 GID       := $(shell id -g)
 USER_FLAG  = --user $(UID):$(GID)
-HF_HOME = 
 
 .PHONY: build build-test run test lint lint-check format format-check evaluate
 
