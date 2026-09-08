@@ -149,3 +149,114 @@ class TestVectorStore:
         """CA-4.3: Una búsqueda sin filtros debe comportarse igual que antes de introducir el soporte de filtrado."""
         assert _build_filter(None) is None
         assert _build_filter({}) is None
+
+    def test_filter_by_exact_metadata_value(self, store):
+        """CA-4.1: El sistema debe permitir filtrar resultados por un valor exacto de metadata."""
+        store.add_batch(
+            chunk_ids=["doc1::chunk_0", "doc2::chunk_0"],
+            texts=["parte diario", "informe EWR"],
+            embeddings=[_fake_embedding()] * 2,
+            metadatas=[
+                {"doc_id": "doc1", "doc_type": "parte_diario"},
+                {"doc_id": "doc2", "doc_type": "ewrs"},
+            ],
+        )
+        results = store.search(
+            _fake_embedding(), n_results=5, filters={"doc_type": "ewrs"}
+        )
+        assert all(r["metadata"]["doc_type"] == "ewrs" for r in results)
+
+    def test_filter_by_set_of_possible_values(self, store):
+        """CA-4.2: El sistema debe permitir filtrar resultados por pertenencia a un conjunto de valores posibles de metadata."""
+        store.add_batch(
+            chunk_ids=["doc1::chunk_0", "doc2::chunk_0", "doc3::chunk_0"],
+            texts=["a", "b", "c"],
+            embeddings=[_fake_embedding()] * 3,
+            metadatas=[
+                {"doc_id": "doc1", "doc_type": "ewrs"},
+                {"doc_id": "doc2", "doc_type": "workover_report"},
+                {"doc_id": "doc3", "doc_type": "parte_diario"},
+            ],
+        )
+        results = store.search(
+            _fake_embedding(),
+            n_results=5,
+            filters={"doc_type": {"$in": ["ewrs", "workover_report"]}},
+        )
+        doc_types = {r["metadata"]["doc_type"] for r in results}
+        assert doc_types.issubset({"ewrs", "workover_report"})
+        assert len(results) == 2
+
+    def test_search_without_filters_behaves_as_before(self, store):
+        """CA-4.3: Una búsqueda sin filtros debe comportarse igual que antes de introducir el soporte de filtrado."""
+        store.add_batch(
+            chunk_ids=["doc1::chunk_0", "doc2::chunk_0"],
+            texts=["a", "b"],
+            embeddings=[_fake_embedding()] * 2,
+            metadatas=[{"doc_id": "doc1"}, {"doc_id": "doc2"}],
+        )
+        assert len(store.search(_fake_embedding(), n_results=5)) == 2
+
+    # -----------------------------------------------------------------
+    # Recuperación semántica
+    # -----------------------------------------------------------------
+
+    def test_returns_most_relevant_chunks_by_similarity(self, store):
+        """CA-5.1: El sistema debe devolver los chunks más relevantes ordenados por
+        similitud semántica respecto a una consulta vectorizada."""
+        store.add_batch(
+            chunk_ids=["doc1::chunk_0", "doc1::chunk_1"],
+            texts=["texto A", "texto B"],
+            embeddings=[[0.1] * 384, [0.9] * 384],
+            metadatas=[{"doc_id": "doc1"}, {"doc_id": "doc1"}],
+        )
+        result = store.search([0.9] * 384, n_results=1)[0]
+        assert result["chunk_id"] == "doc1::chunk_1"
+
+    def test_respects_max_requested_results(self, store):
+        """CA-5.2: El sistema debe respetar la cantidad máxima de resultados solicitada."""
+        store.add_batch(
+            chunk_ids=["doc1::chunk_0", "doc2::chunk_0", "doc3::chunk_0"],
+            texts=["a", "b", "c"],
+            embeddings=[_fake_embedding()] * 3,
+            metadatas=[{"doc_id": "doc1"}, {"doc_id": "doc2"}, {"doc_id": "doc3"}],
+        )
+        assert len(store.search(_fake_embedding(), n_results=2)) == 2
+
+    def test_returns_empty_list_when_index_is_empty(self, store):
+        """CA-5.3: El sistema debe devolver una lista vacía si no hay documentos indexados, sin lanzar error."""
+        assert store.search(_fake_embedding(), n_results=5) == []
+
+    def test_result_contract_matches_previous_version(self, store):
+        """CA-5.4: Cada resultado devuelto debe incluir identificador de chunk, texto, metadata original,
+        y una medida de similitud/distancia, manteniendo el mismo contrato de datos que la versión anterior.
+        """
+        store.add(
+            "doc1::chunk_0",
+            "texto",
+            _fake_embedding(),
+            {"doc_id": "doc1", "doc_type": "ewrs"},
+        )
+        result = store.search(_fake_embedding(), n_results=1)[0]
+        for key in ("chunk_id", "text", "metadata", "distance", "score"):
+            assert key in result
+
+    def test_does_not_request_more_results_than_available(self, store):
+        """CA-5.5: El sistema debe retornar únicamente los chunks disponibles sin lanzar error cuando la cantidad de resultados solicitada
+        sea mayor al total de chunks indexados."""
+        store.add("doc1::chunk_0", "texto", _fake_embedding(), {"doc_id": "doc1"})
+        assert len(store.search(_fake_embedding(), n_results=50)) == 1
+
+    # -----------------------------------------------------------------
+    # Cierre de recursos
+    # -----------------------------------------------------------------
+
+    def test_can_close_connection_explicitly(self, store):
+        """CA-7.1: permite cerrar explícitamente la conexión."""
+        store.close()  # no debe lanzar
+
+    def test_close_after_normal_use_does_not_raise(self, store):
+        """CA-7.2: cerrar tras indexar y/o buscar no produce error."""
+        store.add("doc1::chunk_0", "texto", _fake_embedding(), {"doc_id": "doc1"})
+        store.search(_fake_embedding(), n_results=1)
+        store.close()
