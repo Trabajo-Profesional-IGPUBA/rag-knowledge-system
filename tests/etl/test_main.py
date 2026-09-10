@@ -7,7 +7,8 @@ Cubren "Paralelizar la ingesta de documentos (ETL)":
   - Configuración de la concurrencia-> CA-1.1 a CA-1.6
   - Procesamiento de archivos-> CA-2.1 a CA-2.3
   - Integridad y compatibilidad-> CA-3.1 a CA-3.2
-  - Observabilidad de la ingesta-> CA-4.1 a 4.2
+  - Observabilidad de la ingesta-> CA-4.1 a CA-4.2
+  - Liberación de recursos-> CA-5.1 a CA-5.2
 """
 
 
