@@ -148,6 +148,40 @@ class TestArchivesProcessing:
 
         assert sorted(processed_files) == ["a.pdf", "b.pdf", "c.pdf"]
 
+    def test_one_file_failing_does_not_stop_the_rest(self, tmp_path, monkeypatch):
+        """CA-2.2: Si un archivo falla durante el procesamiento, el resto
+        debe seguir procesándose con normalidad hasta el final."""
+        import main as run_module
+
+        raw_dir = tmp_path / "raw"
+        raw_dir.mkdir()
+        for name in ["a.pdf", "b.pdf", "c.pdf"]:
+            (raw_dir / name).touch()
+
+        processed_files = []
+
+        class _FakeProcessor:
+            def process_file(self, file):
+                if file.name == "b.pdf":
+                    raise RuntimeError("fallo simulado")
+                processed_files.append(file.name)
+                return type("M", (), {"n_chunks": 1, "time_total_s": 0.01})()
+
+        fake_store = type("FakeStore", (), {"close": lambda self: None})()
+        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
+        monkeypatch.setattr(
+            "src.retrieval.vectorstore.VectorStore", lambda *a, **k: fake_store
+        )
+        monkeypatch.setattr("src.embeddings.embedder.Embedder", lambda: object())
+        monkeypatch.setattr("src.etl.DoclingHybridChunker", lambda: object())
+        monkeypatch.setattr(
+            "src.etl.DocumentProcessor", lambda **kwargs: _FakeProcessor()
+        )
+
+        run_module.run(max_workers=2)  # no debe lanzar
+
+        assert sorted(processed_files) == ["a.pdf", "c.pdf"]
+
     def test_no_files_is_reported_and_finishes_without_error(
         self, tmp_path, monkeypatch, caplog
     ):
