@@ -16,7 +16,15 @@ def _get_max_workers() -> int:
     raw = os.environ.get("INGEST_MAX_WORKERS")
     if raw is None:
         return DEFAULT_MAX_WORKERS
-    return int(raw)
+    try:
+        return int(raw)
+    except ValueError:
+        logging.getLogger().warning(
+            "INGEST_MAX_WORKERS=%r no es un número válido, usando default=%d",
+            raw,
+            DEFAULT_MAX_WORKERS,
+        )
+        return DEFAULT_MAX_WORKERS
 
 
 def run():
