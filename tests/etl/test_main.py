@@ -288,3 +288,40 @@ class TestConcurrentIndexingIntegrityAndCompatibility:
         importlib.reload(run_module)
 
         assert os.environ.get("TOKENIZERS_PARALLELISM") == "false"
+
+
+class TestObservability:
+
+    def test_reports_success_and_failure_counts_at_the_end(
+        self, tmp_path, monkeypatch, caplog
+    ):
+        """CA-4.1: Al finalizar la ingesta, el sistema debe informar
+        cuántos archivos se procesaron con éxito y cuántos fallaron."""
+        import main as run_module
+
+        raw_dir = tmp_path / "raw"
+        raw_dir.mkdir()
+        for name in ["a.pdf", "b.pdf"]:
+            (raw_dir / name).touch()
+
+        class _FakeProcessor:
+            def process_file(self, file):
+                if file.name == "a.pdf":
+                    raise RuntimeError("fallo simulado")
+                return type("M", (), {"n_chunks": 1, "time_total_s": 0.01})()
+
+        fake_store = type("FakeStore", (), {"close": lambda self: None})()
+        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
+        monkeypatch.setattr(
+            "src.retrieval.vectorstore.VectorStore", lambda *a, **k: fake_store
+        )
+        monkeypatch.setattr("src.embeddings.embedder.Embedder", lambda: object())
+        monkeypatch.setattr("src.etl.DoclingHybridChunker", lambda: object())
+        monkeypatch.setattr(
+            "src.etl.DocumentProcessor", lambda **kwargs: _FakeProcessor()
+        )
+
+        with caplog.at_level("INFO"):
+            run_module.run(max_workers=2)
+
+        assert "OK=1 | Fallidos=1" in caplog.text
