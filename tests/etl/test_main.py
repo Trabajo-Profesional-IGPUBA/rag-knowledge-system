@@ -33,3 +33,20 @@ class TestDefaultConcurrencyFallback:
         with caplog.at_level("WARNING"):
             assert _get_max_workers() == DEFAULT_MAX_WORKERS
         assert "no es un número válido" in caplog.text
+
+    def test_zero_config_falls_back_with_warning(self, monkeypatch, caplog):
+        """CA-1.4: Si se proporciona una configuración con un valor fuera
+        del rango permitido, el sistema debe continuar funcionando
+        utilizando un valor por defecto razonable y debe informar de la
+        situación mediante un aviso."""
+        monkeypatch.setenv("INGEST_MAX_WORKERS", "0")
+        with caplog.at_level("WARNING"):
+            assert _get_max_workers() == DEFAULT_MAX_WORKERS
+        assert "fuera de rango" in caplog.text
+
+    def test_negative_config_falls_back_with_warning(self, monkeypatch, caplog):
+        """CA-1.4: ídem, con un valor negativo."""
+        monkeypatch.setenv("INGEST_MAX_WORKERS", "-5")
+        with caplog.at_level("WARNING"):
+            assert _get_max_workers() == DEFAULT_MAX_WORKERS
+        assert "fuera de rango" in caplog.text
