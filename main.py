@@ -76,6 +76,9 @@ def run(max_workers: int | None = None):
         chunker=chunker, vector_repository=vector_store, embedder=embedder
     )
 
+    processed = 0
+    failed = 0
+
     files_iter = iter(file_iterator())
     in_flight: dict = {}
 
@@ -91,15 +94,20 @@ def run(max_workers: int | None = None):
             done, _ = wait(in_flight, return_when=FIRST_COMPLETED)
             for future in done:
                 file = in_flight.pop(future)
-                _metrics = (
-                    future.result()
-                )  # el manejo de errores va en el próximo commit
-                next_file = next(files_iter, None)
-                if next_file is not None:
-                    next_future = executor.submit(
-                        document_processor.process_file, next_file
+                try:
+                    metrics = future.result()
+                except Exception:
+                    failed += 1
+                    logger.exception("Fallo no controlado procesando %s", file.name)
+                else:
+                    processed += 1
+                    logger.info(
+                        "[%d] OK: %s | chunks=%d | total=%.2fs",
+                        processed,
+                        file.name,
+                        metrics.n_chunks,
+                        metrics.time_total_s,
                     )
-                    in_flight[next_future] = next_file
 
 
 if __name__ == "__main__":
