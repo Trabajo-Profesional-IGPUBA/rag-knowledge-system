@@ -116,6 +116,38 @@ class TestConfigurableConcurrency:
 
 class TestArchivesProcessing:
 
+    def test_processes_multiple_files(self, tmp_path, monkeypatch):
+        """CA-2.1: El sistema debe poder procesar varios archivos al
+        mismo tiempo."""
+        import main as run_module
+
+        raw_dir = tmp_path / "raw"
+        raw_dir.mkdir()
+        for name in ["a.pdf", "b.pdf", "c.pdf"]:
+            (raw_dir / name).touch()
+
+        processed_files = []
+
+        class _FakeProcessor:
+            def process_file(self, file):
+                processed_files.append(file.name)
+                return type("M", (), {"n_chunks": 1, "time_total_s": 0.01})()
+
+        fake_store = type("FakeStore", (), {"close": lambda self: None})()
+        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
+        monkeypatch.setattr(
+            "src.retrieval.vectorstore.VectorStore", lambda *a, **k: fake_store
+        )
+        monkeypatch.setattr("src.embeddings.embedder.Embedder", lambda: object())
+        monkeypatch.setattr("src.etl.DoclingHybridChunker", lambda: object())
+        monkeypatch.setattr(
+            "src.etl.DocumentProcessor", lambda **kwargs: _FakeProcessor()
+        )
+
+        run_module.run(max_workers=2)
+
+        assert sorted(processed_files) == ["a.pdf", "b.pdf", "c.pdf"]
+
     def test_no_files_is_reported_and_finishes_without_error(
         self, tmp_path, monkeypatch, caplog
     ):
