@@ -1,3 +1,5 @@
+import pytest
+
 from main import DEFAULT_MAX_WORKERS, _get_max_workers
 
 """
@@ -50,3 +52,19 @@ class TestDefaultConcurrencyFallback:
         with caplog.at_level("WARNING"):
             assert _get_max_workers() == DEFAULT_MAX_WORKERS
         assert "fuera de rango" in caplog.text
+
+    def test_explicit_zero_workers_is_rejected(self):
+        """CA-1.5: Si se solicita explícitamente un valor de concurrencia
+        imposible al iniciar el proceso, el sistema debe rechazarlo con
+        un mensaje claro."""
+        import main as run_module
+
+        with pytest.raises(ValueError):
+            run_module.run(max_workers=0)
+
+    def test_explicit_negative_workers_is_rejected(self):
+        """CA-1.5: ídem, con un valor negativo."""
+        import main as run_module
+
+        with pytest.raises(ValueError):
+            run_module.run(max_workers=-1)
