@@ -5,6 +5,9 @@ from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from pathlib import Path
 from typing import Any
 
+# tope del archivo, antes de cualquier otro import propio
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
 from src.observability import setup_logging
 
 ROOT_DIR = Path(__file__).parent
