@@ -5,7 +5,7 @@ from main import DEFAULT_MAX_WORKERS, _get_max_workers
 """
 Cubren "Paralelizar la ingesta de documentos (ETL)":
   - Configuración de la concurrencia-> CA-1.1 a CA-1.6
-"""
+  """
 
 
 class TestConfigurableConcurrency:
@@ -15,9 +15,6 @@ class TestConfigurableConcurrency:
         procesan al mismo tiempo."""
         monkeypatch.setenv("INGEST_MAX_WORKERS", "3")
         assert _get_max_workers() == 3
-
-
-class TestDefaultConcurrencyFallback:
 
     def test_missing_config_uses_reasonable_default(self, monkeypatch):
         """CA-1.2: Si no se proporciona ninguna configuración, el sistema
@@ -114,3 +111,22 @@ class TestDefaultConcurrencyFallback:
         run_module.run(max_workers=10)  # pide 10, solo hay 2 archivos
 
         assert max_concurrent_seen <= 2
+
+
+class TestArchivesProcessing:
+
+    def test_no_files_is_reported_and_finishes_without_error(
+        self, tmp_path, monkeypatch, caplog
+    ):
+        """CA-2.3: Si no hay archivos para procesar, el sistema debe
+        informarlo y finalizar sin error."""
+        import main as run_module
+
+        raw_dir = tmp_path / "raw"
+        raw_dir.mkdir()
+        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
+
+        with caplog.at_level("WARNING"):
+            run_module.run(max_workers=2)  # no debe lanzar
+
+        assert "No se encontraron archivos PDF" in caplog.text
