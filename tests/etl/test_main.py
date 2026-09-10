@@ -200,7 +200,7 @@ class TestArchivesProcessing:
         assert "No se encontraron archivos PDF" in caplog.text
 
 
-class TestConcurrentIndexingIntegrity:
+class TestConcurrentIndexingIntegrityAndCompatibility:
 
     def test_concurrent_indexing_never_corrupts_or_loses_data(self):
         """CA-3.1: Procesar archivos de forma concurrente nunca debe
@@ -274,3 +274,17 @@ class TestConcurrentIndexingIntegrity:
 
         assert real_store.count() == 1
         real_store.close()
+
+    def test_internal_tokenizer_parallelism_is_disabled_on_import(self, monkeypatch):
+        """CA-3.2: El procesamiento concurrente no debe generar conflictos
+        con otras herramientas internas que también manejan su propio
+        paralelismo."""
+        import importlib
+        import os
+
+        import main as run_module
+
+        monkeypatch.delenv("TOKENIZERS_PARALLELISM", raising=False)
+        importlib.reload(run_module)
+
+        assert os.environ.get("TOKENIZERS_PARALLELISM") == "false"
