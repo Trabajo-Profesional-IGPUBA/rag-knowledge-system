@@ -53,6 +53,13 @@ def run(max_workers: int | None = None):
     elif max_workers < 1:
         raise ValueError("max_workers debe ser >= 1")
 
+    files = RAW_DIR.rglob("*.pdf")
+    first_file = next(files, None)
+
+    if first_file is None:
+        logger.warning("No se encontraron archivos PDF en %s", RAW_DIR)
+        return
+
     # Cantidad máxima de Futures simultáneamente en memoria.
     # Esto NO limita la RAM usada dentro de cada worker; solamente
     # evita crear un Future por cada PDF del corpus.
