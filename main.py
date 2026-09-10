@@ -151,6 +151,24 @@ def run(max_workers: int | None = None):
                         metrics.time_total_s,
                     )
 
+                    # Reponemos exactamente una tarea por cada
+                    # tarea terminada.
+                    next_file = next(files_iter, None)
+
+                    if next_file is not None:
+                        next_future = executor.submit(
+                            document_processor.process_file,
+                            next_file,
+                        )
+                        in_flight[next_future] = next_file
+
+    logger.info(
+        "Ingesta finalizada. Procesados=%d | OK=%d | Fallidos=%d",
+        processed + failed,
+        processed,
+        failed,
+    )
+
 
 if __name__ == "__main__":
     setup_logging(LOG_DIR)
