@@ -162,6 +162,13 @@ def run(max_workers: int | None = None):
                         )
                         in_flight[next_future] = next_file
 
+                    if (processed + failed) % 50 == 0:
+                        logger.info(
+                            "Progreso: %d procesados | %d OK | %d fallidos",
+                            processed + failed,
+                            processed,
+                            failed,
+                        )
     logger.info(
         "Ingesta finalizada. Procesados=%d | OK=%d | Fallidos=%d",
         processed + failed,
