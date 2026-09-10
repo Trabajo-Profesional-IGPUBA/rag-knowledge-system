@@ -1,7 +1,9 @@
 import logging
 import os
+import threading
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from pathlib import Path
+from typing import Any
 
 from src.observability import setup_logging
 
@@ -11,6 +13,39 @@ VECTOR_STORE_PATH = ROOT_DIR / "data" / "vectorstore"
 LOG_DIR = ROOT_DIR / "logs"
 
 DEFAULT_MAX_WORKERS = min(os.cpu_count() or 4, 4)
+
+
+class _SerializedVectorStore:
+    """
+    Envuelve add y add_batch con un lock; delega el resto sin cambios.
+
+    La documentación de qdrant-client en modo local (QdrantClient
+    (path=...)) no garantiza explícitamente que sea seguro escribir
+    concurrentemente desde múltiples threads sobre la misma instancia.
+    Se serializa por precaución.
+
+    Se protege también add() aunque el pipeline actual solo llame a
+    add_batch(): add() delega internamente en self.add_batch() del
+    objeto envuelto (self._inner), NO en el add_batch() de este
+    wrapper, así que si en algún momento algo llama a add() directo,
+    bypassearía el lock si no estuviera cubierto acá también.
+
+    """
+
+    def __init__(self, inner: Any, lock: threading.Lock) -> None:
+        self._inner = inner
+        self._lock = lock
+
+    def add(self, *args, **kwargs):
+        with self._lock:
+            return self._inner.add(*args, **kwargs)
+
+    def add_batch(self, *args, **kwargs):
+        with self._lock:
+            return self._inner.add_batch(*args, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
 
 
 def _get_max_workers() -> int:
@@ -72,8 +107,12 @@ def run(max_workers: int | None = None):
     chunker = DoclingHybridChunker()
     vector_store = VectorStore(VECTOR_STORE_PATH)
     embedder = Embedder()
+    write_lock = threading.Lock()
+    safe_vector_store = _SerializedVectorStore(vector_store, write_lock)
     document_processor = DocumentProcessor(
-        chunker=chunker, vector_repository=vector_store, embedder=embedder
+        chunker=chunker,
+        vector_repository=safe_vector_store,
+        embedder=embedder,
     )
 
     processed = 0
