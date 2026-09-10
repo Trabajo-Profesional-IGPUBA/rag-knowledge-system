@@ -359,3 +359,78 @@ class TestObservability:
 
         progress_lines = [r for r in caplog.records if "Progreso:" in r.message]
         assert len(progress_lines) >= 1
+
+
+class TestResourceCleanup:
+
+    def test_storage_resources_released_even_if_files_fail(self, tmp_path, monkeypatch):
+        """CA-5.1: Los recursos de almacenamiento utilizados deben
+        liberarse siempre al finalizar la ingesta, incluso si hubo
+        errores durante el procesamiento."""
+        import main as run_module
+
+        raw_dir = tmp_path / "raw"
+        raw_dir.mkdir()
+        for name in ["a.pdf", "b.pdf"]:
+            (raw_dir / name).touch()
+
+        close_calls = []
+        fake_store = type(
+            "FakeStore", (), {"close": lambda self: close_calls.append(True)}
+        )()
+
+        class _FakeProcessor:
+            def process_file(self, file):
+                if file.name == "a.pdf":
+                    raise RuntimeError("fallo simulado")
+                return type("M", (), {"n_chunks": 1, "time_total_s": 0.01})()
+
+        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
+        monkeypatch.setattr(
+            "src.retrieval.vectorstore.VectorStore", lambda *a, **k: fake_store
+        )
+        monkeypatch.setattr("src.embeddings.embedder.Embedder", lambda: object())
+        monkeypatch.setattr("src.etl.DoclingHybridChunker", lambda: object())
+        monkeypatch.setattr(
+            "src.etl.DocumentProcessor", lambda **kwargs: _FakeProcessor()
+        )
+
+        run_module.run(max_workers=2)
+
+        assert close_calls == [True]
+
+    def test_no_resources_opened_if_configuration_is_rejected(self, monkeypatch):
+        """CA-5.2: Si la ingesta ni siquiera llegó a iniciarse por una
+        configuración inválida, el sistema no debe intentar liberar
+        recursos que nunca se llegaron a abrir."""
+        import pytest
+
+        import main as run_module
+
+        store_created = []
+        monkeypatch.setattr(
+            "src.retrieval.vectorstore.VectorStore",
+            lambda *a, **k: store_created.append(True),
+        )
+
+        with pytest.raises(ValueError):
+            run_module.run(max_workers=0)
+
+        assert store_created == []
+
+    def test_no_resources_opened_if_no_files_found(self, tmp_path, monkeypatch):
+        """CA-5.2: ídem, cuando no hay archivos para procesar."""
+        import main as run_module
+
+        raw_dir = tmp_path / "raw"
+        raw_dir.mkdir()
+        store_created = []
+        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
+        monkeypatch.setattr(
+            "src.retrieval.vectorstore.VectorStore",
+            lambda *a, **k: store_created.append(True),
+        )
+
+        run_module.run(max_workers=2)
+
+        assert store_created == []
