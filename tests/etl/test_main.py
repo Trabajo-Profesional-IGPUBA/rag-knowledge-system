@@ -197,3 +197,79 @@ class TestArchivesProcessing:
             run_module.run(max_workers=2)  # no debe lanzar
 
         assert "No se encontraron archivos PDF" in caplog.text
+
+
+class TestConcurrentIndexingIntegrity:
+
+    def test_concurrent_indexing_never_corrupts_or_loses_data(self):
+        """CA-3.1: Procesar archivos de forma concurrente nunca debe
+        corromper, perder ni duplicar los datos ya almacenados."""
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
+
+        from main import _SerializedVectorStore
+
+        call_log: list[str] = []
+        in_critical_section = threading.Event()
+
+        class _FakeInnerStore:
+            def add(self, *a, **k):
+                assert not in_critical_section.is_set()
+                in_critical_section.set()
+                call_log.append("add")
+                in_critical_section.clear()
+
+            def add_batch(self, *a, **k):
+                assert not in_critical_section.is_set()
+                in_critical_section.set()
+                call_log.append("add_batch")
+                in_critical_section.clear()
+
+        lock = threading.Lock()
+        safe_store = _SerializedVectorStore(_FakeInnerStore(), lock)
+
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            futures = []
+            for i in range(20):
+                if i % 2 == 0:
+                    futures.append(
+                        executor.submit(safe_store.add, f"id{i}", "t", [], {})
+                    )
+                else:
+                    futures.append(
+                        executor.submit(safe_store.add_batch, [], [], [], [])
+                    )
+            for f in futures:
+                f.result()
+
+        assert len(call_log) == 20
+
+    def test_reprocessing_same_content_concurrently_does_not_duplicate(self, tmp_path):
+        """CA-3.1: ídem, verificado contra el VectorStore real."""
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
+
+        from main import _SerializedVectorStore
+        from src.retrieval.vectorstore import VectorStore
+
+        real_store = VectorStore(tmp_path / "vs", embedding_dim=4)
+        lock = threading.Lock()
+        safe_store = _SerializedVectorStore(real_store, lock)
+        emb = [0.1, 0.2, 0.3, 0.4]
+
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = [
+                executor.submit(
+                    safe_store.add,
+                    "doc1::chunk_0",
+                    f"texto v{i}",
+                    emb,
+                    {"doc_id": "doc1"},
+                )
+                for i in range(10)
+            ]
+            for f in futures:
+                f.result()
+
+        assert real_store.count() == 1
+        real_store.close()
