@@ -1,5 +1,6 @@
 import logging
 import os
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from pathlib import Path
 
 from src.observability import setup_logging
@@ -60,10 +61,14 @@ def run(max_workers: int | None = None):
         logger.warning("No se encontraron archivos PDF en %s", RAW_DIR)
         return
 
+    def file_iterator():
+        yield first_file
+        yield from files
+
     # Cantidad máxima de Futures simultáneamente en memoria.
     # Esto NO limita la RAM usada dentro de cada worker; solamente
     # evita crear un Future por cada PDF del corpus.
-    _max_in_flight = max_workers * 2
+    max_in_flight = max_workers * 2
     chunker = DoclingHybridChunker()
     vector_store = VectorStore(VECTOR_STORE_PATH)
     embedder = Embedder()
@@ -71,11 +76,30 @@ def run(max_workers: int | None = None):
         chunker=chunker, vector_repository=vector_store, embedder=embedder
     )
 
-    try:
-        for file in RAW_DIR.rglob("*.pdf"):
-            document_processor.process_file(file)
-    finally:
-        vector_store.close()
+    files_iter = iter(file_iterator())
+    in_flight: dict = {}
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        for _ in range(max_in_flight):
+            file = next(files_iter, None)
+            if file is None:
+                break
+            future = executor.submit(document_processor.process_file, file)
+            in_flight[future] = file
+
+        while in_flight:
+            done, _ = wait(in_flight, return_when=FIRST_COMPLETED)
+            for future in done:
+                file = in_flight.pop(future)
+                _metrics = (
+                    future.result()
+                )  # el manejo de errores va en el próximo commit
+                next_file = next(files_iter, None)
+                if next_file is not None:
+                    next_future = executor.submit(
+                        document_processor.process_file, next_file
+                    )
+                    in_flight[next_future] = next_file
 
 
 if __name__ == "__main__":
