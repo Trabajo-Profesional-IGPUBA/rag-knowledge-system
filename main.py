@@ -37,7 +37,7 @@ def _get_max_workers() -> int:
     return value
 
 
-def run():
+def run(max_workers: int | None = None):
     from src.embeddings.embedder import Embedder
     from src.etl import DoclingHybridChunker, DocumentProcessor
     from src.retrieval.vectorstore import VectorStore
@@ -47,6 +47,11 @@ def run():
     if not RAW_DIR.exists():
         logger.error(f"No existe {RAW_DIR}")
         return
+
+    if max_workers is None:
+        max_workers = _get_max_workers()
+    elif max_workers < 1:
+        raise ValueError("max_workers debe ser >= 1")
 
     chunker = DoclingHybridChunker()
     vector_store = VectorStore(VECTOR_STORE_PATH)
