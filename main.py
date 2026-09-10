@@ -1,3 +1,5 @@
+import logging
+import os
 from pathlib import Path
 
 from src.observability import setup_logging
@@ -7,10 +9,17 @@ RAW_DIR = ROOT_DIR / "data" / "raw"
 VECTOR_STORE_PATH = ROOT_DIR / "data" / "vectorstore"
 LOG_DIR = ROOT_DIR / "logs"
 
+DEFAULT_MAX_WORKERS = min(os.cpu_count() or 4, 4)
+
+
+def _get_max_workers() -> int:
+    raw = os.environ.get("INGEST_MAX_WORKERS")
+    if raw is None:
+        return DEFAULT_MAX_WORKERS
+    return int(raw)
+
 
 def run():
-    import logging
-
     from src.embeddings.embedder import Embedder
     from src.etl import DoclingHybridChunker, DocumentProcessor
     from src.retrieval.vectorstore import VectorStore
@@ -25,9 +34,7 @@ def run():
     vector_store = VectorStore(VECTOR_STORE_PATH)
     embedder = Embedder()
     document_processor = DocumentProcessor(
-        chunker=chunker,
-        vector_repository=vector_store,
-        embedder=embedder,
+        chunker=chunker, vector_repository=vector_store, embedder=embedder
     )
 
     try:
@@ -39,5 +46,4 @@ def run():
 
 if __name__ == "__main__":
     setup_logging(LOG_DIR)
-
     run()
