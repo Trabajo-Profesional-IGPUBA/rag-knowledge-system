@@ -53,6 +53,10 @@ def run(max_workers: int | None = None):
     elif max_workers < 1:
         raise ValueError("max_workers debe ser >= 1")
 
+    # Cantidad máxima de Futures simultáneamente en memoria.
+    # Esto NO limita la RAM usada dentro de cada worker; solamente
+    # evita crear un Future por cada PDF del corpus.
+    _max_in_flight = max_workers * 2
     chunker = DoclingHybridChunker()
     vector_store = VectorStore(VECTOR_STORE_PATH)
     embedder = Embedder()
