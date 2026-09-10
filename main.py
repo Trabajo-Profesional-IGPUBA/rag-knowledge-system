@@ -123,52 +123,55 @@ def run(max_workers: int | None = None):
 
     files_iter = iter(file_iterator())
     in_flight: dict = {}
+    try:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            for _ in range(max_in_flight):
+                file = next(files_iter, None)
+                if file is None:
+                    break
+                future = executor.submit(document_processor.process_file, file)
+                in_flight[future] = file
 
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        for _ in range(max_in_flight):
-            file = next(files_iter, None)
-            if file is None:
-                break
-            future = executor.submit(document_processor.process_file, file)
-            in_flight[future] = file
-
-        while in_flight:
-            done, _ = wait(in_flight, return_when=FIRST_COMPLETED)
-            for future in done:
-                file = in_flight.pop(future)
-                try:
-                    metrics = future.result()
-                except Exception:
-                    failed += 1
-                    logger.exception("Fallo no controlado procesando %s", file.name)
-                else:
-                    processed += 1
-                    logger.info(
-                        "[%d] OK: %s | chunks=%d | total=%.2fs",
-                        processed,
-                        file.name,
-                        metrics.n_chunks,
-                        metrics.time_total_s,
-                    )
-
-                    # Reponemos exactamente una tarea por cada
-                    # tarea terminada.
-                    next_file = next(files_iter, None)
-
-                    if next_file is not None:
-                        next_future = executor.submit(
-                            document_processor.process_file,
-                            next_file,
-                        )
-                        in_flight[next_future] = next_file
-
-                    if (processed + failed) % 50 == 0:
+            while in_flight:
+                done, _ = wait(in_flight, return_when=FIRST_COMPLETED)
+                for future in done:
+                    file = in_flight.pop(future)
+                    try:
+                        metrics = future.result()
+                    except Exception:
+                        failed += 1
+                        logger.exception("Fallo no controlado procesando %s", file.name)
+                    else:
+                        processed += 1
                         logger.info(
-                            "Progreso: %d procesados | %d OK | %d fallidos",
-                            processed + failed,
+                            "[%d] OK: %s | chunks=%d | total=%.2fs",
                             processed,
-                            failed,
+                            file.name,
+                            metrics.n_chunks,
+                            metrics.time_total_s,
                         )
+
+                        # Reponemos exactamente una tarea por cada
+                        # tarea terminada.
+                        next_file = next(files_iter, None)
+
+                        if next_file is not None:
+                            next_future = executor.submit(
+                                document_processor.process_file,
+                                next_file,
+                            )
+                            in_flight[next_future] = next_file
+
+                        if (processed + failed) % 50 == 0:
+                            logger.info(
+                                "Progreso: %d procesados | %d OK | %d fallidos",
+                                processed + failed,
+                                processed,
+                                failed,
+                            )
+    finally:
+        vector_store.close()
+
     logger.info(
         "Ingesta finalizada. Procesados=%d | OK=%d | Fallidos=%d",
         processed + failed,
