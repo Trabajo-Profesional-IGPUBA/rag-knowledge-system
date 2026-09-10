@@ -2,7 +2,7 @@ from main import DEFAULT_MAX_WORKERS, _get_max_workers
 
 """
 Cubren "Paralelizar la ingesta de documentos (ETL)":
-  - Configuración de la concurrencia-> CA-1.1 a CA-1.3
+  - Configuración de la concurrencia-> CA-1.1 a CA-1.4
 """
 
 
