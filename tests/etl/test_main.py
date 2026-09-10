@@ -68,3 +68,49 @@ class TestDefaultConcurrencyFallback:
 
         with pytest.raises(ValueError):
             run_module.run(max_workers=-1)
+
+    def test_never_submits_more_concurrent_tasks_than_available_files(
+        self, tmp_path, monkeypatch
+    ):
+        """CA-1.6: El sistema no debe reservar más capacidad de procesamiento
+        simultáneo que la cantidad de archivos disponibles para procesar."""
+        import threading
+
+        import main as run_module
+
+        raw_dir = tmp_path / "raw"
+        raw_dir.mkdir()
+        for name in ["a.pdf", "b.pdf"]:  # solo 2 archivos
+            (raw_dir / name).touch()
+
+        max_concurrent_seen = 0
+        currently_running = 0
+        lock = threading.Lock()
+
+        class _FakeProcessor:
+            def process_file(self, file):
+                nonlocal max_concurrent_seen, currently_running
+                with lock:
+                    currently_running += 1
+                    max_concurrent_seen = max(max_concurrent_seen, currently_running)
+                import time
+
+                time.sleep(0.05)
+                with lock:
+                    currently_running -= 1
+                return type("M", (), {"n_chunks": 1, "time_total_s": 0.01})()
+
+        fake_store = type("FakeStore", (), {"close": lambda self: None})()
+        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
+        monkeypatch.setattr(
+            "src.retrieval.vectorstore.VectorStore", lambda *a, **k: fake_store
+        )
+        monkeypatch.setattr("src.embeddings.embedder.Embedder", lambda: object())
+        monkeypatch.setattr("src.etl.DoclingHybridChunker", lambda: object())
+        monkeypatch.setattr(
+            "src.etl.DocumentProcessor", lambda **kwargs: _FakeProcessor()
+        )
+
+        run_module.run(max_workers=10)  # pide 10, solo hay 2 archivos
+
+        assert max_concurrent_seen <= 2
