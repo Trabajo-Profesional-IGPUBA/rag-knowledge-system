@@ -326,3 +326,36 @@ class TestObservability:
             run_module.run(max_workers=2)
 
         assert "OK=1 | Fallidos=1" in caplog.text
+
+    def test_reports_periodic_progress_on_long_runs(
+        self, tmp_path, monkeypatch, caplog
+    ):
+        """CA-4.2: En ejecuciones largas, el sistema debe informar el
+        progreso periódicamente, no solo al final."""
+        import main as run_module
+
+        raw_dir = tmp_path / "raw"
+        raw_dir.mkdir()
+        for i in range(120):
+            (raw_dir / f"file_{i}.pdf").touch()
+
+        class _FakeProcessor:
+            def process_file(self, file):
+                return type("M", (), {"n_chunks": 1, "time_total_s": 0.001})()
+
+        fake_store = type("FakeStore", (), {"close": lambda self: None})()
+        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
+        monkeypatch.setattr(
+            "src.retrieval.vectorstore.VectorStore", lambda *a, **k: fake_store
+        )
+        monkeypatch.setattr("src.embeddings.embedder.Embedder", lambda: object())
+        monkeypatch.setattr("src.etl.DoclingHybridChunker", lambda: object())
+        monkeypatch.setattr(
+            "src.etl.DocumentProcessor", lambda **kwargs: _FakeProcessor()
+        )
+
+        with caplog.at_level("INFO"):
+            run_module.run(max_workers=4)
+
+        progress_lines = [r for r in caplog.records if "Progreso:" in r.message]
+        assert len(progress_lines) >= 1
