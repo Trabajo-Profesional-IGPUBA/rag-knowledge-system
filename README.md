@@ -44,9 +44,16 @@ docker compose run lint
 
 Analiza el código para detectar errores de estilo, problemas de calidad o incumplimientos de las reglas definidas por el linter y las corrige.
 
-### Ejecucion del indexer 
+### Ejecutar la ingesta:
+
 ```bash
-python -m src.indexer
+python main.py
+```
+
+Opcional: configurar la concurrencia con la variable de entorno `INGEST_MAX_WORKERS`:
+
+```bash
+INGEST_MAX_WORKERS=4 python main.py
 ```
 
 ### Ejecucion de la interfaz web

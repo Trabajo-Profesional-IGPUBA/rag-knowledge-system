@@ -1,2 +1,7 @@
 [tool.ruff.lint]
 ignore = ["BLE001"]
+[tool.pytest.ini_options]
+markers = [
+    "integration: tests lentos que usan componentes reales (Docling/embeddings/Qdrant)",
+]
+ 
