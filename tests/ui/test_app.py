@@ -7,6 +7,9 @@ Cubre "ÉPICA: Interfaz web de consulta":
   - Input de consulta técnica con respuesta en streaming token a token-> CA-5.1 a CA-5.3
   - Cursor animado durante la generación de la respuesta-> CA-6.1 a CA-6.3
 
+Cubre "Épica: Aislamiento de sesiones e historial de chat por usuario (Streamlit)":
+  - Aislamiento de conversaciones entre usuarios-> CA-11.1 a CA-11.3
+
 """
 
 from __future__ import annotations
