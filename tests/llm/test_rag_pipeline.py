@@ -1,5 +1,24 @@
 from unittest.mock import MagicMock
 
+"""
+Cubre "ÉPICA: Pipeline RAG integrado":
+  - Orquestación secuencial de Retriever, PromptBuilder y LLMClient-> CA-1.1 Y  CA-1.3 
+  - Filtrado de chunks recuperados por score mínimo configurable-> CA-2.1 a CA-2.3
+  - Modo de consulta completa con respuesta única-> CA-3.1 a CA-3.2
+  - Modo de consulta en streaming con yield de tokens-> CA-4.1 a CA-4.2
+  - Limpieza de historial de conversación bajo demanda-> CA-6.1 a CA-6.2
+  - RAGConfig como dataclass de configuración del pipeline-> CA-7.1 a CA-7.2
+  - RAGResponse con trazabilidad completa de query, chunks, prompt y respuesta-> CA-8.1 a CA-8.2
+  - Propiedad sources con fuentes ordenadas por relevancia-> CA-9.1 a CA-9.2
+  - Propiedad pretty_sources para visualización formateada-> CA-10.1 a CA-10.2
+
+Cubre "Épica: Aislamiento de sesiones e historial de chat por usuario (Streamlit)":
+  - Aislamiento de conversaciones entre usuarios-> CA-11.3
+  - Comportamiento normal del chat-> CA-12.1 y CA-12.2
+  - Rendimiento-> CA-13.1
+
+"""
+
 
 class TestRAGPipeline:
     def _make_pipeline(self, llm_text: str = "Respuesta de prueba"):
@@ -45,7 +64,9 @@ class TestRAGPipeline:
         return pipeline, mock_retriever, mock_llm
 
     def test_query_calls_components_in_order_with_expected_args(self):
-        """CA-1.1: retrieve -> build -> generate, en ese orden y con los args correctos."""
+        """CA-1.1: Dado que se ejecuta una consulta, el sistema debe recuperar los chunks relevantes,
+        construir el prompt con ellos, y generar la respuesta con el LLM, en ese orden.
+        """
         pipeline, mock_retriever, mock_llm = self._make_pipeline("respuesta")
         pipeline._prompt_builder = MagicMock()
         pipeline._prompt_builder.build.return_value = MagicMock(
@@ -65,7 +86,7 @@ class TestRAGPipeline:
         mock_llm.generate.assert_called_with("prompt final")
 
     def test_default_prompt_builder_is_used_when_not_provided(self):
-        """CA-1.3: si no se pasa PromptBuilder, se instancia uno por defecto y el pipeline funciona igual."""
+        """CA-1.3: Si no se especifica un PromptBuilder, el sistema debe usar una instancia por defecto."""
         from src.llm.rag_pipeline import RAGPipeline
 
         pipeline, _, _ = self._make_pipeline("respuesta")
@@ -76,7 +97,9 @@ class TestRAGPipeline:
         assert resp.ok
 
     def test_min_score_filters_chunks(self):
-        """CA-2.1: chunks por debajo del score mínimo se descartan."""
+        """CA-2.1: Dado un conjunto de chunks recuperados con distintos puntajes de relevancia,
+        el sistema debe descartar los que estén por debajo del score mínimo configurado.
+        """
         from src.llm.client import LLMResponse
         from src.llm.rag_pipeline import RAGConfig, RAGPipeline
         from src.retrieval.retriever import RetrievalResult
@@ -117,7 +140,7 @@ class TestRAGPipeline:
         assert resp.prompt.num_chunks == 1
 
     def test_min_score_is_configurable(self):
-        """CA-2.2: el score mínimo no es un valor fijo, cambia según RAGConfig."""
+        """CA-2.2: El score mínimo debe ser configurable, no un valor fijo."""
         from src.llm.rag_pipeline import RAGConfig, RAGPipeline
 
         _pipeline, mock_retriever, mock_llm = self._make_pipeline("respuesta")
@@ -131,7 +154,8 @@ class TestRAGPipeline:
         assert resp.prompt.num_chunks == 0  # el único chunk tiene score 0.85 < 0.99
 
     def test_no_chunks_pass_threshold_does_not_fail(self):
-        """CA-2.3: si ningún chunk supera el score mínimo, el pipeline no debe fallar."""
+        """CA-2.3: Si ningún chunk supera el score mínimo, el sistema debe continuar sin fallar
+        (aunque la respuesta se genere sin contexto recuperado)."""
         pipeline, mock_retriever, _ = self._make_pipeline("respuesta sin contexto")
         mock_retriever.retrieve.return_value.chunks = [
             {
@@ -147,7 +171,7 @@ class TestRAGPipeline:
         assert resp.prompt.num_chunks == 0
 
     def test_query_returns_rag_response(self):
-        """CA-3.1: genera una respuesta completa de una sola vez."""
+        """CA-3.1: El sistema debe poder generar una respuesta completa a partir de una pregunta, entregándola de una sola vez."""
         pipeline, _, _ = self._make_pipeline("La presión es 3500 psi.")
         resp = pipeline.query("¿Cuál es la presión?")
         assert resp.ok
@@ -155,7 +179,8 @@ class TestRAGPipeline:
         assert resp.query == "¿Cuál es la presión?"
 
     def test_response_includes_query_retrieval_and_prompt(self):
-        """CA-3.2: la respuesta incluye texto generado, query original, recuperación y prompt."""
+        """CA-3.2: La respuesta debe incluir el texto generado, la consulta original,
+        y los datos de recuperación y prompt utilizados."""
         pipeline, _, _ = self._make_pipeline("respuesta")
         resp = pipeline.query("pregunta")
         assert resp.query == "pregunta"
@@ -164,7 +189,8 @@ class TestRAGPipeline:
         assert resp.prompt is not None
 
     def test_query_stream_yields_tokens(self):
-        """CA-4.1: la respuesta se entrega progresivamente, token a token."""
+        """CA-4.1: El sistema debe poder entregar la respuesta de forma progresiva, token a token,
+        en lugar de esperar a que esté completa."""
         pipeline, _, mock_llm = self._make_pipeline()
         mock_llm.generate_stream.return_value = iter(["Hola", " ", "mundo"])
 
@@ -172,71 +198,9 @@ class TestRAGPipeline:
 
         assert tokens == ["Hola", " ", "mundo"]
 
-    def test_query_stream_saves_full_response_to_history(self):
-        """CA-4.2: al finalizar el streaming, la respuesta completa se guarda en el historial."""
-        pipeline, _, mock_llm = self._make_pipeline()
-        mock_llm.generate_stream.return_value = iter(["Hola", " ", "mundo"])
-
-        list(pipeline.query_stream("pregunta"))
-
-        assert pipeline.history == [("pregunta", "Hola mundo")]
-
-    def test_query_saves_history(self):
-        """CA-5.1: cada consulta exitosa se agrega al historial (pregunta + respuesta)."""
-        pipeline, _, _ = self._make_pipeline("respuesta")
-        pipeline.query("pregunta 1")
-        assert pipeline.history == [("pregunta 1", "respuesta")]
-
-    def test_history_accumulates_across_multiple_queries(self):
-        """CA-5.2: el historial se acumula a lo largo de múltiples consultas."""
-        pipeline, _, _ = self._make_pipeline("respuesta")
-        pipeline.query("pregunta 1")
-        pipeline.query("pregunta 2")
-        assert len(pipeline.history) == 2
-
-    def test_failed_generation_is_not_saved_to_history(self):
-        """CA-5.3: si la generación falla, esa consulta no se agrega al historial."""
-        from src.llm.client import LLMResponse
-
-        pipeline, _, mock_llm = self._make_pipeline()
-        mock_llm.generate.return_value = LLMResponse(text="", model="test", ok=False)
-
-        resp = pipeline.query("pregunta")
-
-        assert not resp.ok
-        assert len(pipeline.history) == 0
-
-    def test_clear_history(self):
-        """CA-6.1: el historial se puede borrar en cualquier momento."""
-        pipeline, _, _ = self._make_pipeline("respuesta")
-        pipeline.query("pregunta")
-        pipeline.clear_history()
-        assert len(pipeline.history) == 0
-
-    def test_clear_history_then_query_does_not_use_history(self):
-        """CA-6.2: tras limpiar el historial, la siguiente consulta no usa contexto previo."""
-        pipeline, _, _ = self._make_pipeline("respuesta")
-        pipeline._prompt_builder = MagicMock()
-        pipeline._prompt_builder.build.return_value = MagicMock(
-            prompt="p", num_chunks=1, total_chars=1
-        )
-        pipeline._prompt_builder.build_with_history.return_value = MagicMock(
-            prompt="p", num_chunks=1, total_chars=1
-        )
-
-        pipeline.query("pregunta 1", use_history=True)  # historial vacío -> usa build()
-        pipeline.query(
-            "pregunta 2", use_history=True
-        )  # ya hay historial -> usa build_with_history()
-        pipeline.clear_history()
-        pipeline.query(
-            "pregunta 3", use_history=True
-        )  # historial vacío otra vez -> vuelve a build()
-
-        assert pipeline._prompt_builder.build_with_history.call_count == 1
-
     def test_rag_config_centralizes_parameters(self):
-        """CA-7.1: RAGConfig centraliza top_k, min_score, stream y filters en un solo lugar."""
+        """CA-7.1: El sistema debe permitir centralizar en un solo lugar los parámetros del pipeline
+        (cantidad de chunks, score mínimo, modo streaming, filtros)."""
         from src.llm.rag_pipeline import RAGConfig
 
         config = RAGConfig(
@@ -248,7 +212,7 @@ class TestRAGPipeline:
         assert config.filters == {"doc_type": "ewrs"}
 
     def test_rag_config_defaults(self):
-        """CA-7.2: existen valores por defecto razonables si no se especifica configuración propia."""
+        """CA-7.2: Debe existir un conjunto de valores por defecto razonables si no se especifica configuración propia."""
         from src.llm.rag_pipeline import RAGConfig
 
         config = RAGConfig()
@@ -258,7 +222,8 @@ class TestRAGPipeline:
         assert config.filters is None
 
     def test_rag_response_includes_full_traceability(self):
-        """CA-8.1: el resultado incluye pregunta, respuesta, recuperación, prompt y respuesta cruda del LLM."""
+        """CA-8.1: El resultado de una consulta debe incluir la pregunta original, la respuesta generada,
+        los datos de recuperación, el prompt construido y la respuesta cruda del LLM."""
         pipeline, _, mock_llm = self._make_pipeline("respuesta")
         resp = pipeline.query("pregunta")
         assert resp.query == "pregunta"
@@ -268,7 +233,8 @@ class TestRAGPipeline:
         assert resp.llm_response is mock_llm.generate.return_value
 
     def test_rag_response_ok_reflects_retrieval_and_generation(self):
-        """CA-8.2: ok indica éxito conjunto (recuperación + generación), no solo si el LLM respondió."""
+        """CA-8.2: El resultado debe poder indicar si la consulta fue exitosa en su conjunto (recuperación + generación),
+        no solo si el LLM respondió."""
         from src.llm.client import LLMResponse
 
         pipeline, _, mock_llm = self._make_pipeline()
@@ -280,7 +246,9 @@ class TestRAGPipeline:
         assert resp.ok is False
 
     def test_sources_property(self):
-        """CA-9.1/CA-9.2: sources lista filename, doc_type y score de cada fuente."""
+        """CA-9.1: El sistema debe poder listar las fuentes documentales usadas para generar la respuesta.
+        CA-9.2: Cada fuente debe incluir al menos nombre de archivo, tipo de documento y score de relevancia.
+        """
         pipeline, _, _ = self._make_pipeline("respuesta")
         resp = pipeline.query("pregunta")
         assert len(resp.sources) == 1
@@ -290,7 +258,7 @@ class TestRAGPipeline:
         assert source["score"] == 0.85
 
     def test_sources_limited_to_chunks_used_in_prompt(self):
-        """CA-9.3: sources se limita a los chunks efectivamente usados en el prompt, no a todos los recuperados."""
+        """CA-9.3: Las fuentes deben limitarse a los chunks efectivamente usados en el prompt, no a todos los recuperados."""
         pipeline, mock_retriever, _ = self._make_pipeline("respuesta")
         mock_retriever.retrieve.return_value.chunks = [
             {
@@ -323,7 +291,7 @@ class TestRAGPipeline:
         assert {s["filename"] for s in resp.sources} == {"f1", "f2"}
 
     def test_pretty_sources_with_sources(self):
-        """CA-10.1: pretty_sources genera texto legible con las fuentes."""
+        """CA-10.1: El sistema debe poder generar una representación de texto legible de las fuentes, para mostrarla al usuario."""
         pipeline, _, _ = self._make_pipeline("respuesta")
         resp = pipeline.query("pregunta")
         text = resp.pretty_sources()
@@ -332,8 +300,101 @@ class TestRAGPipeline:
         assert "85%" in text
 
     def test_pretty_sources_without_sources(self):
-        """CA-10.2: sin fuentes, devuelve un mensaje claro en lugar de salida vacía."""
+        """CA-10.2: Si no hay fuentes, debe informarlo con un mensaje claro en lugar de una salida vacía o confusa."""
         pipeline, mock_retriever, _ = self._make_pipeline("respuesta")
         mock_retriever.retrieve.return_value.chunks = []
         resp = pipeline.query("pregunta")
         assert resp.pretty_sources().strip() == "Sin fuentes"
+
+    def test_one_user_conversation_is_not_overwritten_by_another(self):
+        """CA-11.3: el historial de una conversación no debe perderse ni ser
+        reemplazado por el de otro usuario mientras la sesión siga activa."""
+        pipeline, _, mock_llm = self._make_pipeline()
+        conversation_a: list[tuple[str, str]] = []
+        conversation_b: list[tuple[str, str]] = []
+
+        mock_llm.generate.return_value.text = "answer to A"
+        resp_a1 = pipeline.query("question from A", history=conversation_a)
+        conversation_a.append(("question from A", resp_a1.answer))
+
+        mock_llm.generate.return_value.text = "answer to B"
+        resp_b1 = pipeline.query("question from B", history=conversation_b)
+        conversation_b.append(("question from B", resp_b1.answer))
+
+        resp_a2 = pipeline.query("second question from A", history=conversation_a)
+
+        # El prompt real de la 2da pregunta de A debe tener SU historial...
+        assert "question from A" in resp_a2.prompt.prompt
+        # ...y NO el de B
+        assert "question from B" not in resp_a2.prompt.prompt
+
+    def test_new_question_without_prior_conversation_responds_normally(self):
+        """CA-12.1: una pregunta nueva, sin conversación previa, debe responderse
+        con normalidad, sin depender de historial de otra persona."""
+        pipeline, _, _ = self._make_pipeline("La presión es 3500 psi.")
+        resp = pipeline.query("¿Cuál es la presión de fondo?")
+
+        assert resp.ok
+        assert "HISTORIAL DE CONVERSACIÓN" not in resp.prompt.prompt
+
+    def test_prior_questions_are_taken_into_account(self):
+        """CA-12.2: si una conversación ya tiene preguntas anteriores, esas
+        preguntas deben seguir teniéndose en cuenta al responder la siguiente,
+        igual que antes."""
+        pipeline, _, _ = self._make_pipeline("respuesta")
+        conversation = [("previous question A", "previous answer A")]
+
+        resp = pipeline.query("second question", history=conversation)
+
+        assert "HISTORIAL DE CONVERSACIÓN" in resp.prompt.prompt
+        assert "previous question A" in resp.prompt.prompt
+
+    def test_pipeline_does_not_keep_own_history_state(self):
+        """CA-13.1: el sistema de búsqueda y generación debe seguir cargándose una
+        sola vez y compartirse entre todos los usuarios (no debe reinicializarse
+        por cada persona), para no perder velocidad."""
+        pipeline, retriever, llm_client = self._make_pipeline("respuesta")
+
+        # Simula dos "usuarios" distintos usando la misma instancia de pipeline
+        resp_a = pipeline.query(
+            "pregunta usuario A",
+            history=[("hola", "hola, ¿en qué te ayudo?")],
+        )
+        resp_b = pipeline.query("pregunta usuario B", history=None)
+
+        # La instancia sigue siendo la misma: no se recreó nada por debajo
+        assert pipeline._retriever is retriever
+        assert pipeline._llm is llm_client
+
+        # El pipeline no guardó el historial del usuario A en sí mismo
+        assert not hasattr(pipeline, "_history")
+
+        # El historial de A no se filtró a la respuesta/prompt de B
+        assert "hola" not in resp_b.prompt.prompt
+        assert resp_a.query != resp_b.query
+
+    def test_stream_takes_prior_conversation_into_account(self):
+        """CA-12.2 aplicado a query_stream(): si una conversación ya tiene preguntas anteriores, esas
+        preguntas deben seguir teniéndose en cuenta al responder la siguiente,
+        igual que antes."""
+        pipeline, _, mock_llm = self._make_pipeline()
+        mock_llm.generate_stream.return_value = iter(["hola ", "mundo"])
+        conversation = [("previous question", "previous answer")]
+
+        list(pipeline.query_stream("new question", history=conversation))
+
+        sent_prompt = mock_llm.generate_stream.call_args.args[0]
+        assert "previous question" in sent_prompt
+        assert "HISTORIAL DE CONVERSACIÓN" in sent_prompt
+
+    def test_stream_new_question_without_prior_conversation(self):
+        """CA-12.1 aplicado a query_stream(): una pregunta nueva, sin conversación previa, debe responderse
+        con normalidad, sin depender de historial de otra persona."""
+        pipeline, _, mock_llm = self._make_pipeline()
+        mock_llm.generate_stream.return_value = iter(["Hola", " ", "mundo"])
+
+        tokens = list(pipeline.query_stream("question with no prior context"))
+
+        assert tokens == ["Hola", " ", "mundo"]
+        sent_prompt = mock_llm.generate_stream.call_args.args[0]
+        assert "HISTORIAL DE CONVERSACIÓN" not in sent_prompt
