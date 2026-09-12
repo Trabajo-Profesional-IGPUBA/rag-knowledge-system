@@ -172,69 +172,6 @@ class TestRAGPipeline:
 
         assert tokens == ["Hola", " ", "mundo"]
 
-    def test_query_stream_saves_full_response_to_history(self):
-        """CA-4.2: al finalizar el streaming, la respuesta completa se guarda en el historial."""
-        pipeline, _, mock_llm = self._make_pipeline()
-        mock_llm.generate_stream.return_value = iter(["Hola", " ", "mundo"])
-
-        list(pipeline.query_stream("pregunta"))
-
-        assert pipeline.history == [("pregunta", "Hola mundo")]
-
-    def test_query_saves_history(self):
-        """CA-5.1: cada consulta exitosa se agrega al historial (pregunta + respuesta)."""
-        pipeline, _, _ = self._make_pipeline("respuesta")
-        pipeline.query("pregunta 1")
-        assert pipeline.history == [("pregunta 1", "respuesta")]
-
-    def test_history_accumulates_across_multiple_queries(self):
-        """CA-5.2: el historial se acumula a lo largo de múltiples consultas."""
-        pipeline, _, _ = self._make_pipeline("respuesta")
-        pipeline.query("pregunta 1")
-        pipeline.query("pregunta 2")
-        assert len(pipeline.history) == 2
-
-    def test_failed_generation_is_not_saved_to_history(self):
-        """CA-5.3: si la generación falla, esa consulta no se agrega al historial."""
-        from src.llm.client import LLMResponse
-
-        pipeline, _, mock_llm = self._make_pipeline()
-        mock_llm.generate.return_value = LLMResponse(text="", model="test", ok=False)
-
-        resp = pipeline.query("pregunta")
-
-        assert not resp.ok
-        assert len(pipeline.history) == 0
-
-    def test_clear_history(self):
-        """CA-6.1: el historial se puede borrar en cualquier momento."""
-        pipeline, _, _ = self._make_pipeline("respuesta")
-        pipeline.query("pregunta")
-        pipeline.clear_history()
-        assert len(pipeline.history) == 0
-
-    def test_clear_history_then_query_does_not_use_history(self):
-        """CA-6.2: tras limpiar el historial, la siguiente consulta no usa contexto previo."""
-        pipeline, _, _ = self._make_pipeline("respuesta")
-        pipeline._prompt_builder = MagicMock()
-        pipeline._prompt_builder.build.return_value = MagicMock(
-            prompt="p", num_chunks=1, total_chars=1
-        )
-        pipeline._prompt_builder.build_with_history.return_value = MagicMock(
-            prompt="p", num_chunks=1, total_chars=1
-        )
-
-        pipeline.query("pregunta 1", use_history=True)  # historial vacío -> usa build()
-        pipeline.query(
-            "pregunta 2", use_history=True
-        )  # ya hay historial -> usa build_with_history()
-        pipeline.clear_history()
-        pipeline.query(
-            "pregunta 3", use_history=True
-        )  # historial vacío otra vez -> vuelve a build()
-
-        assert pipeline._prompt_builder.build_with_history.call_count == 1
-
     def test_rag_config_centralizes_parameters(self):
         """CA-7.1: RAGConfig centraliza top_k, min_score, stream y filters en un solo lugar."""
         from src.llm.rag_pipeline import RAGConfig
@@ -337,3 +274,10 @@ class TestRAGPipeline:
         mock_retriever.retrieve.return_value.chunks = []
         resp = pipeline.query("pregunta")
         assert resp.pretty_sources().strip() == "Sin fuentes"
+
+    def pipeline_does_not_keep_own_history_state(self):
+        """CA-13.1: el sistema de búsqueda y generación debe seguir cargándose una
+        sola vez y compartirse entre todos los usuarios (no debe reinicializarse
+        por cada persona), para no perder velocidad."""
+        pipeline, _, _ = self._make_pipeline("respuesta")
+        assert not hasattr(pipeline, "_history")

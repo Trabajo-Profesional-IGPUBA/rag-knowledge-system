@@ -115,17 +115,10 @@ class RAGPipeline:
                 "No se encontraron chunks con score >= %.2f", self._config.min_score
             )
 
-        if use_history and self._history:
-            built = self._prompt_builder.build_with_history(
-                query=question,
-                chunks=filtered_chunks,
-                history=self._history,
-            )
-        else:
-            built = self._prompt_builder.build(
-                query=question,
-                chunks=filtered_chunks,
-            )
+        built = self._prompt_builder.build(
+            query=question,
+            chunks=filtered_chunks,
+        )
 
         log.info(
             "Prompt construido — %d chunks, %d chars totales",
@@ -134,9 +127,6 @@ class RAGPipeline:
         )
 
         llm_resp = self._llm.generate(built.prompt)
-
-        if llm_resp.ok:
-            self._history.append((question, llm_resp.text))
 
         elapsed = time.perf_counter() - t0
         log.info("RAG completado en %.2fs", elapsed)
@@ -168,15 +158,3 @@ class RAGPipeline:
         for token in self._llm.generate_stream(built.prompt):
             full_response.append(token)
             yield token
-
-        self._history.append((question, "".join(full_response)))
-
-    def clear_history(self) -> None:
-        """Borra el historial de conversación de la sesión."""
-        self._history.clear()
-        log.info("Historial de conversación limpiado")
-
-    @property
-    def history(self) -> list[tuple[str, str]]:
-        """Historial de conversación como lista de tuplas (pregunta, respuesta)."""
-        return list(self._history)
