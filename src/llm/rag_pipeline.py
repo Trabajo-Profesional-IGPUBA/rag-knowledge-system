@@ -86,13 +86,19 @@ class RAGPipeline:
             self._llm.config.model,
         )
 
-    def query(self, question: str, use_history: bool = False) -> RAGResponse:
+    def query(
+        self,
+        question: str,
+        history: list[tuple[str, str]] | None = None,
+    ) -> RAGResponse:
         """
         Ejecuta una consulta RAG completa.
 
         Args:
             question: pregunta en lenguaje natural.
-            use_history: si True, incluye historial de conversación en el prompt.
+            history: historial de la conversación de quien pregunta, como
+                lista de tuplas (pregunta, respuesta). Si es None o está
+                vacío, no se incluye historial en el prompt.
 
         Returns:
             RAGResponse con respuesta, fuentes y métricas.
@@ -115,10 +121,17 @@ class RAGPipeline:
                 "No se encontraron chunks con score >= %.2f", self._config.min_score
             )
 
-        built = self._prompt_builder.build(
-            query=question,
-            chunks=filtered_chunks,
-        )
+        if history:
+            built = self._prompt_builder.build_with_history(
+                query=question,
+                chunks=filtered_chunks,
+                history=history,
+            )
+        else:
+            built = self._prompt_builder.build(
+                query=question,
+                chunks=filtered_chunks,
+            )
 
         log.info(
             "Prompt construido — %d chunks, %d chars totales",
