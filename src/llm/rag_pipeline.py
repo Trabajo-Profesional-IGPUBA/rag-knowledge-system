@@ -153,8 +153,16 @@ class RAGPipeline:
             total_elapsed_sec=elapsed,
         )
 
-    def query_stream(self, question: str) -> Iterator[str]:
-        """Ejecuta una consulta RAG en modo streaming, yieldeando tokens a medida que se generan."""
+    def query_stream(
+        self,
+        question: str,
+        history: list[tuple[str, str]] | None = None,
+    ) -> Iterator[str]:
+        """Ejecuta una consulta RAG en modo streaming, yieldeando tokens a medida que se generan.
+
+        Mismo comportamiento de history que query(): sin historial no cambia
+        nada, y si viene, se tiene en cuenta al armar el prompt.
+        """
         retrieval = self._retriever.retrieve(
             query=question,
             top_k=self._config.top_k,
@@ -165,9 +173,13 @@ class RAGPipeline:
             c for c in retrieval.chunks if c["score"] >= self._config.min_score
         ]
 
-        built = self._prompt_builder.build(query=question, chunks=filtered_chunks)
+        if history:
+            built = self._prompt_builder.build_with_history(
+                query=question,
+                chunks=filtered_chunks,
+                history=history,
+            )
+        else:
+            built = self._prompt_builder.build(query=question, chunks=filtered_chunks)
 
-        full_response = []
-        for token in self._llm.generate_stream(built.prompt):
-            full_response.append(token)
-            yield token
+        yield from self._llm.generate_stream(built.prompt)
