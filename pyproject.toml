@@ -4,4 +4,4 @@ ignore = ["BLE001"]
 markers = [
     "integration: tests lentos que usan componentes reales (Docling/embeddings/Qdrant)",
 ]
- 
+pythonpath = ["."]
