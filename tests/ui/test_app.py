@@ -1,4 +1,13 @@
-"""Tests para la interfaz de chat (app.py)."""
+"""
+Cubre "ÉPICA: Interfaz web de consulta":
+  - Chat con el usuario-> CA-1.1 Y  CA-1.3
+  - Carga del pipeline RAG con caché de sesión y spinner de espera-> CA-2.1 a CA-2.3
+  - Verificación de disponibilidad de Ollama con mensaje de error accionable-> CA-3.1 a CA-3.3
+  - Historial de conversación persistido en session state y renderizado al recargar> CA-4.1 a CA-4.3
+  - Input de consulta técnica con respuesta en streaming token a token-> CA-5.1 a CA-5.3
+  - Cursor animado durante la generación de la respuesta-> CA-6.1 a CA-6.3
+
+"""
 
 from __future__ import annotations
 
