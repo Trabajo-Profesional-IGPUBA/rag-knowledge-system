@@ -98,7 +98,9 @@ if prompt := st.chat_input("Escribí tu consulta técnica..."):
         with st.spinner("Buscando en documentos..."):
             full_response = render_streaming_response(
                 response_placeholder,
-                pipeline.query_stream(prompt, history=st.session_state.chat_history),
+                pipeline.query_stream(
+                    prompt, history=list(st.session_state.chat_history)
+                ),
             )
 
     st.session_state.messages.append({"role": "assistant", "content": full_response})
