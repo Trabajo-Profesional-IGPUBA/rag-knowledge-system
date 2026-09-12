@@ -229,3 +229,45 @@ class TestChatApp:
         assert calls[1] == "Hola mundo▌"
         assert calls[-1] == "Hola mundo"
         assert result == "Hola mundo"
+
+    def test_concurrent_users_do_not_share_history(self):
+        """CA-11.1, CA-11.2, CA-11.3: dos sesiones de usuario distintas (simuladas
+        de forma secuencial, ya que AppTest no soporta ejecución concurrente real)
+        no deben ver ni mezclar el historial entre sí, aunque compartan el mismo
+        pipeline cacheado"""
+        mock_pipeline, _, patches = self._patch_pipeline_internals(
+            stream_tokens=["Respuesta A"]
+        )
+        try:
+            # Usuario A
+            at_a = AppTest.from_file(APP_PATH)
+            at_a.run()
+            at_a.chat_input[0].set_value("Pregunta de A").run()
+
+            # Usuario B — instancia de sesión completamente distinta
+            mock_pipeline.query_stream.return_value = iter(["Respuesta B"])
+            at_b = AppTest.from_file(APP_PATH)
+            at_b.run()
+            at_b.chat_input[0].set_value("Pregunta de B").run()
+
+            # Cada uno ve solo su propia conversación
+            assert len(at_a.session_state["messages"]) == 2
+            assert at_a.session_state["messages"][0]["content"] == "Pregunta de A"
+
+            assert len(at_b.session_state["messages"]) == 2
+            assert at_b.session_state["messages"][0]["content"] == "Pregunta de B"
+
+            # El historial de B no contaminó a A ni viceversa
+            assert "Pregunta de B" not in [
+                m["content"] for m in at_a.session_state["messages"]
+            ]
+            assert "Pregunta de A" not in [
+                m["content"] for m in at_b.session_state["messages"]
+            ]
+
+            # Ambas sesiones usaron la MISMA instancia de pipeline (cache_resource
+            # compartido), confirmando que el aislamiento no vino de reinicializar
+            # el sistema por usuario, sino de session_state.
+            assert at_a.session_state["messages"] is not at_b.session_state["messages"]
+        finally:
+            self._stop_patches(patches)

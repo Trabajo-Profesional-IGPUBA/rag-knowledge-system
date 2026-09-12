@@ -233,7 +233,7 @@ class TestRAGPipeline:
         assert resp.llm_response is mock_llm.generate.return_value
 
     def test_rag_response_ok_reflects_retrieval_and_generation(self):
-        """CCA-8.2: El resultado debe poder indicar si la consulta fue exitosa en su conjunto (recuperación + generación),
+        """CA-8.2: El resultado debe poder indicar si la consulta fue exitosa en su conjunto (recuperación + generación),
         no solo si el LLM respondió."""
         from src.llm.client import LLMResponse
 
@@ -317,15 +317,16 @@ class TestRAGPipeline:
         resp_a1 = pipeline.query("question from A", history=conversation_a)
         conversation_a.append(("question from A", resp_a1.answer))
 
-        pipeline.query("question from B", history=conversation_b)
+        mock_llm.generate.return_value.text = "answer to B"
+        resp_b1 = pipeline.query("question from B", history=conversation_b)
+        conversation_b.append(("question from B", resp_b1.answer))
 
-        pipeline.query("second question from A", history=conversation_a)
-        assert (
-            "question from A"
-            in pipeline._prompt_builder.build_with_history(
-                query="check", chunks=[], history=conversation_a
-            ).prompt
-        )
+        resp_a2 = pipeline.query("second question from A", history=conversation_a)
+
+        # El prompt real de la 2da pregunta de A debe tener SU historial...
+        assert "question from A" in resp_a2.prompt.prompt
+        # ...y NO el de B
+        assert "question from B" not in resp_a2.prompt.prompt
 
     def test_new_question_without_prior_conversation_responds_normally(self):
         """CA-12.1: una pregunta nueva, sin conversación previa, debe responderse
@@ -371,3 +372,29 @@ class TestRAGPipeline:
         # El historial de A no se filtró a la respuesta/prompt de B
         assert "hola" not in resp_b.prompt.prompt
         assert resp_a.query != resp_b.query
+
+    def test_stream_takes_prior_conversation_into_account(self):
+        """CA-12.2 aplicado a query_stream(): si una conversación ya tiene preguntas anteriores, esas
+        preguntas deben seguir teniéndose en cuenta al responder la siguiente,
+        igual que antes."""
+        pipeline, _, mock_llm = self._make_pipeline()
+        mock_llm.generate_stream.return_value = iter(["hola ", "mundo"])
+        conversation = [("previous question", "previous answer")]
+
+        list(pipeline.query_stream("new question", history=conversation))
+
+        sent_prompt = mock_llm.generate_stream.call_args.args[0]
+        assert "previous question" in sent_prompt
+        assert "HISTORIAL DE CONVERSACIÓN" in sent_prompt
+
+    def test_stream_new_question_without_prior_conversation(self):
+        """CA-12.1 aplicado a query_stream(): una pregunta nueva, sin conversación previa, debe responderse
+        con normalidad, sin depender de historial de otra persona."""
+        pipeline, _, mock_llm = self._make_pipeline()
+        mock_llm.generate_stream.return_value = iter(["Hola", " ", "mundo"])
+
+        tokens = list(pipeline.query_stream("question with no prior context"))
+
+        assert tokens == ["Hola", " ", "mundo"]
+        sent_prompt = mock_llm.generate_stream.call_args.args[0]
+        assert "HISTORIAL DE CONVERSACIÓN" not in sent_prompt
