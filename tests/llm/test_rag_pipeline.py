@@ -304,9 +304,68 @@ class TestRAGPipeline:
         resp = pipeline.query("pregunta")
         assert resp.pretty_sources().strip() == "Sin fuentes"
 
-    def pipeline_does_not_keep_own_history_state(self):
+    def test_one_user_conversation_is_not_overwritten_by_another(self):
+        """CA-11.3: el historial de una conversación no debe perderse ni ser
+        reemplazado por el de otro usuario mientras la sesión siga activa."""
+        pipeline, _, mock_llm = self._make_pipeline()
+        conversation_a: list[tuple[str, str]] = []
+        conversation_b: list[tuple[str, str]] = []
+
+        mock_llm.generate.return_value.text = "answer to A"
+        resp_a1 = pipeline.query("question from A", history=conversation_a)
+        conversation_a.append(("question from A", resp_a1.answer))
+
+        pipeline.query("question from B", history=conversation_b)
+
+        pipeline.query("second question from A", history=conversation_a)
+        assert (
+            "question from A"
+            in pipeline._prompt_builder.build_with_history(
+                query="check", chunks=[], history=conversation_a
+            ).prompt
+        )
+
+    def test_new_question_without_prior_conversation_responds_normally(self):
+        """CA-12.1: una pregunta nueva, sin conversación previa, debe responderse
+        con normalidad, sin depender de historial de otra persona."""
+        pipeline, _, _ = self._make_pipeline("La presión es 3500 psi.")
+        resp = pipeline.query("¿Cuál es la presión de fondo?")
+
+        assert resp.ok
+        assert "HISTORIAL DE CONVERSACIÓN" not in resp.prompt.prompt
+
+    def test_prior_questions_are_taken_into_account(self):
+        """CA-12.2: si una conversación ya tiene preguntas anteriores, esas
+        preguntas deben seguir teniéndose en cuenta al responder la siguiente,
+        igual que antes."""
+        pipeline, _, _ = self._make_pipeline("respuesta")
+        conversation = [("previous question A", "previous answer A")]
+
+        resp = pipeline.query("second question", history=conversation)
+
+        assert "HISTORIAL DE CONVERSACIÓN" in resp.prompt.prompt
+        assert "previous question A" in resp.prompt.prompt
+
+    def test_pipeline_does_not_keep_own_history_state(self):
         """CA-13.1: el sistema de búsqueda y generación debe seguir cargándose una
         sola vez y compartirse entre todos los usuarios (no debe reinicializarse
         por cada persona), para no perder velocidad."""
-        pipeline, _, _ = self._make_pipeline("respuesta")
+        pipeline, retriever, llm_client = self._make_pipeline("respuesta")
+
+        # Simula dos "usuarios" distintos usando la misma instancia de pipeline
+        resp_a = pipeline.query(
+            "pregunta usuario A",
+            history=[("hola", "hola, ¿en qué te ayudo?")],
+        )
+        resp_b = pipeline.query("pregunta usuario B", history=None)
+
+        # La instancia sigue siendo la misma: no se recreó nada por debajo
+        assert pipeline._retriever is retriever
+        assert pipeline._llm is llm_client
+
+        # El pipeline no guardó el historial del usuario A en sí mismo
         assert not hasattr(pipeline, "_history")
+
+        # El historial de A no se filtró a la respuesta/prompt de B
+        assert "hola" not in resp_b.prompt.prompt
+        assert resp_a.query != resp_b.query
