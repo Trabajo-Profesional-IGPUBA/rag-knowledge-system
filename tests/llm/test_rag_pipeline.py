@@ -13,6 +13,8 @@ Cubre "ÉPICA: Pipeline RAG integrado":
   - Propiedad pretty_sources para visualización formateada-> CA-10.1 a CA-10.2
 
 Cubre "Épica: Aislamiento de sesiones e historial de chat por usuario (Streamlit)":
+  - Aislamiento de conversaciones entre usuarios-> CA-11.3
+  - Comportamiento normal del chat-> CA-12.1 y CA-12.2
   - Rendimiento-> CA-13.1
 
 """
