@@ -78,7 +78,6 @@ class RAGPipeline:
         self._llm = llm_client
         self._prompt_builder = prompt_builder or PromptBuilder()
         self._config = config or RAGConfig()
-        self._history: list[tuple[str, str]] = []
 
         log.info(
             "RAGPipeline inicializado — top_k=%d, min_score=%.2f, modelo=%s",
