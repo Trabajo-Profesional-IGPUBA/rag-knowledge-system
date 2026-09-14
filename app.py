@@ -80,6 +80,9 @@ if not ollama_ok:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
@@ -94,7 +97,11 @@ if prompt := st.chat_input("Escribí tu consulta técnica..."):
         response_placeholder = st.empty()
         with st.spinner("Buscando en documentos..."):
             full_response = render_streaming_response(
-                response_placeholder, pipeline.query_stream(prompt)
+                response_placeholder,
+                pipeline.query_stream(
+                    prompt, history=list(st.session_state.chat_history)
+                ),
             )
 
     st.session_state.messages.append({"role": "assistant", "content": full_response})
+    st.session_state.chat_history.append((prompt, full_response))

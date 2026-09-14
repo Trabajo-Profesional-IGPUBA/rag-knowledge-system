@@ -78,7 +78,6 @@ class RAGPipeline:
         self._llm = llm_client
         self._prompt_builder = prompt_builder or PromptBuilder()
         self._config = config or RAGConfig()
-        self._history: list[tuple[str, str]] = []
 
         log.info(
             "RAGPipeline inicializado — top_k=%d, min_score=%.2f, modelo=%s",
@@ -87,13 +86,19 @@ class RAGPipeline:
             self._llm.config.model,
         )
 
-    def query(self, question: str, use_history: bool = False) -> RAGResponse:
+    def query(
+        self,
+        question: str,
+        history: list[tuple[str, str]] | None = None,
+    ) -> RAGResponse:
         """
         Ejecuta una consulta RAG completa.
 
         Args:
             question: pregunta en lenguaje natural.
-            use_history: si True, incluye historial de conversación en el prompt.
+            history: historial de la conversación de quien pregunta, como
+                lista de tuplas (pregunta, respuesta). Si es None o está
+                vacío, no se incluye historial en el prompt.
 
         Returns:
             RAGResponse con respuesta, fuentes y métricas.
@@ -116,11 +121,11 @@ class RAGPipeline:
                 "No se encontraron chunks con score >= %.2f", self._config.min_score
             )
 
-        if use_history and self._history:
+        if history:
             built = self._prompt_builder.build_with_history(
                 query=question,
                 chunks=filtered_chunks,
-                history=self._history,
+                history=history,
             )
         else:
             built = self._prompt_builder.build(
@@ -136,9 +141,6 @@ class RAGPipeline:
 
         llm_resp = self._llm.generate(built.prompt)
 
-        if llm_resp.ok:
-            self._history.append((question, llm_resp.text))
-
         elapsed = time.perf_counter() - t0
         log.info("RAG completado en %.2fs", elapsed)
 
@@ -151,8 +153,16 @@ class RAGPipeline:
             total_elapsed_sec=elapsed,
         )
 
-    def query_stream(self, question: str) -> Iterator[str]:
-        """Ejecuta una consulta RAG en modo streaming, yieldeando tokens a medida que se generan."""
+    def query_stream(
+        self,
+        question: str,
+        history: list[tuple[str, str]] | None = None,
+    ) -> Iterator[str]:
+        """Ejecuta una consulta RAG en modo streaming, yieldeando tokens a medida que se generan.
+
+        Mismo comportamiento de history que query(): sin historial no cambia
+        nada, y si viene, se tiene en cuenta al armar el prompt.
+        """
         retrieval = self._retriever.retrieve(
             query=question,
             top_k=self._config.top_k,
@@ -163,21 +173,13 @@ class RAGPipeline:
             c for c in retrieval.chunks if c["score"] >= self._config.min_score
         ]
 
-        built = self._prompt_builder.build(query=question, chunks=filtered_chunks)
+        if history:
+            built = self._prompt_builder.build_with_history(
+                query=question,
+                chunks=filtered_chunks,
+                history=history,
+            )
+        else:
+            built = self._prompt_builder.build(query=question, chunks=filtered_chunks)
 
-        full_response = []
-        for token in self._llm.generate_stream(built.prompt):
-            full_response.append(token)
-            yield token
-
-        self._history.append((question, "".join(full_response)))
-
-    def clear_history(self) -> None:
-        """Borra el historial de conversación de la sesión."""
-        self._history.clear()
-        log.info("Historial de conversación limpiado")
-
-    @property
-    def history(self) -> list[tuple[str, str]]:
-        """Historial de conversación como lista de tuplas (pregunta, respuesta)."""
-        return list(self._history)
+        yield from self._llm.generate_stream(built.prompt)

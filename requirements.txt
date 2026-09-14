@@ -5,7 +5,7 @@ docling
 sentence-transformers>=3.0.0
 
 # Base de datos vectorial
-chromadb>=0.5.0
+qdrant-client
 
 # Utilidades
 python-dotenv>=1.0.0
