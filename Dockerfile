@@ -33,6 +33,8 @@ COPY main.py .
 COPY app.py .
 COPY run_evaluation.py .
 COPY generate_eval_file.py .
+COPY pyproject.toml .
+RUN chmod 777 /app
 
 
 CMD ["pytest"]
@@ -50,6 +52,7 @@ RUN mkdir /.streamlit && chmod 777 /.streamlit
 ENV HF_HOME=/cache/huggingface
 
 WORKDIR /app
+RUN chmod 777 /app
 COPY src/ ./src/
 COPY main.py .
 COPY app.py .
