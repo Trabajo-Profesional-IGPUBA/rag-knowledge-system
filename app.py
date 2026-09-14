@@ -1,3 +1,4 @@
+from os import getenv
 from pathlib import Path
 
 import streamlit as st
@@ -33,7 +34,7 @@ def load_pipeline():
     import logging
 
     from src.embeddings.embedder import Embedder
-    from src.llm.client import LLMClient, LLMConfig
+    from src.llm.client import OLLAMA_BASE_URL, LLMClient, LLMConfig
     from src.llm.prompt_builder import PromptBuilder
     from src.llm.rag_pipeline import RAGConfig, RAGPipeline
     from src.observability import setup_logging
@@ -46,7 +47,13 @@ def load_pipeline():
     vectorstore = VectorStore(VECTORSTORE_DIR)
     retriever = Retriever(embedder, vectorstore)
 
-    llm_client = LLMClient(LLMConfig(model="llama3:8b", timeout=600))
+    llm_client = LLMClient(
+        LLMConfig(
+            model="llama3:8b",
+            timeout=600,
+            base_url=getenv("OLLAMA_BASE_URL", OLLAMA_BASE_URL),
+        )
+    )
     pipeline = RAGPipeline(
         retriever=retriever,
         llm_client=llm_client,
