@@ -1,5 +1,6 @@
 import logging
 import time
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -8,6 +9,14 @@ from src.etl.chunker import DoclingHybridChunker
 from src.retrieval.vectorstore import VectorStore
 
 logger = logging.getLogger(__name__)
+
+# Silenciar warnings internos de Docling sobre recuperación de celdas PDF mediante fallback.
+# Este comportamiento es esperado en documentos con tablas complejas y no afecta el resultado.
+warnings.filterwarnings(
+    "ignore",
+    message=".*Orphan pdf_cell.*",
+    category=UserWarning,
+)
 
 
 @dataclass
