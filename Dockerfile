@@ -45,6 +45,8 @@ COPY --from=builder /usr/local/lib/python3.12/site-packages \
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /cache /cache
 
+RUN mkdir /.streamlit && chmod 777 /.streamlit
+
 ENV HF_HOME=/cache/huggingface
 
 WORKDIR /app
