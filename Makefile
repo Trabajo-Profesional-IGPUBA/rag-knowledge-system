@@ -26,16 +26,16 @@ test: build-test
 	docker run --rm $(USER_FLAG) $(TEST_IMAGE) pytest -q
 
 lint: build-test
-	docker run --rm $(USER_FLAG) $(CODE_VOLUMES_FLAG) $(IMAGE) ruff check . --fix
+	docker run --rm -t $(USER_FLAG) $(CODE_VOLUMES_FLAG) $(TEST_IMAGE) ruff check . --fix
 
 lint-check: build-test
-	docker run --rm $(USER_FLAG) $(IMAGE) ruff check .
+	docker run --rm -t $(USER_FLAG) $(TEST_IMAGE) ruff check .
 
 format: build-test
-	docker run --rm $(USER_FLAG) $(CODE_VOLUMES_FLAG) $(IMAGE) black .
+	docker run --rm -t $(USER_FLAG) $(CODE_VOLUMES_FLAG) $(TEST_IMAGE) black .
 
 format-check: build-test
-	docker run --rm $(USER_FLAG) $(IMAGE) black --check .
+	docker run --rm -t $(USER_FLAG) $(TEST_IMAGE) black --check .
 
 evaluate: build
 	docker run --rm $(USER_FLAG) -v ./data:/app/data $(IMAGE) python run_evaluation.py
