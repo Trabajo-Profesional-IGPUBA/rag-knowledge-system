@@ -83,14 +83,14 @@ def run(max_workers: int | None = None):
 
     logger = logging.getLogger()
 
-    if not RAW_DIR.exists():
-        logger.error(f"No existe {RAW_DIR}")
-        return
-
     if max_workers is None:
         max_workers = _get_max_workers()
     elif max_workers < 1:
         raise ValueError("max_workers debe ser >= 1")
+
+    if not RAW_DIR.exists():
+        logger.error(f"No existe {RAW_DIR}")
+        return
 
     files = RAW_DIR.rglob("*.pdf")
     first_file = next(files, None)
