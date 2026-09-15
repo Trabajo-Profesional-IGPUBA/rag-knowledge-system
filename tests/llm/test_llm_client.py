@@ -281,6 +281,27 @@ class TestLLMClient:
         called_url = mock_post.call_args[0][0]
         assert called_url.endswith("/api/pull")
 
+    @patch("src.llm.client.requests.post")
+    def test_ca_6_2_pull_model_confirms_successful_download(self, mock_post, caplog):
+        import logging
+
+        from src.llm.client import LLMClient, LLMConfig
+
+        """CA-6.2: el sistema debe confirmar cuando la descarga fue exitosa,
+        tanto en el valor de retorno como en un mensaje de log."""
+        mock_post.return_value = MagicMock(status_code=200)
+        mock_post.return_value.raise_for_status = lambda: None
+
+        client = LLMClient(LLMConfig())
+
+        with caplog.at_level(logging.INFO):
+            result = client.pull_model("llama3:8b")
+
+        assert result is True
+        assert any(
+            "descargado correctamente" in record.message for record in caplog.records
+        )
+
     @patch("requests.post")
     def test_pull_model_handles_failure_without_crashing(self, mock_post):
         """CA-6.3: Si la descarga falla, el sistema debe informarlo sin interrumpirse de forma abrupta."""
@@ -509,6 +530,47 @@ class TestLLMClient:
 
         client = LLMClient(LLMConfig())
         client.generate("pregunta")
+
+        sent_payload = mock_post.call_args.kwargs["json"]
+        assert "seed" not in sent_payload["options"]
+
+    @patch("src.llm.client.requests.post")
+    def test_generate_stream_sends_seed_when_configured(self, mock_post):
+        from src.llm.client import LLMClient, LLMConfig
+
+        """CA-11.2: Si se indica ese número, tiene que llegarle efectivamente al motor de generación 
+        cuando se responde mostrando el texto de a poco."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = lambda: None
+        mock_response.iter_lines.return_value = [
+            b'{"response": "hola", "done": false}',
+            b'{"response": "", "done": true}',
+        ]
+        mock_response.__enter__ = lambda self: mock_response
+        mock_response.__exit__ = lambda self, *a: None
+        mock_post.return_value = mock_response
+
+        client = LLMClient(LLMConfig(seed=7))
+        list(client.generate_stream("pregunta"))
+
+        sent_payload = mock_post.call_args.kwargs["json"]
+        assert sent_payload["options"]["seed"] == 7
+
+    @patch("src.llm.client.requests.post")
+    def test_generate_stream_omits_seed_when_not_configured(self, mock_post):
+        from src.llm.client import LLMClient, LLMConfig
+
+        """CA-12.2: Si no se indica ese número, no se le debe mandar nada raro al motor de generación 
+        cuando se responde mostrando el texto de a poco."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = lambda: None
+        mock_response.iter_lines.return_value = [b'{"response": "hola", "done": true}']
+        mock_response.__enter__ = lambda self: mock_response
+        mock_response.__exit__ = lambda self, *a: None
+        mock_post.return_value = mock_response
+
+        client = LLMClient(LLMConfig())
+        list(client.generate_stream("pregunta"))
 
         sent_payload = mock_post.call_args.kwargs["json"]
         assert "seed" not in sent_payload["options"]
