@@ -36,6 +36,7 @@ class LLMConfig:
     top_k: int = 40
     num_predict: int = 1024
     repeat_penalty: float = 1.1
+    seed: int | None = None
     base_url: str = OLLAMA_BASE_URL
     timeout: int = DEFAULT_TIMEOUT
 
@@ -109,13 +110,7 @@ class LLMClient:
             "model": model,
             "prompt": prompt,
             "stream": False,
-            "options": {
-                "temperature": self.config.temperature,
-                "top_p": self.config.top_p,
-                "top_k": self.config.top_k,
-                "num_predict": self.config.num_predict,
-                "repeat_penalty": self.config.repeat_penalty,
-            },
+            "options": self._build_options(),
         }
 
         try:
@@ -167,13 +162,7 @@ class LLMClient:
             "model": model,
             "prompt": prompt,
             "stream": True,
-            "options": {
-                "temperature": self.config.temperature,
-                "top_p": self.config.top_p,
-                "top_k": self.config.top_k,
-                "num_predict": self.config.num_predict,
-                "repeat_penalty": self.config.repeat_penalty,
-            },
+            "options": self._build_options(),
         }
 
         try:
@@ -204,3 +193,17 @@ class LLMClient:
             yield "\n[Error: Ollama no disponible. Ejecutá: ollama serve]\n"
         except requests.exceptions.RequestException as e:
             yield f"\n[Error: {e}]\n"
+
+    def _build_options(self) -> dict:
+        """Arma el dict de 'options' para el payload de Ollama, incluyendo
+        seed solo si fue especificado (CA-2: no mandar 'seed': None)."""
+        options = {
+            "temperature": self.config.temperature,
+            "top_p": self.config.top_p,
+            "top_k": self.config.top_k,
+            "num_predict": self.config.num_predict,
+            "repeat_penalty": self.config.repeat_penalty,
+        }
+        if self.config.seed is not None:
+            options["seed"] = self.config.seed
+        return options
