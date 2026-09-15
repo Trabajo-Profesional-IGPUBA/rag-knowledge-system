@@ -21,18 +21,9 @@ EXTERNAL_LOGGERS = ["docling", "httpx", "rapidocr"]
 def setup_logging(
     log_dir: Path,
     level: int = logging.INFO,
-    max_bytes: int = 10 * 1024 * 1024,  # 10MB
+    max_bytes: int = 10 * 1024 * 1024,
     backup_count: int = 5,
 ) -> None:
-    """
-    Configura logging con rotación de archivos y salida a consola.
-
-    Args:
-        log_dir: directorio donde se guardan los logs.
-        level: nivel de logging (default INFO).
-        max_bytes: tamaño máximo de cada archivo de log.
-        backup_count: cantidad de archivos de backup a mantener.
-    """
     log_dir.mkdir(parents=True, exist_ok=True)
     log_file = log_dir / "rag_pipeline.log"
 
@@ -53,8 +44,17 @@ def setup_logging(
     ]
 
     logging.basicConfig(level=level, format=fmt, datefmt=datefmt, handlers=handlers)
+
     logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
     logging.getLogger("chromadb").setLevel(logging.WARNING)
+    logging.getLogger("MatchingPostProcessor").setLevel(logging.ERROR)
+
+    class _ExcludeMatchingPostProcessor(logging.Filter):
+        def filter(self, record: logging.LogRecord) -> bool:
+            return record.name != "MatchingPostProcessor"
+
+    for handler in logging.root.handlers:
+        handler.addFilter(_ExcludeMatchingPostProcessor())
 
 
 class Timer:

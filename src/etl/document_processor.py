@@ -3,11 +3,33 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.embeddings.embedder import Embedder
+import transformers
+from transformers import AutoTokenizer
+
+from src.embeddings.embedder import DEFAULT_MODEL, Embedder
 from src.etl.chunker import DoclingHybridChunker
 from src.retrieval.vectorstore import VectorStore
 
 logger = logging.getLogger(__name__)
+
+# Silenciar warnings internos de transformers y Docling que no afectan el resultado.
+transformers.logging.set_verbosity_error()
+logging.getLogger("transformers.tokenization_utils_base").setLevel(logging.ERROR)
+logging.getLogger("MatchingPostProcessor").setLevel(logging.ERROR)
+
+# Tokenizer para truncar el texto contextualizado antes de embeddear.
+# El modelo tiene un límite de 512 tokens; el texto contextualizado puede superarlo.
+_TOKENIZER = AutoTokenizer.from_pretrained(f"sentence-transformers/{DEFAULT_MODEL}")
+_MAX_TOKENS = 512
+
+
+def _truncate(text: str) -> str:
+    """Trunca el texto a _MAX_TOKENS tokens solo si es necesario."""
+    token_ids = _TOKENIZER.encode(text)
+    if len(token_ids) <= _MAX_TOKENS:
+        return text
+    truncated = _TOKENIZER.encode(text, truncation=True, max_length=_MAX_TOKENS)
+    return _TOKENIZER.decode(truncated, skip_special_tokens=True)
 
 
 @dataclass
@@ -77,7 +99,9 @@ class DocumentProcessor:
             return metrics
 
         t0 = time.perf_counter()
-        embeddings = self.embedder.embed_batch([c.contextualized_text for c in chunks])
+        embeddings = self.embedder.embed_batch(
+            [_truncate(c.contextualized_text) for c in chunks]
+        )
         metrics.time_embedding_s = time.perf_counter() - t0
 
         t0 = time.perf_counter()

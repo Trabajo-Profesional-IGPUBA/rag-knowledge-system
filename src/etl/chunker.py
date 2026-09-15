@@ -19,8 +19,7 @@ from src.etl.cleaner import normalize
 
 logger = logging.getLogger()
 
-# Tamaño máximo de cada chunk en caracteres
-MAX_TOKENS = 800
+MAX_TOKENS = 512
 
 DEFAULT_EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
