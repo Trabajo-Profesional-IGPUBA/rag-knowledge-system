@@ -1,9 +1,9 @@
 import logging
 import time
-import transformers
 from dataclasses import dataclass
 from pathlib import Path
 
+import transformers
 from transformers import AutoTokenizer
 
 from src.embeddings.embedder import DEFAULT_MODEL, Embedder
@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 # Silenciar warnings internos de transformers y Docling que no afectan el resultado.
 transformers.logging.set_verbosity_error()
 logging.getLogger("transformers.tokenization_utils_base").setLevel(logging.ERROR)
+logging.getLogger("MatchingPostProcessor").setLevel(logging.ERROR)
 
 # Tokenizer para truncar el texto contextualizado antes de embeddear.
 # El modelo tiene un límite de 512 tokens; el texto contextualizado puede superarlo.
