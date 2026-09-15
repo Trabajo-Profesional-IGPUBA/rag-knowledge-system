@@ -162,13 +162,7 @@ class LLMClient:
             "model": model,
             "prompt": prompt,
             "stream": True,
-            "options": {
-                "temperature": self.config.temperature,
-                "top_p": self.config.top_p,
-                "top_k": self.config.top_k,
-                "num_predict": self.config.num_predict,
-                "repeat_penalty": self.config.repeat_penalty,
-            },
+            "options": self._build_options(),
         }
 
         try:
