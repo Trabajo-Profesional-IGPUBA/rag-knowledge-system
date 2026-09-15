@@ -1,105 +1,96 @@
-
 ## Instalación
 
 ```bash
 git clone https://github.com/tu-usuario/rag-knowledge-system.git
 cd rag-knowledge-system
+```
+
+## Desarrollo Local
+
+### Instalacion de paquetes y dependencias
+
+```bash
+apt-get install -y --no-install-recommends libxcb1 libxrender1 libxext6 libgl1 libglib2.0-0 libsm6
 python -m venv venv
-source venv/bin/activate  # En Windows: venv\Scripts\activate
+source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env
 ```
 
-## Docker
-
-### Levantar la aplicación
-
-```bash
-docker compose up app
-```
-
-Inicia el contenedor de la aplicación y sus dependencias.
-
-### Ejecutar los tests
-
-```bash
-docker compose run test
-```
-
-Ejecuta las pruebas del proyecto dentro de un contenedor.
-
-### Formatear el código
-
-```bash
-docker compose run format
-```
-
-Aplica automáticamente las reglas de formato configuradas en el proyecto.
-
-### Verificar el estilo del código (lint)
-
-```bash
-docker compose run lint
-```
-
-Analiza el código para detectar errores de estilo, problemas de calidad o incumplimientos de las reglas definidas por el linter y las corrige.
-
-### Ejecutar la ingesta:
+### Ingesta de archivos
 
 ```bash
 python main.py
 ```
 
-Opcional: configurar la concurrencia con la variable de entorno `INGEST_MAX_WORKERS`:
+### Correr Interfaz
 
 ```bash
-INGEST_MAX_WORKERS=4 python main.py
+streamlit run app.py --server.fileWatcherType none
 ```
 
-### Ejecucion de la interfaz web
+## Docker
+
+### Construir las imágenes
+
 ```bash
-streamlit run app.py --server.fileWatcherType none 
+make build        # imagen de producción
+make build-test   # imagen de desarrollo y tests
+```
+
+### Levantar la interfaz web
+
+```bash
+make app
+```
+
+Disponible en `http://localhost:8501`. Requiere Ollama corriendo en el host.
+
+### Ejecutar la ingesta
+
+```bash
+make run
+```
+
+### Ejecutar los tests
+
+```bash
+make test
+```
+
+### Formatear el código
+
+```bash
+make format         # aplica formato con black
+make lint           # aplica fixes con ruff
+```
+
+### Verificar el estilo del código
+
+```bash
+make format-check   # solo reporta problemas de formato
+make lint-check     # solo reporta errores de lint
 ```
 
 ### Evaluación de modelos de embeddings
-```bash
-docker compose run evaluate_embeddings
-```
-
-## Lint y formato de código
-
-El proyecto usa `ruff` (lint) y `black` (formato), ambos ya incluidos en
-la imagen Docker. El CI verifica automáticamente que el código cumpla
-ambos estándares y bloquea el PR si no es así.
-
-### Verificar localmente antes de commitear
 
 ```bash
-docker compose run lint-check     # solo reporta errores de lint
-docker compose run format-check   # solo reporta problemas de formato
+make evaluate
 ```
 
-### Corregir automáticamente
+## CI
 
-```bash
-docker compose run lint     # aplica fixes de ruff
-docker compose run format   # aplica formato de black
-```
+El CI verifica automáticamente lint y formato en cada push o pull request, y bloquea el merge si no se cumplen. Los tests corren con cobertura y el reporte se sube como artefacto del workflow.
 
 ### Hook de pre-commit (recomendado)
 
 Instalar dependencias de desarrollo (una sola vez):
 
 ```bash
-pip install -r requirements.txt
+pip install pre-commit
 pre-commit install
 ```
 
-A partir de ahí, cada `git commit` va a correr lint y formato
-automáticamente sobre los archivos modificados, usando los mismos
-contenedores Docker del proyecto.
-
-Para correrlo manualmente sobre todo el repo sin hacer commit:
+A partir de ahí, cada `git commit` corre lint y formato automáticamente sobre los archivos modificados. Para correrlo manualmente:
 
 ```bash
 pre-commit run --all-files
