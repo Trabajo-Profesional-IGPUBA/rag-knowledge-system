@@ -24,9 +24,12 @@ _MAX_TOKENS = 512
 
 
 def _truncate(text: str) -> str:
-    """Trunca el texto a _MAX_TOKENS tokens para no exceder el límite del modelo."""
-    tokens = _TOKENIZER.encode(text, truncation=True, max_length=_MAX_TOKENS)
-    return _TOKENIZER.decode(tokens, skip_special_tokens=True)
+    """Trunca el texto a _MAX_TOKENS tokens solo si es necesario."""
+    token_ids = _TOKENIZER.encode(text)
+    if len(token_ids) <= _MAX_TOKENS:
+        return text
+    truncated = _TOKENIZER.encode(text, truncation=True, max_length=_MAX_TOKENS)
+    return _TOKENIZER.decode(truncated, skip_special_tokens=True)
 
 
 @dataclass
