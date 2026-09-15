@@ -1,4 +1,20 @@
-"""Tests unitarios para LLMClient."""
+"""
+Cubre "ÉPICA: Cliente LLM sobre Ollama":
+  - Conexión a Ollama vía API REST local configurable por URL-> CA-1.1 Y  CA-1.3
+  - Generación de respuesta completa en modo no streaming-> CA-2.1 a CA-2.3
+  - Generación de respuesta en modo streaming token a token-> CA-3.1 a CA-3.4
+  - Health check de disponibilidad del servidor antes de procesar-> CA-4.1 a CA-4.3
+  - Listado de modelos disponibles en la instancia de Ollama-> CA-5.1 a CA-5.2
+  - Descarga automática de modelo si no está presente localmente-> CA-6.1 a CA-6.3
+  - Manejo de error de conexión devolviendo LLMResponse con ok=False-> CA-7.1 a CA-7.3
+  - LLMConfig como dataclass centralizado de parámetros del modelo-> CA-8.1 a CA-8.3
+  - LLMResponse como dataclass de resultado con texto, tokens y tiempo-> CA-9.1 a CA-9.4
+
+Cubre "El asistente puede dar respuestas distintas cada vez, aunque la pregunta y los documentos sean los mismos":
+  - Uso de la configuración con el número fijado-> CA-11.1
+  - Uso de la configuración sin el número fijado-> CA-12.1
+
+"""
 
 from unittest.mock import MagicMock, patch
 
@@ -13,7 +29,8 @@ class TestLLMClient:
         self.client_cls = LLMClient
 
     def test_llmconfig_accepts_custom_base_url(self):
-        """Cubre CA-1.1 (Historia 1) — el sistema permite configurar la URL del servidor."""
+        """CA-1.1: El sistema debe permitir configurar la dirección del servidor de Ollama,
+        en lugar de tener una dirección fija."""
         custom_url = "http://mi-servidor-custom:9999"
         config = self.config_cls(base_url=custom_url)
         client = self.client_cls(config)
@@ -22,7 +39,7 @@ class TestLLMClient:
 
     @patch("requests.get")
     def test_uses_configured_base_url_in_requests(self, mock_get):
-        """Cubre CA-1.2 (Historia 1) — el cliente usa la base_url configurada en las peticiones."""
+        """CA-1.2: El sistema debe usar la dirección configurada para todas las comunicaciones con el servidor."""
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_get.return_value = mock_resp
@@ -35,7 +52,7 @@ class TestLLMClient:
         assert called_url == f"{custom_url}/api/tags"
 
     def test_default_base_url_when_not_configured(self):
-        """Cubre CA-1.3 (Historia 1) — usa una URL por defecto si no se configura ninguna."""
+        """CA-1.3: Si no se configura ninguna dirección, el sistema debe usar una dirección por defecto razonable."""
         from src.llm.client import OLLAMA_BASE_URL
 
         client = self.client_cls(self.config_cls())
@@ -45,7 +62,8 @@ class TestLLMClient:
 
     @patch("requests.post")
     def test_generate_returns_complete_response_in_single_call(self, mock_post):
-        """Cubre CA-2.1 (Historia 2) — genera una respuesta completa de una sola vez."""
+        """CA-2.1: El sistema debe poder generar una respuesta completa a partir de una consulta,
+        entregándola de una sola vez cuando está lista."""
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
@@ -65,7 +83,8 @@ class TestLLMClient:
 
     @patch("requests.post")
     def test_generate_reports_token_usage(self, mock_post):
-        """Cubre CA-2.2 (Historia 2) — informa los tokens utilizados en la generación."""
+        """CA-2.2: Junto con la respuesta, el sistema debe informar cuántos recursos (tokens)
+        se utilizaron en la generación."""
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
@@ -85,7 +104,7 @@ class TestLLMClient:
 
     @patch("requests.post")
     def test_generate_reports_success_status(self, mock_post):
-        """Cubre CA-2.3 (Historia 2) — informa si la generación fue exitosa."""
+        """CA-2.3: El sistema debe informar si la generación fue exitosa o no."""
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
@@ -105,7 +124,8 @@ class TestLLMClient:
 
     @patch("requests.post")
     def test_generate_stream_yields_tokens_progressively(self, mock_post):
-        """Cubre CA-3.1 (Historia 3) — entrega la respuesta de forma progresiva, token a token."""
+        """CA-3.1: El sistema debe poder entregar la respuesta generada de forma progresiva,
+        a medida que se va produciendo, en lugar de esperar a que esté completa."""
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.raise_for_status = MagicMock()
@@ -125,7 +145,7 @@ class TestLLMClient:
 
     @patch("requests.post")
     def test_generate_stream_stops_on_done(self, mock_post):
-        """Cubre CA-3.2 (Historia 3) — detiene la entrega progresiva cuando done=True."""
+        """CA-3.2: El sistema debe detener la entrega progresiva cuando la generación finaliza."""
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.raise_for_status = MagicMock()
@@ -145,7 +165,8 @@ class TestLLMClient:
         assert tokens == ["Hola"]
 
     def test_generate_stream_handles_connection_error(self):
-        """Cubre CA-3.3 (Historia 3) — informa error de conexión sin interrumpirse abruptamente."""
+        """CA-3.3: Si ocurre un problema de conexión durante la entrega progresiva,
+        el sistema debe informarlo sin interrumpirse de forma abrupta."""
         client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
 
         tokens = list(client.generate_stream("test prompt"))
@@ -156,7 +177,9 @@ class TestLLMClient:
 
     @patch("requests.post")
     def test_generate_stream_handles_malformed_json(self, mock_post):
-        """Cubre CA-3.4 (Historia 3) — ignora JSON malformado sin propagar excepción."""
+        """CA-3.4: Si llega un fragmento de respuesta dañado o incompleto mientras el asistente está respondiendo,
+        el sistema no debe cortarse ni romperse, tiene que ignorar ese fragmento puntual
+        y seguir mostrando el resto de la respuesta con normalidad."""
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.raise_for_status = MagicMock()
@@ -179,7 +202,7 @@ class TestLLMClient:
         assert tokens == ["ok"]
 
     def test_is_available_checks_server_before_use(self):
-        """Cubre CA-4.1 (Historia 4) — permite verificar disponibilidad antes de usar el servidor."""
+        """CA-4.1: El sistema debe poder verificar si el servidor está disponible antes de intentar usarlo."""
         client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
 
         result = client.is_available()
@@ -187,7 +210,8 @@ class TestLLMClient:
         assert isinstance(result, bool)
 
     def test_is_available_returns_false_without_raising(self):
-        """Cubre CA-4.2 (Historia 4) — informa indisponibilidad sin lanzar excepción."""
+        """CA-4.2: Si el servidor no está disponible, la verificación debe informarlo sin interrumpir
+        la ejecución con un error técnico."""
         client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
 
         try:
@@ -199,7 +223,7 @@ class TestLLMClient:
 
     @patch("requests.get")
     def test_is_available_true_when_server_responds(self, mock_get):
-        """Cubre CA-4.3 (Historia 4) — confirma disponibilidad cuando el servidor responde."""
+        """CA-4.3: Si el servidor está disponible, la verificación debe confirmarlo."""
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_get.return_value = mock_resp
@@ -211,7 +235,7 @@ class TestLLMClient:
 
     @patch("requests.get")
     def test_list_models_reports_available_models(self, mock_get):
-        """Cubre CA-5.1 (Historia 5) — informa qué modelos están disponibles."""
+        """CA-5.1: El sistema debe poder informar qué modelos están disponibles en el servidor."""
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
@@ -227,7 +251,8 @@ class TestLLMClient:
 
     @patch("requests.get")
     def test_list_models_returns_empty_list_on_error(self, mock_get):
-        """Cubre CA-5.2 (Historia 5) — informa lista vacía en caso de error, sin fallar."""
+        """CA-5.2: Si no se puede obtener la lista (por error o falta de conexión),
+        el sistema debe informar una lista vacía en lugar de fallar."""
         mock_get.side_effect = requests.exceptions.ConnectionError(
             "No se pudo conectar"
         )
@@ -243,7 +268,7 @@ class TestLLMClient:
 
     @patch("requests.post")
     def test_pull_model_downloads_missing_model(self, mock_post):
-        """Cubre CA-6.1 (Historia 6) — permite descargar un modelo no disponible localmente."""
+        """CA-6.1: El sistema debe poder descargar un modelo que no está disponible localmente."""
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.raise_for_status = MagicMock()
@@ -258,7 +283,7 @@ class TestLLMClient:
 
     @patch("requests.post")
     def test_pull_model_handles_failure_without_crashing(self, mock_post):
-        """Cubre CA-6.3 (Historia 6) — informa fallo de descarga sin interrumpirse abruptamente."""
+        """CA-6.3: Si la descarga falla, el sistema debe informarlo sin interrumpirse de forma abrupta."""
         mock_post.side_effect = requests.exceptions.ConnectionError(
             "No se pudo conectar"
         )
@@ -273,14 +298,15 @@ class TestLLMClient:
         assert result is False
 
     def test_generate_reports_failure_when_server_unavailable(self):
-        """Cubre CA-7.1 (Historia 7) — informa el fallo de forma clara y estructurada."""
+        """CA-7.1: Cuando el servidor no está disponible,
+        el sistema debe informar el fallo de forma clara y estructurada."""
         client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
         resp = client.generate("test prompt")
 
         assert resp.ok is False
 
     def test_generate_error_includes_understandable_reason(self):
-        """Cubre CA-7.2 (Historia 7) — el fallo incluye un motivo entendible."""
+        """CA-7.2: El fallo debe incluir un motivo entendible del problema."""
         client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
         resp = client.generate("test prompt")
 
@@ -288,7 +314,7 @@ class TestLLMClient:
         assert len(resp.error) > 0
 
     def test_generate_does_not_raise_on_connection_error(self):
-        """Cubre CA-7.3 (Historia 7) — no se interrumpe con error técnico no controlado."""
+        """CA-7.3: El sistema no debe interrumpirse con un error técnico no controlado ante esta situación."""
         client = self.client_cls(self.config_cls(base_url="http://localhost:19999"))
 
         try:
@@ -299,7 +325,7 @@ class TestLLMClient:
         assert resp.text == ""
 
     def test_llmconfig_centralizes_model_parameters(self):
-        """Cubre CA-8.1 (Historia 8) — centraliza los parámetros del modelo en un solo lugar."""
+        """CA-8.1: El sistema debe permitir centralizar en un solo lugar los parámetros de configuración del modelo."""
         config = self.config_cls(
             model="mistral:7b",
             temperature=0.5,
@@ -317,7 +343,7 @@ class TestLLMClient:
         assert config.repeat_penalty == 1.2
 
     def test_llmconfig_has_reasonable_defaults(self):
-        """Cubre CA-8.2 (Historia 8) — valores por defecto razonables si no se especifican."""
+        """CA-8.2: Debe existir un conjunto de valores por defecto razonables si no se especifica configuración propia."""
         from src.llm.client import DEFAULT_MODEL, DEFAULT_TIMEOUT, OLLAMA_BASE_URL
 
         config = self.config_cls()
@@ -332,7 +358,7 @@ class TestLLMClient:
         assert config.repeat_penalty == 1.1
 
     def test_llmconfig_reusable_across_multiple_clients(self):
-        """Cubre CA-8.3 (Historia 8) — la configuración se puede reutilizar en varias instancias."""
+        """CA-8.3: La configuración debe poder reutilizarse al crear distintas instancias del cliente"""
         config = self.config_cls(model="mistral:7b")
 
         client_a = self.client_cls(config)
@@ -343,7 +369,8 @@ class TestLLMClient:
         assert client_a.config.model == client_b.config.model == "mistral:7b"
 
     def test_llmresponse_same_structure_success_and_failure(self):
-        """Cubre CA-9.1 (Historia 9) — misma estructura sin importar éxito o fallo."""
+        """CA-9.1: El sistema debe entregar siempre un resultado con la misma estructura,
+        sin importar si la generación fue exitosa o falló."""
         from src.llm.client import LLMResponse
 
         success_fields = set(LLMResponse(text="ok", model="llama3:8b").__dict__.keys())
@@ -356,7 +383,7 @@ class TestLLMClient:
         assert success_fields == failure_fields
 
     def test_llmresponse_includes_generated_text_or_empty(self):
-        """Cubre CA-9.2 (Historia 9) — incluye el texto generado, o vacío si falló."""
+        """CA-9.2: El resultado debe incluir el texto generado (o vacío si falló)."""
         from src.llm.client import LLMResponse
 
         ok_resp = LLMResponse(text="Hola mundo", model="llama3:8b")
@@ -367,7 +394,7 @@ class TestLLMClient:
 
     @patch("requests.post")
     def test_llmresponse_includes_tokens_and_elapsed_time(self, mock_post):
-        """Cubre CA-9.3 (Historia 9) — incluye métricas de tokens y tiempo transcurrido."""
+        """CA-9.3: El resultado debe incluir las métricas de uso (tokens) y el tiempo que tomó la generación."""
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
@@ -387,7 +414,7 @@ class TestLLMClient:
         assert resp.elapsed_sec >= 0
 
     def test_llmresponse_indicates_success_or_failure_reason(self):
-        """Cubre CA-9.4 (Historia 9) — indica éxito/fallo y el motivo en caso de falla."""
+        """CA-9.4: El resultado debe indicar claramente si fue exitoso o no, y por qué en caso de falla."""
         from src.llm.client import LLMResponse
 
         ok_resp = LLMResponse(text="Hola mundo", model="llama3:8b")

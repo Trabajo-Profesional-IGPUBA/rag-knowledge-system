@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 # Instrucciones base que definen el rol, el idioma y las reglas de uso del contexto para el asistente técnico.
-SYSTEM_PROMPT = """Sos un asistente técnico especializado en documentación de pozos petroleros y gasíferos del IGPUBA (Instituto de Gestión de Pozos Urbanos de Buenos Aires).
+SYSTEM_PROMPT = """Sos un asistente técnico especializado en documentación de pozos petroleros del IGPUBA.
 
 Tu función es responder preguntas técnicas basándote EXCLUSIVAMENTE en los documentos de contexto proporcionados.
 
