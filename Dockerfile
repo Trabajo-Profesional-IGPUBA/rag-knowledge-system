@@ -23,7 +23,7 @@ DocumentConverter()
 SentenceTransformer("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
 EOF
 
-RUN chmod -R 777 /cache
+RUN chmod -R 777 /cache && chmod -R 777 /usr/local/lib/python3.12/site-packages/rapidocr
 
 FROM builder AS test
 
