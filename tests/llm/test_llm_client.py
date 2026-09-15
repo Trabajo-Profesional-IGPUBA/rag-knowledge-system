@@ -11,8 +11,8 @@ Cubre "ÉPICA: Cliente LLM sobre Ollama":
   - LLMResponse como dataclass de resultado con texto, tokens y tiempo-> CA-9.1 a CA-9.4
 
 Cubre "El asistente puede dar respuestas distintas cada vez, aunque la pregunta y los documentos sean los mismos":
-  - Uso de la configuración con el número fijado-> CA-11.1
-  - Uso de la configuración sin el número fijado-> CA-12.1
+  - Uso de la configuración con el número fijado-> CA-11.1 a CA-11.2
+  - Uso de la configuración sin el número fijado-> CA-12.1 a CA-12.2
 
 """
 
