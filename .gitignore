@@ -23,3 +23,6 @@ data/vectorstore/*
 # OS
 .DS_Store
 Thumbs.db
+
+logs/*
+!logs/.gitkeep
