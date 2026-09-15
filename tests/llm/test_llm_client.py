@@ -449,3 +449,39 @@ class TestLLMClient:
         models = client.list_models()
         assert "llama3:8b" in models
         assert "mistral:7b" in models
+
+    @patch("src.llm.client.requests.post")
+    def test_generate_sends_seed_when_configured(self, mock_post):
+        from src.llm.client import LLMClient, LLMConfig
+
+        """CA-11.1:  Si se indica ese número, tiene que llegarle efectivamente al motor de generación
+        cuando se responde de una sola vez."""
+        mock_post.return_value = MagicMock(
+            status_code=200,
+            json=lambda: {"response": "ok", "eval_count": 1, "prompt_eval_count": 1},
+        )
+        mock_post.return_value.raise_for_status = lambda: None
+
+        client = LLMClient(LLMConfig(seed=123))
+        client.generate("pregunta")
+
+        sent_payload = mock_post.call_args.kwargs["json"]
+        assert sent_payload["options"]["seed"] == 123
+
+    @patch("src.llm.client.requests.post")
+    def test_generate_omits_seed_when_not_configured(self, mock_post):
+        from src.llm.client import LLMClient, LLMConfig
+
+        """CA-12.1: Si no se indica ese número, no se le debe mandar nada raro al motor de generación 
+        cuando se responde de una sola vez."""
+        mock_post.return_value = MagicMock(
+            status_code=200,
+            json=lambda: {"response": "ok", "eval_count": 1, "prompt_eval_count": 1},
+        )
+        mock_post.return_value.raise_for_status = lambda: None
+
+        client = LLMClient(LLMConfig())
+        client.generate("pregunta")
+
+        sent_payload = mock_post.call_args.kwargs["json"]
+        assert "seed" not in sent_payload["options"]
