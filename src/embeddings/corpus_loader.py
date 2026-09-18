@@ -48,10 +48,17 @@ def load_documents_dir(
         return []
 
     docs: list[dict] = []
+    errors: list[tuple[Path, Exception]] = []
+
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(_load_single_file, f): f for f in files}
         for future in as_completed(futures):
-            docs.extend(future.result())
+            file = futures[future]
+            try:
+                docs.extend(future.result())
+            except Exception as e:
+                print(f"⚠️  No se pudo cargar {file}: {e}")
+                errors.append((file, e))
 
     return docs
 
