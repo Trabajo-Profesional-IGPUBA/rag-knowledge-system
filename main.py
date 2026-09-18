@@ -1,3 +1,4 @@
+import argparse
 import logging
 import os
 import threading
@@ -11,7 +12,7 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 from src.observability import setup_logging
 
 ROOT_DIR = Path(__file__).parent
-RAW_DIR = ROOT_DIR / "data" / "raw"
+DEFAULT_DATA_DIR = ROOT_DIR / "data" / "raw"
 VECTOR_STORE_PATH = ROOT_DIR / "data" / "vectorstore"
 LOG_DIR = ROOT_DIR / "logs"
 
@@ -76,7 +77,34 @@ def _get_max_workers() -> int:
     return value
 
 
-def run(max_workers: int | None = None):
+def existing_dir(path_str: str) -> Path:
+    path = Path(path_str)
+    if not path.is_dir():
+        raise argparse.ArgumentTypeError(
+            f"The directory '{path_str}' does not exist or is not a directory."
+        )
+    return path
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Ingest local documents to RAG")
+
+    parser.add_argument(
+        "-d",
+        "--dir",
+        type=existing_dir,
+        default=str(
+            DEFAULT_DATA_DIR
+        ),  # Pasado como string para validarlo con existing_dir
+        help="Path to raw files",
+    )
+
+    args = parser.parse_args()
+
+    return args
+
+
+def run(args: argparse.Namespace, max_workers: int | None = None):
     from src.embeddings.embedder import Embedder
     from src.etl import DoclingHybridChunker, DocumentProcessor
     from src.retrieval.vectorstore import VectorStore
@@ -88,15 +116,11 @@ def run(max_workers: int | None = None):
     elif max_workers < 1:
         raise ValueError("max_workers debe ser >= 1")
 
-    if not RAW_DIR.exists():
-        logger.error(f"No existe {RAW_DIR}")
-        return
-
-    files = RAW_DIR.rglob("*.pdf")
+    files = args.dir.rglob("*.pdf")
     first_file = next(files, None)
 
     if first_file is None:
-        logger.warning("No se encontraron archivos PDF en %s", RAW_DIR)
+        logger.warning("No se encontraron archivos PDF en %s", args.dir)
         return
 
     def file_iterator():
@@ -182,4 +206,5 @@ def run(max_workers: int | None = None):
 
 if __name__ == "__main__":
     setup_logging(LOG_DIR)
-    run()
+    args = parse_args()
+    run(args)
