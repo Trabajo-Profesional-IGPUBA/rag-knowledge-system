@@ -6,7 +6,7 @@ Cubre "ÉPICA: Evaluación de modelos de embeddings":
   - Preparación y validación del corpus de evaluación: -> CA-13.1 a CA-13.5
 
 Cubre "Cargar múltiples archivos de documentos en paralelo"
-  - Carga y procesamiento de múltiples documentos -> 14.5 a 14.6
+  - Carga y procesamiento de múltiples documentos -> 14.1, 14.2, 14.5 y 14.6
 
 """
 
