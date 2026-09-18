@@ -40,6 +40,9 @@ def load_documents_dir(
     documentos juntos en una sola lista.
     """
     dir_path = Path(data_dir)
+    if not dir_path.exists():
+        raise FileNotFoundError(f"Directory {data_dir} does not exist")
+
     files = sorted(dir_path.rglob(pattern))
     docs: list[dict] = []
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
