@@ -291,3 +291,11 @@ class TestLoadDocuments:
         corpus_loader.load_documents_dir(str(tmp_path), max_workers=3)
 
         assert max_simultaneous > 1  # hubo más de una lectura en vuelo a la vez
+
+    def test_raises_if_directory_does_not_exist(self, tmp_path):
+        """CA-14.8: Si la carpeta indicada no existe, el sistema debe informar
+        que no se pudo encontrar mediante un error."""
+        from src.embeddings.corpus_loader import load_documents_dir
+
+        with pytest.raises(FileNotFoundError):
+            load_documents_dir(str(tmp_path / "no_existe"))
