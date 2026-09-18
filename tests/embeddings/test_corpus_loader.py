@@ -1,15 +1,12 @@
 """
 Tests para src/embeddings/corpus_loader.py
 
-Cubren dos tareas técnicas distintas:
+Cubre "ÉPICA: Evaluación de modelos de embeddings":
+  - Generación de embeddings de prueba -> CA-6.1 a CA-6.2
+  - Preparación y validación del corpus de evaluación: -> CA-13.1 a CA-13.5
 
-"Generación de embeddings de prueba":
-  - extract_test_texts()   -> CA-6.1, CA-6.2
-
-"Preparación y validación del corpus de evaluación":
-  - load_documents()             -> CA-13.1, CA-13.2, CA-13.3
-  - summary_by_doc_type()        -> CA-13.4
-  - detect_possible_duplicates() -> CA-13.5
+Cubre "Cargar múltiples archivos de documentos en paralelo"
+  - Carga y procesamiento de múltiples documentos -> 14.5 a 14.6
 
 """
 
