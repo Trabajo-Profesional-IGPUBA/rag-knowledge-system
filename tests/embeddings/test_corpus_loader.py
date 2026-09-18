@@ -231,3 +231,63 @@ class TestLoadDocuments:
         invalid_path = tmp_path / "ruta_invalida"
         with pytest.raises(FileNotFoundError):
             load_documents(str(invalid_path))
+
+    def test_loads_all_documents_from_multiple_files(self, tmp_path):
+        """CA-14.1: El sistema debe poder recibir una carpeta con varios archivos de documentos
+        y devolver todos los documentos juntos en una sola lista, sin que el usuario tenga
+        que indicar cada archivo uno por uno."""
+        from src.embeddings.corpus_loader import load_documents_dir
+
+        _write_jsonl(tmp_path / "a.jsonl", [{"doc_id": "1", "text": "uno"}])
+        _write_jsonl(tmp_path / "b.jsonl", [{"doc_id": "2", "text": "dos"}])
+
+        docs = load_documents_dir(str(tmp_path))
+
+        assert len(docs) == 2
+        assert {d["doc_id"] for d in docs} == {"1", "2"}
+
+    def test_loading_is_actually_concurrent(self, tmp_path, monkeypatch):
+        """CA-14.2: Cargar varios archivos debe aprovechar que se pueden leer al mismo tiempo,
+        para que cargar una carpeta con muchos archivos no tarde lo mismo que sumar el tiempo de cada archivo
+        por separado."""
+        import threading
+        import time
+
+        from src.embeddings import corpus_loader
+
+        for name in ["a.jsonl", "b.jsonl", "c.jsonl"]:
+            _write_jsonl(tmp_path / name, [{"doc_id": name, "text": "x"}])
+
+        concurrent_calls = []
+        lock = threading.Lock()
+
+        original = corpus_loader._load_single_file
+
+        def _slow_load(path):
+            with lock:
+                concurrent_calls.append(1)
+            time.sleep(0.2)  # simula E/S lenta
+            with lock:
+                concurrent_calls.append(-1)
+            return original(path)
+
+        monkeypatch.setattr(corpus_loader, "_load_single_file", _slow_load)
+
+        max_simultaneous = 0
+        running = 0
+
+        def _tracking_slow_load(path):
+            nonlocal running, max_simultaneous
+            with lock:
+                running += 1
+                max_simultaneous = max(max_simultaneous, running)
+            time.sleep(0.2)
+            with lock:
+                running -= 1
+            return original(path)
+
+        monkeypatch.setattr(corpus_loader, "_load_single_file", _tracking_slow_load)
+
+        corpus_loader.load_documents_dir(str(tmp_path), max_workers=3)
+
+        assert max_simultaneous > 1  # hubo más de una lectura en vuelo a la vez
