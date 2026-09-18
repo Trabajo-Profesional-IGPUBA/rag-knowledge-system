@@ -1,4 +1,5 @@
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 
@@ -26,6 +27,27 @@ def _load_single_file(path: Path) -> list[dict]:
 def load_documents(data_path: str = "data/processed.jsonl") -> list[dict]:
     """Carga un archivo .jsonl como lista de dicts, agregando la ruta de origen en '_source_file'."""
     return _load_single_file(Path(data_path))
+
+
+def load_documents_dir(
+    data_dir: str,
+    pattern: str = "*.jsonl",
+    max_workers: int | None = None,
+) -> list[dict]:
+    """
+    Carga todos los archivos que matcheen 'pattern' dentro de data_dir,
+    leyéndolos en paralelo, y devuelve todos los
+    documentos juntos en una sola lista.
+    """
+    dir_path = Path(data_dir)
+    files = sorted(dir_path.rglob(pattern))
+    docs: list[dict] = []
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(_load_single_file, f): f for f in files}
+        for future in as_completed(futures):
+            docs.extend(future.result())
+
+    return docs
 
 
 def extract_test_texts(docs: list[dict], max_docs: int | None = None) -> list[str]:
