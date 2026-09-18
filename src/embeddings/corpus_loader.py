@@ -2,11 +2,10 @@ import json
 from pathlib import Path
 
 
-def load_documents(data_path: str = "data/processed.jsonl") -> list[dict]:
-    """Carga todos los JSON de data_dir (recursivamente) como lista de dicts, agregando la ruta de origen en '_source_file'."""
-    path = Path(data_path)
+def _load_single_file(path: Path) -> list[dict]:
+    """Carga un único archivo .jsonl como lista de dicts, agregando '_source_file'."""
     if not path.exists():
-        raise FileNotFoundError(f"File {data_path} does not exist")
+        raise FileNotFoundError(f"File {path} does not exist")
 
     docs = []
     for i, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
@@ -22,6 +21,11 @@ def load_documents(data_path: str = "data/processed.jsonl") -> list[dict]:
         docs.append(data)
 
     return docs
+
+
+def load_documents(data_path: str = "data/processed.jsonl") -> list[dict]:
+    """Carga un archivo .jsonl como lista de dicts, agregando la ruta de origen en '_source_file'."""
+    return _load_single_file(Path(data_path))
 
 
 def extract_test_texts(docs: list[dict], max_docs: int | None = None) -> list[str]:
