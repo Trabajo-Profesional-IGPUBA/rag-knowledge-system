@@ -44,6 +44,9 @@ def load_documents_dir(
         raise FileNotFoundError(f"Directory {data_dir} does not exist")
 
     files = sorted(dir_path.rglob(pattern))
+    if not files:
+        return []
+
     docs: list[dict] = []
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(_load_single_file, f): f for f in files}
