@@ -215,23 +215,6 @@ class TestLoadDocuments:
         duplicates = detect_possible_duplicates(docs)
         assert duplicates == [("a", "b"), ("b", "c")]
 
-    def test_loads_single_file_same_as_before(self, tmp_path):
-        """CA-14.5: Cargar un único archivo (como se hace hoy) debe seguir funcionando exactamente igual que antes."""
-        path = tmp_path / "processed.jsonl"
-        _write_jsonl(path, [{"doc_id": "1", "text": "hola"}])
-
-        docs = load_documents(str(path))
-
-        assert len(docs) == 1
-        assert docs[0]["doc_id"] == "1"
-        assert docs[0]["_source_file"] == str(path)
-
-    def test_raises_if_path_is_neither_file_nor_directory(self, tmp_path):
-        """CA-14.6: Si el archivo indicado no existe, el sistema debe informar que no se pudo encontrar"""
-        invalid_path = tmp_path / "ruta_invalida"
-        with pytest.raises(FileNotFoundError):
-            load_documents(str(invalid_path))
-
     def test_loads_all_documents_from_multiple_files(self, tmp_path):
         """CA-14.1: El sistema debe poder recibir una carpeta con varios archivos de documentos
         y devolver todos los documentos juntos en una sola lista, sin que el usuario tenga
@@ -291,6 +274,52 @@ class TestLoadDocuments:
         corpus_loader.load_documents_dir(str(tmp_path), max_workers=3)
 
         assert max_simultaneous > 1  # hubo más de una lectura en vuelo a la vez
+
+    def test_continues_loading_other_files_if_one_fails(self, tmp_path):
+        """CA-14.3: Si uno de los archivos de la carpeta tiene un problema de lectura,
+        los demás archivos igual se deben cargar, avisando cuál falló y por qué."""
+        from src.embeddings.corpus_loader import load_documents_dir
+
+        _write_jsonl(tmp_path / "good.jsonl", [{"doc_id": "1", "text": "ok"}])
+        (tmp_path / "bad.jsonl").write_bytes(b"\xff\xfe binario invalido")
+
+        docs = load_documents_dir(str(tmp_path))
+
+        assert len(docs) == 1
+        assert docs[0]["doc_id"] == "1"
+
+    def test_each_document_keeps_its_source_file_under_concurrency(self, tmp_path):
+        """CA-14.4: Cada documento cargado debe seguir indicando de qué archivo vino,
+        aunque se hayan cargado varios archivos a la vez."""
+        from src.embeddings.corpus_loader import load_documents_dir
+
+        path_a = tmp_path / "a.jsonl"
+        path_b = tmp_path / "b.jsonl"
+        _write_jsonl(path_a, [{"doc_id": "1", "text": "uno"}])
+        _write_jsonl(path_b, [{"doc_id": "2", "text": "dos"}])
+
+        docs = load_documents_dir(str(tmp_path))
+
+        by_id = {d["doc_id"]: d for d in docs}
+        assert by_id["1"]["_source_file"] == str(path_a)
+        assert by_id["2"]["_source_file"] == str(path_b)
+
+    def test_loads_single_file_same_as_before(self, tmp_path):
+        """CA-14.5: Cargar un único archivo (como se hace hoy) debe seguir funcionando exactamente igual que antes."""
+        path = tmp_path / "processed.jsonl"
+        _write_jsonl(path, [{"doc_id": "1", "text": "hola"}])
+
+        docs = load_documents(str(path))
+
+        assert len(docs) == 1
+        assert docs[0]["doc_id"] == "1"
+        assert docs[0]["_source_file"] == str(path)
+
+    def test_raises_if_path_is_neither_file_nor_directory(self, tmp_path):
+        """CA-14.6: Si el archivo indicado no existe, el sistema debe informar que no se pudo encontrar"""
+        invalid_path = tmp_path / "ruta_invalida"
+        with pytest.raises(FileNotFoundError):
+            load_documents(str(invalid_path))
 
     def test_returns_empty_list_when_no_matching_files(self, tmp_path):
         """CA-14.7: Si la carpeta indicada no contiene archivos que coincidan con el patrón esperado,
