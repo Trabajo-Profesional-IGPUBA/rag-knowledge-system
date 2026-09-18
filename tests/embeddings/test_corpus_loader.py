@@ -292,6 +292,13 @@ class TestLoadDocuments:
 
         assert max_simultaneous > 1  # hubo más de una lectura en vuelo a la vez
 
+    def test_returns_empty_list_when_no_matching_files(self, tmp_path):
+        """CA-14.7: Si la carpeta indicada no contiene archivos que coincidan con el patrón esperado,
+        el sistema debe devolver una lista vacía y no generar ningún error."""
+        from src.embeddings.corpus_loader import load_documents_dir
+
+        assert load_documents_dir(str(tmp_path)) == []
+
     def test_raises_if_directory_does_not_exist(self, tmp_path):
         """CA-14.8: Si la carpeta indicada no existe, el sistema debe informar
         que no se pudo encontrar mediante un error."""
