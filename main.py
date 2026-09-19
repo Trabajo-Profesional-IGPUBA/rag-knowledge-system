@@ -79,10 +79,10 @@ def _get_max_workers() -> int:
 
 def existing_dir(path_str: str) -> Path:
     path = Path(path_str)
-    if not path.is_dir():
-        raise argparse.ArgumentTypeError(
-            f"The directory '{path_str}' does not exist or is not a directory."
-        )
+    if not path.is_dir() and not path.is_file():
+        raise argparse.ArgumentTypeError(f"'{path_str}' does not exist.")
+    if path.is_file() and path.suffix != ".pdf":
+        raise argparse.ArgumentTypeError(f"'{path_str}' is not a PDF file.")
     return path
 
 
@@ -118,7 +118,10 @@ def run(sources: list[Path], max_workers: int | None = None):
 
     def file_iterator():
         for s in sources:
-            yield from s.rglob("*.pdf")
+            if s.is_file():
+                yield s
+            else:
+                yield from s.rglob("*.pdf")
 
     # Cantidad máxima de Futures simultáneamente en memoria.
     # Esto NO limita la RAM usada dentro de cada worker; solamente
