@@ -90,12 +90,12 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Ingest local documents to RAG")
 
     parser.add_argument(
-        "-d",
-        "--dir",
+        "sources",
+        nargs="*",
         type=existing_dir,
-        default=str(
-            DEFAULT_DATA_DIR
-        ),  # Pasado como string para validarlo con existing_dir
+        default=[
+            str(DEFAULT_DATA_DIR)  # Pasado como string para validarlo con existing_dir
+        ],
         help="Path to raw files",
     )
 
@@ -104,7 +104,7 @@ def parse_args():
     return args
 
 
-def run(args: argparse.Namespace, max_workers: int | None = None):
+def run(sources: list[Path], max_workers: int | None = None):
     from src.embeddings.embedder import Embedder
     from src.etl import DoclingHybridChunker, DocumentProcessor
     from src.retrieval.vectorstore import VectorStore
@@ -116,16 +116,9 @@ def run(args: argparse.Namespace, max_workers: int | None = None):
     elif max_workers < 1:
         raise ValueError("max_workers debe ser >= 1")
 
-    files = args.dir.rglob("*.pdf")
-    first_file = next(files, None)
-
-    if first_file is None:
-        logger.warning("No se encontraron archivos PDF en %s", args.dir)
-        return
-
     def file_iterator():
-        yield first_file
-        yield from files
+        for s in sources:
+            yield from s.rglob("*.pdf")
 
     # Cantidad máxima de Futures simultáneamente en memoria.
     # Esto NO limita la RAM usada dentro de cada worker; solamente
@@ -207,4 +200,4 @@ def run(args: argparse.Namespace, max_workers: int | None = None):
 if __name__ == "__main__":
     setup_logging(LOG_DIR)
     args = parse_args()
-    run(args)
+    run(args.sources)
