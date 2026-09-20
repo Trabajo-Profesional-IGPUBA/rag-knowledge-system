@@ -28,6 +28,11 @@ def _truncate(text: str) -> str:
     token_ids = _TOKENIZER.encode(text)
     if len(token_ids) <= _MAX_TOKENS:
         return text
+    logger.warning(
+        "Texto contextualizado truncado: %d → %d tokens",
+        len(token_ids),
+        _MAX_TOKENS,
+    )
     truncated = _TOKENIZER.encode(text, truncation=True, max_length=_MAX_TOKENS)
     return _TOKENIZER.decode(truncated, skip_special_tokens=True)
 
