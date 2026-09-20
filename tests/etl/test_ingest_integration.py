@@ -1,5 +1,5 @@
 """
-Test de integración para la ingesta (main.py).
+Test de integración para la ingesta (ingest_files.py).
 
 Corre run() de punta a punta con componentes reales, no con mocks.
 """
@@ -21,7 +21,7 @@ class TestIngestEndToEnd:
     def test_full_pipeline_indexes_real_pdf_with_real_components(
         self, tmp_path, monkeypatch
     ):
-        import main as run_module
+        import ingest_files as run_module
         from src.retrieval.vectorstore import VectorStore
 
         raw_dir = tmp_path / "raw"
@@ -43,7 +43,7 @@ class TestIngestEndToEnd:
             store.close()
 
     def test_reingesting_same_pdf_is_idempotent_end_to_end(self, tmp_path, monkeypatch):
-        import main as run_module
+        import ingest_files as run_module
         from src.retrieval.vectorstore import VectorStore
 
         raw_dir = tmp_path / "raw"
@@ -74,7 +74,7 @@ class TestIngestEndToEnd:
         """CA-3.1/3.2: 6+ PDFs reales y distintos, max_workers=2
         (max_in_flight=4), para forzar la reposición del `while` y no
         solo el envío inicial."""
-        import main as run_module
+        import ingest_files as run_module
         from src.retrieval.vectorstore import VectorStore
 
         raw_dir = tmp_path / "raw"
@@ -119,7 +119,7 @@ class TestIngestEndToEnd:
     ):
         """CA-2.2 + CA-5.1: un archivo corrupto no debe abortar el resto
         ni dejar el VectorStore en mal estado."""
-        import main as run_module
+        import ingest_files as run_module
         from src.retrieval.vectorstore import VectorStore
 
         raw_dir = tmp_path / "raw"
@@ -146,7 +146,7 @@ class TestIngestEndToEnd:
     ):
         """Detecta metadata mal mapeada entre hilos: cada búsqueda debe
         traer contenido del documento correcto, no una mezcla."""
-        import main as run_module
+        import ingest_files as run_module
         from src.embeddings.embedder import Embedder
         from src.retrieval.vectorstore import VectorStore
 

@@ -19,7 +19,7 @@ pip install -r requirements.txt
 ### Ingesta de archivos
 
 ```bash
-python main.py
+python ingest_files.py
 ```
 
 ### Correr Interfaz

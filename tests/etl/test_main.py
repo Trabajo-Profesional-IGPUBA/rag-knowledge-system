@@ -1,6 +1,6 @@
 import pytest
 
-from main import DEFAULT_MAX_WORKERS, _get_max_workers
+from ingest_files import DEFAULT_MAX_WORKERS, _get_max_workers
 
 """
 Cubren "Paralelizar la ingesta de documentos (ETL)":
@@ -58,14 +58,14 @@ class TestConfigurableConcurrency:
         """CA-1.5: Si se solicita explícitamente un valor de concurrencia
         imposible al iniciar el proceso, el sistema debe rechazarlo con
         un mensaje claro."""
-        import main as run_module
+        import ingest_files as run_module
 
         with pytest.raises(ValueError):
             run_module.run(max_workers=0)
 
     def test_explicit_negative_workers_is_rejected(self):
         """CA-1.5: ídem, con un valor negativo."""
-        import main as run_module
+        import ingest_files as run_module
 
         with pytest.raises(ValueError):
             run_module.run(max_workers=-1)
@@ -77,7 +77,7 @@ class TestConfigurableConcurrency:
         simultáneo que la cantidad de archivos disponibles para procesar."""
         import threading
 
-        import main as run_module
+        import ingest_files as run_module
 
         raw_dir = tmp_path / "raw"
         raw_dir.mkdir()
@@ -122,7 +122,7 @@ class TestArchivesProcessing:
     def test_processes_multiple_files(self, tmp_path, monkeypatch):
         """CA-2.1: El sistema debe poder procesar varios archivos al
         mismo tiempo."""
-        import main as run_module
+        import ingest_files as run_module
 
         raw_dir = tmp_path / "raw"
         raw_dir.mkdir()
@@ -154,7 +154,7 @@ class TestArchivesProcessing:
     def test_one_file_failing_does_not_stop_the_rest(self, tmp_path, monkeypatch):
         """CA-2.2: Si un archivo falla durante el procesamiento, el resto
         debe seguir procesándose con normalidad hasta el final."""
-        import main as run_module
+        import ingest_files as run_module
 
         raw_dir = tmp_path / "raw"
         raw_dir.mkdir()
@@ -190,7 +190,7 @@ class TestArchivesProcessing:
     ):
         """CA-2.3: Si no hay archivos para procesar, el sistema debe
         informarlo y finalizar sin error."""
-        import main as run_module
+        import ingest_files as run_module
 
         raw_dir = tmp_path / "raw"
         raw_dir.mkdir()
@@ -210,7 +210,7 @@ class TestConcurrentIndexingIntegrityAndCompatibility:
         import threading
         from concurrent.futures import ThreadPoolExecutor
 
-        from main import _SerializedVectorStore
+        from ingest_files import _SerializedVectorStore
 
         call_log: list[str] = []
         in_critical_section = threading.Event()
@@ -252,7 +252,7 @@ class TestConcurrentIndexingIntegrityAndCompatibility:
         import threading
         from concurrent.futures import ThreadPoolExecutor
 
-        from main import _SerializedVectorStore
+        from ingest_files import _SerializedVectorStore
         from src.retrieval.vectorstore import VectorStore
 
         real_store = VectorStore(tmp_path / "vs", embedding_dim=4)
@@ -284,7 +284,7 @@ class TestConcurrentIndexingIntegrityAndCompatibility:
         import importlib
         import os
 
-        import main as run_module
+        import ingest_files as run_module
 
         monkeypatch.delenv("TOKENIZERS_PARALLELISM", raising=False)
         importlib.reload(run_module)
@@ -299,7 +299,7 @@ class TestObservability:
     ):
         """CA-4.1: Al finalizar la ingesta, el sistema debe informar
         cuántos archivos se procesaron con éxito y cuántos fallaron."""
-        import main as run_module
+        import ingest_files as run_module
 
         raw_dir = tmp_path / "raw"
         raw_dir.mkdir()
@@ -333,7 +333,7 @@ class TestObservability:
     ):
         """CA-4.2: En ejecuciones largas, el sistema debe informar el
         progreso periódicamente, no solo al final."""
-        import main as run_module
+        import ingest_files as run_module
 
         raw_dir = tmp_path / "raw"
         raw_dir.mkdir()
@@ -368,7 +368,7 @@ class TestResourceCleanup:
         """CA-5.1: Los recursos de almacenamiento utilizados deben
         liberarse siempre al finalizar la ingesta, incluso si hubo
         errores durante el procesamiento."""
-        import main as run_module
+        import ingest_files as run_module
 
         raw_dir = tmp_path / "raw"
         raw_dir.mkdir()
@@ -406,7 +406,7 @@ class TestResourceCleanup:
         recursos que nunca se llegaron a abrir."""
         import pytest
 
-        import main as run_module
+        import ingest_files as run_module
 
         store_created = []
         monkeypatch.setattr(
@@ -421,7 +421,7 @@ class TestResourceCleanup:
 
     def test_no_resources_opened_if_no_files_found(self, tmp_path, monkeypatch):
         """CA-5.2: ídem, cuando no hay archivos para procesar."""
-        import main as run_module
+        import ingest_files as run_module
 
         raw_dir = tmp_path / "raw"
         raw_dir.mkdir()
