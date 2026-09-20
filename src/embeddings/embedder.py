@@ -1,16 +1,21 @@
 """
 Módulo de generación de embeddings.
 
-Modelo seleccionado: paraphrase-multilingual-MiniLM-L12-v2
-  - Multilingüe (español + inglés), cubre la terminología técnica del dominio.
-  - Liviano (117MB), corre en CPU sin problemas.
-  - Dimensión: 384.
+Modelo seleccionado: intfloat/multilingual-e5-base
+  - Multilingüe, entrenado específicamente para retrieval asimétrico
+    (query corta vs. passage largo) — a diferencia del modelo anterior,
+    entrenado para similitud simétrica (parafraseo).
+  - max_seq_length real: 512 tokens (vs. 128 del modelo anterior).
+  - Dimensión: 768.
+  - Requiere prefijar los textos: "query: " para consultas del usuario,
+    "passage: " para chunks/documentos.
 
-Alternativas evaluadas:
-  - all-MiniLM-L6-v2: solo inglés, descartado.
-  - paraphrase-multilingual-mpnet-base-v2: mayor calidad pero 2x más pesado.
-  - text-embedding-ada-002 (OpenAI): requiere API key y conexión, descartado
-    por confidencialidad de los datos del IGPUBA.
+Migrado desde: paraphrase-multilingual-MiniLM-L12-v2
+  - Descartado por ser un modelo de similitud simétrica, no de retrieval,
+    y porque su max_seq_length real (128) truncaba silenciosamente los
+    chunks contextualizados (~500 tokens), perdiendo la mayor parte del
+    contenido en el embedding. Ver issue de migración para el detalle.
+...
 """
 
 from __future__ import annotations

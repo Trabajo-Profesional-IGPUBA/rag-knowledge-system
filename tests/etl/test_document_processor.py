@@ -132,6 +132,9 @@ class TestProcessFile:
         assert call_kwargs["texts"] == ["plain text"]
 
     def test_truncate_logs_warning_when_text_exceeds_limit(self, caplog):
+        """CA-1.3: Si un fragmento igual supera ese tamaño al momento de generar su embedding,
+        el sistema debe registrar el recorte en vez de descartar contenido en silencio.
+        """
         texto_largo = "palabra " * 800  # supera _MAX_TOKENS
         with caplog.at_level(logging.WARNING):
             resultado = _truncate(texto_largo)

@@ -18,7 +18,12 @@ from transformers import AutoTokenizer
 from src.etl.cleaner import normalize
 
 logger = logging.getLogger()
-
+"""
+Importante: MAX_TOKENS debe coincidir con el max_seq_length real del
+modelo de embedding usado (ver embedder.py), no con el límite teórico
+de tokens del tokenizer subyacente. Un desalineamiento acá causa
+truncado silencioso al embeddear (ver issue de migración a e5-base).
+"""
 MAX_TOKENS = 500
 
 DEFAULT_EMBEDDING_MODEL = "intfloat/multilingual-e5-base"
