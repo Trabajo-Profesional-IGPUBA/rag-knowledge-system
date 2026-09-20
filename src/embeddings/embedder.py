@@ -21,8 +21,8 @@ from sentence_transformers import SentenceTransformer
 
 log = logging.getLogger(__name__)
 
-DEFAULT_MODEL = "paraphrase-multilingual-MiniLM-L12-v2"
-EMBEDDING_DIM = 384
+DEFAULT_MODEL = "intfloat/multilingual-e5-base"
+EMBEDDING_DIM = 768
 
 
 class Embedder:
@@ -38,8 +38,7 @@ class Embedder:
         return self._model.get_sentence_embedding_dimension()
 
     def embed(self, text: str) -> list[float]:
-        """Genera embedding para un texto individual."""
-        vector = self._model.encode(text, convert_to_numpy=True)
+        vector = self._model.encode(f"query: {text}", convert_to_numpy=True)
         return vector.tolist()
 
     def embed_batch(
@@ -48,17 +47,7 @@ class Embedder:
         batch_size: int = 32,
         show_progress: bool = False,
     ) -> list[list[float]]:
-        """
-        Genera embeddings para una lista de textos.
-
-        Args:
-            texts: lista de strings a vectorizar.
-            batch_size: tamaño de lote para procesamiento.
-            show_progress: mostrar barra de progreso.
-
-        Returns:
-            Lista de vectores (uno por texto).
-        """
+        """Genera embeddings para chunks/documentos (requiere prefijo 'passage: ')."""
         if not texts:
             return []
 
@@ -68,8 +57,9 @@ class Embedder:
             batch_size,
         )
 
+        prefixed = [f"passage: {t}" for t in texts]
         vectors = self._model.encode(
-            texts,
+            prefixed,
             batch_size=batch_size,
             show_progress_bar=show_progress,
             convert_to_numpy=True,
