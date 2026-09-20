@@ -7,6 +7,11 @@ Cubren "Integración del modelo seleccionado":
 
 El modelo real (SentenceTransformer) se mockea en todos los casos para no
 depender de descargar pesos ni de tiempos de carga reales.
+
+Cubren "Bug: El buscador no encuentra bien la información porque el modelo de embeddings no está pensado para eso,
+y además pierde contenido de fragmentos largos":
+  - Migración de los documentos ya indexados -> CA-2.1 a CA-2.2
+
 """
 
 from unittest.mock import MagicMock, patch
