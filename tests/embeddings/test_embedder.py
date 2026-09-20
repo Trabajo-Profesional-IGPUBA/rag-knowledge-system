@@ -63,6 +63,20 @@ class TestEmbedder:
         result = mock_embedder.embed("texto")
         assert all(isinstance(v, float) for v in result)
 
+    def test_embed_prefixes_each_text(self, mock_embedder):
+        """CA-2.1: Al indexar un documento, el contenido debe embeddearse de la forma adecuada para ser encontrado."""
+        mock_embedder._model.encode.return_value = np.zeros((2, EMBEDDING_DIM))
+        mock_embedder.embed_batch(["texto uno", "texto dos"])
+        called_texts = mock_embedder._model.encode.call_args[0][0]
+        assert called_texts == ["passage: texto uno", "passage: texto dos"]
+
+    def test_embed_prefixes_text(self, mock_embedder):
+        """CA-2.2: Al hacer una consulta, la pregunta del usuario debe embeddearse
+        de forma diferenciada del contenido, de manera adecuada para búsqueda."""
+        mock_embedder.embed("cual es la presion del pozo X")
+        called_text = mock_embedder._model.encode.call_args[0][0]
+        assert called_text == "query: cual es la presion del pozo X"
+
 
 # ---------------------------------------------------------------------------
 # Implementación del servicio de embeddings
