@@ -11,6 +11,8 @@ Cubren "Épica: Migración del motor de base de datos vectorial: ChromaDB → Qd
   - Cierre de recursos -> CA-7.1 a CA-7.2
 """
 
+EMBEDDING_DIM = 768
+
 import pytest
 from qdrant_client.models import FieldCondition, Filter, MatchAny, MatchValue
 
@@ -24,7 +26,7 @@ def store(tmp_path):
     s.close()
 
 
-def _fake_embedding(dim: int = 384) -> list[float]:
+def _fake_embedding(dim: int = EMBEDDING_DIM) -> list[float]:
     return [0.1] * dim
 
 
@@ -210,10 +212,10 @@ class TestVectorStore:
         store.add_batch(
             chunk_ids=["doc1::chunk_0", "doc1::chunk_1"],
             texts=["texto A", "texto B"],
-            embeddings=[[0.1] * 384, [0.9] * 384],
+            embeddings=[[0.1] * EMBEDDING_DIM, [0.9] * EMBEDDING_DIM],
             metadatas=[{"doc_id": "doc1"}, {"doc_id": "doc1"}],
         )
-        result = store.search([0.9] * 384, n_results=1)[0]
+        result = store.search([0.9] * EMBEDDING_DIM, n_results=1)[0]
         assert result["chunk_id"] == "doc1::chunk_1"
 
     def test_respects_max_requested_results(self, store):

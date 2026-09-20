@@ -19,9 +19,9 @@ from src.etl.cleaner import normalize
 
 logger = logging.getLogger()
 
-MAX_TOKENS = 512
+MAX_TOKENS = 500
 
-DEFAULT_EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+DEFAULT_EMBEDDING_MODEL = "intfloat/multilingual-e5-base"
 
 _PATTERNS: dict[str, re.Pattern] = {
     "well": re.compile(

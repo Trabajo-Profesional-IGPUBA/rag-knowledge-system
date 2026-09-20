@@ -5,6 +5,8 @@ import pytest
 
 from src.etl.document_processor import DocumentProcessor, ProcessingMetrics
 
+EMBEDDING_DIM = 768
+
 
 def make_chunk(
     chunk_id: str = "abc::0", text: str = "some text", well: str | None = "PM-104"
@@ -23,7 +25,7 @@ def make_chunk(
     return chunk
 
 
-def make_processor(chunks: list | None = None, embedding_dim: int = 384):
+def make_processor(chunks: list | None = None, embedding_dim: int = EMBEDDING_DIM):
     """Builds a DocumentProcessor with mocked dependencies."""
     mock_chunks = chunks if chunks is not None else [make_chunk()]
     chunker = MagicMock()
@@ -88,7 +90,7 @@ class TestProcessFile:
         chunks = [make_chunk("abc::0"), make_chunk("abc::1")]
         processor, _, embedder, vectorstore = make_processor(chunks=chunks)
 
-        fake_embeddings = [[0.1] * 384, [0.2] * 384]
+        fake_embeddings = [[0.1] * EMBEDDING_DIM, [0.2] * EMBEDDING_DIM]
         embedder.embed_batch.return_value = fake_embeddings
 
         processor.process_file(Path("sample.pdf"))

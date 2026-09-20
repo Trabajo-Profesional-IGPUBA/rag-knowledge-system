@@ -53,6 +53,24 @@ class TestChunk:
         assert chunk.meta["section"] is None
         assert chunk.meta["page"] is None
 
+    def test_chunks_never_exceed_max_tokens(self, tmp_path):
+        """CA-1.2: El tamaño máximo de texto que puede procesar el modelo debe
+        coincidir con el tamaño que se usa para dividir los documentos en
+        fragmentos, de forma que ningún fragmento se corte sin que el sistema
+        lo sepa."""
+        MAX_TOKENS = 500
+
+        # Texto largo a propósito, sin cortes naturales de párrafo antes de los
+        # 500 tokens, para forzar al chunker a ejercitar el límite real.
+        long_text = "Pérdida de circulación en formación Quintuco. " * 200
+        sample_file = tmp_path / "sample.md"
+        sample_file.write_text(f"# Sección: Incidentes Operativos\n\n{long_text}")
+
+        chunker = DoclingHybridChunker()
+        for chunk in chunker.chunk(sample_file):
+            token_count = len(chunker._chunker.tokenizer.tokenizer.encode(chunk.text))
+            assert token_count <= MAX_TOKENS
+
 
 class TestPatterns:
 

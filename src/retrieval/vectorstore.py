@@ -52,6 +52,8 @@ from qdrant_client.models import (
 
 log = logging.getLogger(__name__)
 
+EMBEDDING_DIM = 768
+
 COLLECTION_NAME = "rag_knowledge"
 
 _ID_NAMESPACE = uuid.UUID("6f8f0b1e-6b8b-4e2f-9f1e-1a2b3c4d5e6f")
@@ -86,7 +88,7 @@ def _build_filter(filters: dict[str, Any] | None) -> Filter | None:
 class VectorStore:
     """Wrapper sobre Qdrant con operaciones de indexación y recuperación."""
 
-    def __init__(self, persist_dir: Path, embedding_dim: int = 384) -> None:
+    def __init__(self, persist_dir: Path, embedding_dim: int = EMBEDDING_DIM) -> None:
         persist_dir.mkdir(parents=True, exist_ok=True)
         self._client = QdrantClient(path=str(persist_dir))
         self._embedding_dim = embedding_dim
