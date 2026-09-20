@@ -52,29 +52,15 @@ class _SerializedVectorStore:
         return getattr(self._inner, name)
 
 
-def _get_max_workers() -> int:
-    raw = os.environ.get("INGEST_MAX_WORKERS")
-    if raw is None:
-        return DEFAULT_MAX_WORKERS
+def validate_max_workers(max_workers_raw: str) -> int:
     try:
-        value = int(raw)
+        max_workers = int(max_workers_raw)
     except ValueError:
-        logging.getLogger().warning(
-            "INGEST_MAX_WORKERS=%r no es un número válido, usando default=%d",
-            raw,
-            DEFAULT_MAX_WORKERS,
-        )
-        return DEFAULT_MAX_WORKERS
+        raise argparse.ArgumentTypeError("MAX_WORKERS must be a positive integer")
+    if max_workers < 1:
+        raise argparse.ArgumentTypeError("MAX_WORKERS must be a positive integer")
 
-    if value < 1:
-        logging.getLogger().warning(
-            "INGEST_MAX_WORKERS=%d fuera de rango, usando default=%d",
-            value,
-            DEFAULT_MAX_WORKERS,
-        )
-        return DEFAULT_MAX_WORKERS
-
-    return value
+    return max_workers
 
 
 def existing_dir(path_str: str) -> Path:
@@ -99,22 +85,24 @@ def parse_args():
         help="Path to raw files",
     )
 
-    args = parser.parse_args()
+    parser.add_argument(
+        "--max-workers",
+        "-w",
+        type=validate_max_workers,
+        default=DEFAULT_MAX_WORKERS,
+        help="Number of procceses",
+    )
 
+    args = parser.parse_args()
     return args
 
 
-def run(sources: list[Path], max_workers: int | None = None):
+def run(sources: list[Path], max_workers: int):
     from src.embeddings.embedder import Embedder
     from src.etl import DoclingHybridChunker, DocumentProcessor
     from src.retrieval.vectorstore import VectorStore
 
     logger = logging.getLogger()
-
-    if max_workers is None:
-        max_workers = _get_max_workers()
-    elif max_workers < 1:
-        raise ValueError("max_workers debe ser >= 1")
 
     def file_iterator():
         for s in sources:
@@ -203,4 +191,4 @@ def run(sources: list[Path], max_workers: int | None = None):
 if __name__ == "__main__":
     setup_logging(LOG_DIR)
     args = parse_args()
-    run(args.sources)
+    run(args.sources, args.max_workers)
