@@ -1,9 +1,16 @@
+import logging
 from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 
-from src.etl.document_processor import DocumentProcessor, ProcessingMetrics
+from src.etl.document_processor import (
+    _MAX_TOKENS,
+    _TOKENIZER,
+    DocumentProcessor,
+    ProcessingMetrics,
+    _truncate,
+)
 
 EMBEDDING_DIM = 768
 
@@ -123,6 +130,14 @@ class TestProcessFile:
 
         call_kwargs = vectorstore.add_batch.call_args.kwargs
         assert call_kwargs["texts"] == ["plain text"]
+
+    def test_truncate_logs_warning_when_text_exceeds_limit(self, caplog):
+        texto_largo = "palabra " * 800  # supera _MAX_TOKENS
+        with caplog.at_level(logging.WARNING):
+            resultado = _truncate(texto_largo)
+
+        assert len(_TOKENIZER.encode(resultado)) <= _MAX_TOKENS
+        assert "truncado" in caplog.text
 
 
 class TestProcessFileEmpty:
