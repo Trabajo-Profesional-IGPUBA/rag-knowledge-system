@@ -40,7 +40,7 @@ class Embedder:
         log.info("Modelo cargado — dimensión: %d", self.get_dimension())
 
     def get_dimension(self) -> int:
-        return self._model.get_sentence_embedding_dimension()
+        return self._model.get_embedding_dimension()
 
     def embed(self, text: str) -> list[float]:
         vector = self._model.encode(f"query: {text}", convert_to_numpy=True)
