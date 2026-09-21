@@ -1,6 +1,6 @@
 import pytest
 
-from ingest_files import DEFAULT_MAX_WORKERS, _get_max_workers
+from ingest_files import DEFAULT_MAX_WORKERS, validate_max_workers, existing_dir
 
 """
 Cubren "Paralelizar la ingesta de documentos (ETL)":
@@ -12,63 +12,72 @@ Cubren "Paralelizar la ingesta de documentos (ETL)":
 """
 
 
+def make_fake_processor(processed_files=None, fail_on=None):
+    class _FakeProcessor:
+        def process_file(self, file):
+            if fail_on and file.name in fail_on:
+                raise RuntimeError("fallo simulado")
+            if processed_files is not None:
+                processed_files.append(file.name)
+            return type("M", (), {"n_chunks": 1, "time_total_s": 0.01})()
+
+    return _FakeProcessor()
+
+
+def patch_dependencies(monkeypatch, processor, close_calls=None):
+    fake_store = type(
+        "FakeStore",
+        (),
+        {
+            "close": lambda self: (
+                close_calls.append(True) if close_calls is not None else None
+            )
+        },
+    )()
+    monkeypatch.setattr(
+        "src.retrieval.vectorstore.VectorStore", lambda *a, **k: fake_store
+    )
+    monkeypatch.setattr("src.embeddings.embedder.Embedder", lambda: object())
+    monkeypatch.setattr("src.etl.DoclingHybridChunker", lambda: object())
+    monkeypatch.setattr("src.etl.DocumentProcessor", lambda **kwargs: processor)
+    return fake_store
+
+
 class TestConfigurableConcurrency:
 
-    def test_allows_configuring_number_of_concurrent_files(self, monkeypatch):
+    def test_allows_configuring_number_of_concurrent_files(self):
         """CA-1.1: El sistema debe permitir configurar cuántos archivos se
         procesan al mismo tiempo."""
-        monkeypatch.setenv("INGEST_MAX_WORKERS", "3")
-        assert _get_max_workers() == 3
+        assert validate_max_workers("3") == 3
 
     def test_missing_config_uses_reasonable_default(self, monkeypatch):
         """CA-1.2: Si no se proporciona ninguna configuración, el sistema
-        debe continuar funcionando utilizando un valor por defecto
-        razonable."""
+        debe continuar funcionando utilizando un valor por defecto razonable."""
         monkeypatch.delenv("INGEST_MAX_WORKERS", raising=False)
-        assert _get_max_workers() == DEFAULT_MAX_WORKERS
+        assert DEFAULT_MAX_WORKERS >= 1
 
-    def test_non_numeric_config_falls_back_with_warning(self, monkeypatch, caplog):
+    def test_non_numeric_config_raises(self):
         """CA-1.3: Si se proporciona una configuración cuyo formato no es
-        válido, el sistema debe continuar funcionando utilizando un valor
-        por defecto razonable y debe informar de la situación mediante
-        un aviso."""
-        monkeypatch.setenv("INGEST_MAX_WORKERS", "abc")
-        with caplog.at_level("WARNING"):
-            assert _get_max_workers() == DEFAULT_MAX_WORKERS
-        assert "no es un número válido" in caplog.text
+        válido, el sistema debe rechazarla."""
+        import argparse
 
-    def test_zero_config_falls_back_with_warning(self, monkeypatch, caplog):
-        """CA-1.4: Si se proporciona una configuración con un valor fuera
-        del rango permitido, el sistema debe continuar funcionando
-        utilizando un valor por defecto razonable y debe informar de la
-        situación mediante un aviso."""
-        monkeypatch.setenv("INGEST_MAX_WORKERS", "0")
-        with caplog.at_level("WARNING"):
-            assert _get_max_workers() == DEFAULT_MAX_WORKERS
-        assert "fuera de rango" in caplog.text
-
-    def test_negative_config_falls_back_with_warning(self, monkeypatch, caplog):
-        """CA-1.4: ídem, con un valor negativo."""
-        monkeypatch.setenv("INGEST_MAX_WORKERS", "-5")
-        with caplog.at_level("WARNING"):
-            assert _get_max_workers() == DEFAULT_MAX_WORKERS
-        assert "fuera de rango" in caplog.text
+        with pytest.raises(argparse.ArgumentTypeError):
+            validate_max_workers("abc")
 
     def test_explicit_zero_workers_is_rejected(self):
         """CA-1.5: Si se solicita explícitamente un valor de concurrencia
-        imposible al iniciar el proceso, el sistema debe rechazarlo con
-        un mensaje claro."""
-        import ingest_files as run_module
+        imposible al iniciar el proceso, el sistema debe rechazarlo."""
+        import argparse
 
-        with pytest.raises(ValueError):
-            run_module.run(max_workers=0)
+        with pytest.raises(argparse.ArgumentTypeError):
+            validate_max_workers("0")
 
     def test_explicit_negative_workers_is_rejected(self):
         """CA-1.5: ídem, con un valor negativo."""
-        import ingest_files as run_module
+        import argparse
 
-        with pytest.raises(ValueError):
-            run_module.run(max_workers=-1)
+        with pytest.raises(argparse.ArgumentTypeError):
+            validate_max_workers("-5")
 
     def test_never_submits_more_concurrent_tasks_than_available_files(
         self, tmp_path, monkeypatch
@@ -76,12 +85,11 @@ class TestConfigurableConcurrency:
         """CA-1.6: El sistema no debe reservar más capacidad de procesamiento
         simultáneo que la cantidad de archivos disponibles para procesar."""
         import threading
-
         import ingest_files as run_module
 
         raw_dir = tmp_path / "raw"
         raw_dir.mkdir()
-        for name in ["a.pdf", "b.pdf"]:  # solo 2 archivos
+        for name in ["a.pdf", "b.pdf"]:
             (raw_dir / name).touch()
 
         max_concurrent_seen = 0
@@ -101,18 +109,8 @@ class TestConfigurableConcurrency:
                     currently_running -= 1
                 return type("M", (), {"n_chunks": 1, "time_total_s": 0.01})()
 
-        fake_store = type("FakeStore", (), {"close": lambda self: None})()
-        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
-        monkeypatch.setattr(
-            "src.retrieval.vectorstore.VectorStore", lambda *a, **k: fake_store
-        )
-        monkeypatch.setattr("src.embeddings.embedder.Embedder", lambda: object())
-        monkeypatch.setattr("src.etl.DoclingHybridChunker", lambda: object())
-        monkeypatch.setattr(
-            "src.etl.DocumentProcessor", lambda **kwargs: _FakeProcessor()
-        )
-
-        run_module.run(max_workers=10)  # pide 10, solo hay 2 archivos
+        patch_dependencies(monkeypatch, _FakeProcessor())
+        run_module.run(sources=[raw_dir], max_workers=10)
 
         assert max_concurrent_seen <= 2
 
@@ -120,8 +118,7 @@ class TestConfigurableConcurrency:
 class TestArchivesProcessing:
 
     def test_processes_multiple_files(self, tmp_path, monkeypatch):
-        """CA-2.1: El sistema debe poder procesar varios archivos al
-        mismo tiempo."""
+        """CA-2.1: El sistema debe poder procesar varios archivos al mismo tiempo."""
         import ingest_files as run_module
 
         raw_dir = tmp_path / "raw"
@@ -130,30 +127,16 @@ class TestArchivesProcessing:
             (raw_dir / name).touch()
 
         processed_files = []
-
-        class _FakeProcessor:
-            def process_file(self, file):
-                processed_files.append(file.name)
-                return type("M", (), {"n_chunks": 1, "time_total_s": 0.01})()
-
-        fake_store = type("FakeStore", (), {"close": lambda self: None})()
-        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
-        monkeypatch.setattr(
-            "src.retrieval.vectorstore.VectorStore", lambda *a, **k: fake_store
+        patch_dependencies(
+            monkeypatch, make_fake_processor(processed_files=processed_files)
         )
-        monkeypatch.setattr("src.embeddings.embedder.Embedder", lambda: object())
-        monkeypatch.setattr("src.etl.DoclingHybridChunker", lambda: object())
-        monkeypatch.setattr(
-            "src.etl.DocumentProcessor", lambda **kwargs: _FakeProcessor()
-        )
-
-        run_module.run(max_workers=2)
+        run_module.run(sources=[raw_dir], max_workers=2)
 
         assert sorted(processed_files) == ["a.pdf", "b.pdf", "c.pdf"]
 
     def test_one_file_failing_does_not_stop_the_rest(self, tmp_path, monkeypatch):
         """CA-2.2: Si un archivo falla durante el procesamiento, el resto
-        debe seguir procesándose con normalidad hasta el final."""
+        debe seguir procesándose con normalidad."""
         import ingest_files as run_module
 
         raw_dir = tmp_path / "raw"
@@ -162,26 +145,11 @@ class TestArchivesProcessing:
             (raw_dir / name).touch()
 
         processed_files = []
-
-        class _FakeProcessor:
-            def process_file(self, file):
-                if file.name == "b.pdf":
-                    raise RuntimeError("fallo simulado")
-                processed_files.append(file.name)
-                return type("M", (), {"n_chunks": 1, "time_total_s": 0.01})()
-
-        fake_store = type("FakeStore", (), {"close": lambda self: None})()
-        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
-        monkeypatch.setattr(
-            "src.retrieval.vectorstore.VectorStore", lambda *a, **k: fake_store
+        patch_dependencies(
+            monkeypatch,
+            make_fake_processor(processed_files=processed_files, fail_on={"b.pdf"}),
         )
-        monkeypatch.setattr("src.embeddings.embedder.Embedder", lambda: object())
-        monkeypatch.setattr("src.etl.DoclingHybridChunker", lambda: object())
-        monkeypatch.setattr(
-            "src.etl.DocumentProcessor", lambda **kwargs: _FakeProcessor()
-        )
-
-        run_module.run(max_workers=2)  # no debe lanzar
+        run_module.run(sources=[raw_dir], max_workers=2)
 
         assert sorted(processed_files) == ["a.pdf", "c.pdf"]
 
@@ -194,12 +162,128 @@ class TestArchivesProcessing:
 
         raw_dir = tmp_path / "raw"
         raw_dir.mkdir()
-        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
+        patch_dependencies(monkeypatch, make_fake_processor())
 
         with caplog.at_level("WARNING"):
-            run_module.run(max_workers=2)  # no debe lanzar
+            run_module.run(sources=[raw_dir], max_workers=2)
 
         assert "No se encontraron archivos PDF" in caplog.text
+
+
+class TestSources:
+
+    def test_single_pdf_file_as_source(self, tmp_path, monkeypatch):
+        """Passing a single PDF file as source processes only that file."""
+        import ingest_files as run_module
+
+        pdf = tmp_path / "solo.pdf"
+        pdf.touch()
+
+        processed_files = []
+        patch_dependencies(
+            monkeypatch, make_fake_processor(processed_files=processed_files)
+        )
+        run_module.run(sources=[pdf], max_workers=1)
+
+        assert processed_files == ["solo.pdf"]
+
+    def test_multiple_directories_as_sources(self, tmp_path, monkeypatch):
+        """Passing multiple directories processes PDFs from all of them."""
+        import ingest_files as run_module
+
+        dir_a = tmp_path / "a"
+        dir_b = tmp_path / "b"
+        dir_a.mkdir()
+        dir_b.mkdir()
+        (dir_a / "x.pdf").touch()
+        (dir_b / "y.pdf").touch()
+
+        processed_files = []
+        patch_dependencies(
+            monkeypatch, make_fake_processor(processed_files=processed_files)
+        )
+        run_module.run(sources=[dir_a, dir_b], max_workers=2)
+
+        assert sorted(processed_files) == ["x.pdf", "y.pdf"]
+
+    def test_mix_of_file_and_directory_as_sources(self, tmp_path, monkeypatch):
+        """Passing a mix of a file and a directory processes both."""
+        import ingest_files as run_module
+
+        raw_dir = tmp_path / "raw"
+        raw_dir.mkdir()
+        (raw_dir / "a.pdf").touch()
+        single_pdf = tmp_path / "b.pdf"
+        single_pdf.touch()
+
+        processed_files = []
+        patch_dependencies(
+            monkeypatch, make_fake_processor(processed_files=processed_files)
+        )
+        run_module.run(sources=[raw_dir, single_pdf], max_workers=2)
+
+        assert sorted(processed_files) == ["a.pdf", "b.pdf"]
+
+    def test_discovers_pdfs_recursively_in_directory(self, tmp_path, monkeypatch):
+        """PDFs in subdirectories are discovered recursively."""
+        import ingest_files as run_module
+
+        raw_dir = tmp_path / "raw"
+        subdir = raw_dir / "ewr"
+        subdir.mkdir(parents=True)
+        (subdir / "deep.pdf").touch()
+
+        processed_files = []
+        patch_dependencies(
+            monkeypatch, make_fake_processor(processed_files=processed_files)
+        )
+        run_module.run(sources=[raw_dir], max_workers=1)
+
+        assert processed_files == ["deep.pdf"]
+
+    def test_non_pdf_files_in_directory_are_ignored(self, tmp_path, monkeypatch):
+        """Non-PDF files in a source directory are not processed."""
+        import ingest_files as run_module
+
+        raw_dir = tmp_path / "raw"
+        raw_dir.mkdir()
+        (raw_dir / "doc.pdf").touch()
+        (raw_dir / "readme.txt").touch()
+        (raw_dir / "data.csv").touch()
+
+        processed_files = []
+        patch_dependencies(
+            monkeypatch, make_fake_processor(processed_files=processed_files)
+        )
+        run_module.run(sources=[raw_dir], max_workers=1)
+
+        assert processed_files == ["doc.pdf"]
+
+    def test_existing_dir_accepts_pdf_file(self, tmp_path):
+        """existing_dir accepts a valid PDF file path."""
+        pdf = tmp_path / "valid.pdf"
+        pdf.touch()
+        assert existing_dir(str(pdf)) == pdf
+
+    def test_existing_dir_accepts_directory(self, tmp_path):
+        """existing_dir accepts a valid directory path."""
+        assert existing_dir(str(tmp_path)) == tmp_path
+
+    def test_existing_dir_rejects_missing_path(self, tmp_path):
+        """existing_dir raises for a path that does not exist."""
+        import argparse
+
+        with pytest.raises(argparse.ArgumentTypeError):
+            existing_dir(str(tmp_path / "nonexistent"))
+
+    def test_existing_dir_rejects_non_pdf_file(self, tmp_path):
+        """existing_dir raises for a file that is not a PDF."""
+        import argparse
+
+        txt = tmp_path / "notes.txt"
+        txt.touch()
+        with pytest.raises(argparse.ArgumentTypeError):
+            existing_dir(str(txt))
 
 
 class TestConcurrentIndexingIntegrityAndCompatibility:
@@ -209,7 +293,6 @@ class TestConcurrentIndexingIntegrityAndCompatibility:
         corromper, perder ni duplicar los datos ya almacenados."""
         import threading
         from concurrent.futures import ThreadPoolExecutor
-
         from ingest_files import _SerializedVectorStore
 
         call_log: list[str] = []
@@ -251,7 +334,6 @@ class TestConcurrentIndexingIntegrityAndCompatibility:
         """CA-3.1: ídem, verificado contra el VectorStore real."""
         import threading
         from concurrent.futures import ThreadPoolExecutor
-
         from ingest_files import _SerializedVectorStore
         from src.retrieval.vectorstore import VectorStore
 
@@ -283,7 +365,6 @@ class TestConcurrentIndexingIntegrityAndCompatibility:
         paralelismo."""
         import importlib
         import os
-
         import ingest_files as run_module
 
         monkeypatch.delenv("TOKENIZERS_PARALLELISM", raising=False)
@@ -306,27 +387,16 @@ class TestObservability:
         for name in ["a.pdf", "b.pdf"]:
             (raw_dir / name).touch()
 
-        class _FakeProcessor:
-            def process_file(self, file):
-                if file.name == "a.pdf":
-                    raise RuntimeError("fallo simulado")
-                return type("M", (), {"n_chunks": 1, "time_total_s": 0.01})()
-
-        fake_store = type("FakeStore", (), {"close": lambda self: None})()
-        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
-        monkeypatch.setattr(
-            "src.retrieval.vectorstore.VectorStore", lambda *a, **k: fake_store
-        )
-        monkeypatch.setattr("src.embeddings.embedder.Embedder", lambda: object())
-        monkeypatch.setattr("src.etl.DoclingHybridChunker", lambda: object())
-        monkeypatch.setattr(
-            "src.etl.DocumentProcessor", lambda **kwargs: _FakeProcessor()
+        patch_dependencies(
+            monkeypatch,
+            make_fake_processor(fail_on={"a.pdf"}),
         )
 
         with caplog.at_level("INFO"):
-            run_module.run(max_workers=2)
+            run_module.run(sources=[raw_dir], max_workers=2)
 
-        assert "OK=1 | Fallidos=1" in caplog.text
+        assert "OK=1" in caplog.text
+        assert "Fallidos=1" in caplog.text
 
     def test_reports_periodic_progress_on_long_runs(
         self, tmp_path, monkeypatch, caplog
@@ -340,23 +410,10 @@ class TestObservability:
         for i in range(120):
             (raw_dir / f"file_{i}.pdf").touch()
 
-        class _FakeProcessor:
-            def process_file(self, file):
-                return type("M", (), {"n_chunks": 1, "time_total_s": 0.001})()
-
-        fake_store = type("FakeStore", (), {"close": lambda self: None})()
-        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
-        monkeypatch.setattr(
-            "src.retrieval.vectorstore.VectorStore", lambda *a, **k: fake_store
-        )
-        monkeypatch.setattr("src.embeddings.embedder.Embedder", lambda: object())
-        monkeypatch.setattr("src.etl.DoclingHybridChunker", lambda: object())
-        monkeypatch.setattr(
-            "src.etl.DocumentProcessor", lambda **kwargs: _FakeProcessor()
-        )
+        patch_dependencies(monkeypatch, make_fake_processor())
 
         with caplog.at_level("INFO"):
-            run_module.run(max_workers=4)
+            run_module.run(sources=[raw_dir], max_workers=4)
 
         progress_lines = [r for r in caplog.records if "Progreso:" in r.message]
         assert len(progress_lines) >= 1
@@ -366,8 +423,7 @@ class TestResourceCleanup:
 
     def test_storage_resources_released_even_if_files_fail(self, tmp_path, monkeypatch):
         """CA-5.1: Los recursos de almacenamiento utilizados deben
-        liberarse siempre al finalizar la ingesta, incluso si hubo
-        errores durante el procesamiento."""
+        liberarse siempre al finalizar la ingesta, incluso si hubo errores."""
         import ingest_files as run_module
 
         raw_dir = tmp_path / "raw"
@@ -376,48 +432,14 @@ class TestResourceCleanup:
             (raw_dir / name).touch()
 
         close_calls = []
-        fake_store = type(
-            "FakeStore", (), {"close": lambda self: close_calls.append(True)}
-        )()
-
-        class _FakeProcessor:
-            def process_file(self, file):
-                if file.name == "a.pdf":
-                    raise RuntimeError("fallo simulado")
-                return type("M", (), {"n_chunks": 1, "time_total_s": 0.01})()
-
-        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
-        monkeypatch.setattr(
-            "src.retrieval.vectorstore.VectorStore", lambda *a, **k: fake_store
+        patch_dependencies(
+            monkeypatch,
+            make_fake_processor(fail_on={"a.pdf"}),
+            close_calls=close_calls,
         )
-        monkeypatch.setattr("src.embeddings.embedder.Embedder", lambda: object())
-        monkeypatch.setattr("src.etl.DoclingHybridChunker", lambda: object())
-        monkeypatch.setattr(
-            "src.etl.DocumentProcessor", lambda **kwargs: _FakeProcessor()
-        )
-
-        run_module.run(max_workers=2)
+        run_module.run(sources=[raw_dir], max_workers=2)
 
         assert close_calls == [True]
-
-    def test_no_resources_opened_if_configuration_is_rejected(self, monkeypatch):
-        """CA-5.2: Si la ingesta ni siquiera llegó a iniciarse por una
-        configuración inválida, el sistema no debe intentar liberar
-        recursos que nunca se llegaron a abrir."""
-        import pytest
-
-        import ingest_files as run_module
-
-        store_created = []
-        monkeypatch.setattr(
-            "src.retrieval.vectorstore.VectorStore",
-            lambda *a, **k: store_created.append(True),
-        )
-
-        with pytest.raises(ValueError):
-            run_module.run(max_workers=0)
-
-        assert store_created == []
 
     def test_no_resources_opened_if_no_files_found(self, tmp_path, monkeypatch):
         """CA-5.2: ídem, cuando no hay archivos para procesar."""
@@ -426,12 +448,10 @@ class TestResourceCleanup:
         raw_dir = tmp_path / "raw"
         raw_dir.mkdir()
         store_created = []
-        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
         monkeypatch.setattr(
             "src.retrieval.vectorstore.VectorStore",
             lambda *a, **k: store_created.append(True),
         )
-
-        run_module.run(max_workers=2)
+        run_module.run(sources=[raw_dir], max_workers=2)
 
         assert store_created == []

@@ -31,10 +31,9 @@ class TestIngestEndToEnd:
         assert PVT_FIXTURE.exists(), f"Falta el fixture {PVT_FIXTURE}."
         shutil.copy(PVT_FIXTURE, raw_dir / "pvt.pdf")
 
-        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
         monkeypatch.setattr(run_module, "VECTOR_STORE_PATH", vector_store_dir)
 
-        run_module.run(max_workers=2)
+        run_module.run(sources=[raw_dir], max_workers=2)
 
         store = VectorStore(vector_store_dir)
         try:
@@ -52,15 +51,14 @@ class TestIngestEndToEnd:
 
         shutil.copy(PVT_FIXTURE, raw_dir / "pvt.pdf")
 
-        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
         monkeypatch.setattr(run_module, "VECTOR_STORE_PATH", vector_store_dir)
 
-        run_module.run(max_workers=2)
+        run_module.run(sources=[raw_dir], max_workers=2)
         store = VectorStore(vector_store_dir)
         count_after_first_run = store.count()
         store.close()
 
-        run_module.run(max_workers=2)
+        run_module.run(sources=[raw_dir], max_workers=2)
 
         store = VectorStore(vector_store_dir)
         try:
@@ -98,11 +96,10 @@ class TestIngestEndToEnd:
             "la reposición del while."
         )
 
-        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
         monkeypatch.setattr(run_module, "VECTOR_STORE_PATH", vector_store_dir)
 
         with caplog.at_level("INFO"):
-            run_module.run(max_workers=max_workers)
+            run_module.run(sources=[raw_dir], max_workers=max_workers)
 
         assert (
             f"Procesados={total_files} | OK={total_files} | Fallidos=0" in caplog.text
@@ -130,10 +127,9 @@ class TestIngestEndToEnd:
         shutil.copy(INY_FIXTURE, raw_dir / "iny.pdf")
         (raw_dir / "corrupto.pdf").write_bytes(b"esto no es un PDF valido")
 
-        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
         monkeypatch.setattr(run_module, "VECTOR_STORE_PATH", vector_store_dir)
 
-        run_module.run(max_workers=2)
+        run_module.run(sources=[raw_dir], max_workers=2)
 
         store = VectorStore(vector_store_dir)
         try:
@@ -157,10 +153,9 @@ class TestIngestEndToEnd:
         shutil.copy(PVT_FIXTURE, raw_dir / "pvt.pdf")
         shutil.copy(INY_FIXTURE, raw_dir / "iny.pdf")
 
-        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
         monkeypatch.setattr(run_module, "VECTOR_STORE_PATH", vector_store_dir)
 
-        run_module.run(max_workers=2)
+        run_module.run(sources=[raw_dir], max_workers=2)
 
         store = VectorStore(vector_store_dir)
         embedder = Embedder()

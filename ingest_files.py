@@ -97,19 +97,26 @@ def parse_args():
     return args
 
 
-def run(sources: list[Path], max_workers: int):
+def file_iterator(sources):
+    for s in sources:
+        if s.is_file():
+            yield s
+        else:
+            yield from s.rglob("*.pdf")
+
+
+def run(
+    sources: list[Path] = [DEFAULT_DATA_DIR], max_workers: int = DEFAULT_MAX_WORKERS
+):
     from src.embeddings.embedder import Embedder
     from src.etl import DoclingHybridChunker, DocumentProcessor
     from src.retrieval.vectorstore import VectorStore
 
     logger = logging.getLogger()
 
-    def file_iterator():
-        for s in sources:
-            if s.is_file():
-                yield s
-            else:
-                yield from s.rglob("*.pdf")
+    if next(file_iterator(sources), None) is None:
+        logger.warning("No se encontraron archivos PDF")
+        return
 
     # Cantidad máxima de Futures simultáneamente en memoria.
     # Esto NO limita la RAM usada dentro de cada worker; solamente
@@ -129,7 +136,7 @@ def run(sources: list[Path], max_workers: int):
     processed = 0
     failed = 0
 
-    files_iter = iter(file_iterator())
+    files_iter = file_iterator(sources)
     in_flight: dict = {}
     try:
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
