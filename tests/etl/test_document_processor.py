@@ -1,9 +1,18 @@
+import logging
 from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 
-from src.etl.document_processor import DocumentProcessor, ProcessingMetrics
+from src.etl.document_processor import (
+    _MAX_TOKENS,
+    _TOKENIZER,
+    DocumentProcessor,
+    ProcessingMetrics,
+    _truncate,
+)
+
+EMBEDDING_DIM = 768
 
 
 def make_chunk(
@@ -23,7 +32,7 @@ def make_chunk(
     return chunk
 
 
-def make_processor(chunks: list | None = None, embedding_dim: int = 384):
+def make_processor(chunks: list | None = None, embedding_dim: int = EMBEDDING_DIM):
     """Builds a DocumentProcessor with mocked dependencies."""
     mock_chunks = chunks if chunks is not None else [make_chunk()]
     chunker = MagicMock()
@@ -88,7 +97,7 @@ class TestProcessFile:
         chunks = [make_chunk("abc::0"), make_chunk("abc::1")]
         processor, _, embedder, vectorstore = make_processor(chunks=chunks)
 
-        fake_embeddings = [[0.1] * 384, [0.2] * 384]
+        fake_embeddings = [[0.1] * EMBEDDING_DIM, [0.2] * EMBEDDING_DIM]
         embedder.embed_batch.return_value = fake_embeddings
 
         processor.process_file(Path("sample.pdf"))
@@ -121,6 +130,17 @@ class TestProcessFile:
 
         call_kwargs = vectorstore.add_batch.call_args.kwargs
         assert call_kwargs["texts"] == ["plain text"]
+
+    def test_truncate_logs_warning_when_text_exceeds_limit(self, caplog):
+        """CA-1.3: Si un fragmento igual supera ese tamaño al momento de generar su embedding,
+        el sistema debe registrar el recorte en vez de descartar contenido en silencio.
+        """
+        texto_largo = "palabra " * 800  # supera _MAX_TOKENS
+        with caplog.at_level(logging.WARNING):
+            resultado = _truncate(texto_largo)
+
+        assert len(_TOKENIZER.encode(resultado)) <= _MAX_TOKENS
+        assert "truncado" in caplog.text
 
 
 class TestProcessFileEmpty:

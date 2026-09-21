@@ -7,6 +7,11 @@ Cubren "Integración del modelo seleccionado":
 
 El modelo real (SentenceTransformer) se mockea en todos los casos para no
 depender de descargar pesos ni de tiempos de carga reales.
+
+Cubren "Bug: El buscador no encuentra bien la información porque el modelo de embeddings no está pensado para eso,
+y además pierde contenido de fragmentos largos":
+  - Migración de los documentos ya indexados -> CA-2.1 a CA-2.2
+
 """
 
 from unittest.mock import MagicMock, patch
@@ -26,7 +31,7 @@ def mock_embedder():
     """Embedder con modelo mockeado para no descargar pesos en tests."""
     with patch("src.embeddings.embedder.SentenceTransformer") as MockST:
         mock_model = MagicMock()
-        mock_model.get_sentence_embedding_dimension.return_value = EMBEDDING_DIM
+        mock_model.get_embedding_dimension.return_value = EMBEDDING_DIM
         mock_model.encode.return_value = np.ones(EMBEDDING_DIM, dtype="float32")
         MockST.return_value = mock_model
         yield Embedder(DEFAULT_MODEL)
@@ -63,6 +68,20 @@ class TestEmbedder:
         result = mock_embedder.embed("texto")
         assert all(isinstance(v, float) for v in result)
 
+    def test_embed_prefixes_each_text(self, mock_embedder):
+        """CA-2.1: Al indexar un documento, el contenido debe embeddearse de la forma adecuada para ser encontrado."""
+        mock_embedder._model.encode.return_value = np.zeros((2, EMBEDDING_DIM))
+        mock_embedder.embed_batch(["texto uno", "texto dos"])
+        called_texts = mock_embedder._model.encode.call_args[0][0]
+        assert called_texts == ["passage: texto uno", "passage: texto dos"]
+
+    def test_embed_prefixes_text(self, mock_embedder):
+        """CA-2.2: Al hacer una consulta, la pregunta del usuario debe embeddearse
+        de forma diferenciada del contenido, de manera adecuada para búsqueda."""
+        mock_embedder.embed("cual es la presion del pozo X")
+        called_text = mock_embedder._model.encode.call_args[0][0]
+        assert called_text == "query: cual es la presion del pozo X"
+
 
 # ---------------------------------------------------------------------------
 # Implementación del servicio de embeddings
@@ -73,7 +92,7 @@ def test_can_specify_which_model_to_load_at_init():
     """CA-3.1: El sistema debe permitir indicar qué modelo cargar al inicializar el servicio de embeddings, usando el modelo por defecto si no se especifica otro."""
     with patch("src.embeddings.embedder.SentenceTransformer") as MockST:
         mock_model = MagicMock()
-        mock_model.get_sentence_embedding_dimension.return_value = EMBEDDING_DIM
+        mock_model.get_embedding_dimension.return_value = EMBEDDING_DIM
         MockST.return_value = mock_model
         Embedder("modelo-custom")
         MockST.assert_called_once_with("modelo-custom")
@@ -83,7 +102,7 @@ def test_uses_default_model_when_not_specified():
     """CA-3.1: El sistema debe permitir indicar qué modelo cargar al inicializar el servicio de embeddings, usando el modelo por defecto si no se especifica otro."""
     with patch("src.embeddings.embedder.SentenceTransformer") as MockST:
         mock_model = MagicMock()
-        mock_model.get_sentence_embedding_dimension.return_value = EMBEDDING_DIM
+        mock_model.get_embedding_dimension.return_value = EMBEDDING_DIM
         MockST.return_value = mock_model
         Embedder()
         MockST.assert_called_once_with(DEFAULT_MODEL)
@@ -160,7 +179,7 @@ def test_vectorizing_empty_list_returns_empty_without_generating(mock_embedder):
 
 def test_queried_dimension_reflects_loaded_model_not_a_fixed_value(mock_embedder):
     """CA-4.1: Al consultar la dimensión de los embeddings, el sistema debe devolver la dimensión real reportada por el modelo actualmente cargado, no un valor fijo definido de antemano."""
-    mock_embedder._model.get_sentence_embedding_dimension.return_value = 999
+    mock_embedder._model.get_embedding_dimension.return_value = 999
     assert mock_embedder.get_dimension() == 999
 
 

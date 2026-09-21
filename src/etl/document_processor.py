@@ -19,8 +19,8 @@ logging.getLogger("MatchingPostProcessor").setLevel(logging.ERROR)
 
 # Tokenizer para truncar el texto contextualizado antes de embeddear.
 # El modelo tiene un límite de 512 tokens; el texto contextualizado puede superarlo.
-_TOKENIZER = AutoTokenizer.from_pretrained(f"sentence-transformers/{DEFAULT_MODEL}")
-_MAX_TOKENS = 512
+_TOKENIZER = AutoTokenizer.from_pretrained(DEFAULT_MODEL)
+_MAX_TOKENS = 500
 
 
 def _truncate(text: str) -> str:
@@ -28,6 +28,11 @@ def _truncate(text: str) -> str:
     token_ids = _TOKENIZER.encode(text)
     if len(token_ids) <= _MAX_TOKENS:
         return text
+    logger.warning(
+        "Texto contextualizado truncado: %d → %d tokens",
+        len(token_ids),
+        _MAX_TOKENS,
+    )
     truncated = _TOKENIZER.encode(text, truncation=True, max_length=_MAX_TOKENS)
     return _TOKENIZER.decode(truncated, skip_special_tokens=True)
 

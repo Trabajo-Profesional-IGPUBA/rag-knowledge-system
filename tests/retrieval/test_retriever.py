@@ -4,9 +4,11 @@ import pytest
 
 from src.retrieval.retriever import RetrievalResult, Retriever, evaluate_topk_accuracy
 
+EMBEDDING_DIM = 768
+
 
 def _fake_embedding():
-    return [0.1] * 384
+    return [0.1] * EMBEDDING_DIM
 
 
 @pytest.fixture

@@ -7,18 +7,20 @@ sin mockear nada: simula el ciclo de vida completo tal como lo usaría el pipeli
 
 from src.retrieval.vectorstore import VectorStore
 
+EMBEDDING_DIM = 768
 
-def _direction_a(dim: int = 384) -> list[float]:
+
+def _direction_a(dim: int = EMBEDDING_DIM) -> list[float]:
     """Vector base: dirección A."""
     return [1.0, 0.0] * (dim // 2)
 
 
-def _direction_a_close(dim: int = 384) -> list[float]:
+def _direction_a_close(dim: int = EMBEDDING_DIM) -> list[float]:
     """Vector muy cercano a la dirección A (alta similitud coseno)."""
     return [0.95, 0.05] * (dim // 2)
 
 
-def _direction_b_orthogonal(dim: int = 384) -> list[float]:
+def _direction_b_orthogonal(dim: int = EMBEDDING_DIM) -> list[float]:
     """Vector ortogonal a A (similitud coseno ≈ 0)."""
     return [0.0, 1.0] * (dim // 2)
 
