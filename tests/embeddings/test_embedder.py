@@ -31,7 +31,7 @@ def mock_embedder():
     """Embedder con modelo mockeado para no descargar pesos en tests."""
     with patch("src.embeddings.embedder.SentenceTransformer") as MockST:
         mock_model = MagicMock()
-        mock_model.get_sentence_embedding_dimension.return_value = EMBEDDING_DIM
+        mock_model.get_embedding_dimension.return_value = EMBEDDING_DIM
         mock_model.encode.return_value = np.ones(EMBEDDING_DIM, dtype="float32")
         MockST.return_value = mock_model
         yield Embedder(DEFAULT_MODEL)
@@ -92,7 +92,7 @@ def test_can_specify_which_model_to_load_at_init():
     """CA-3.1: El sistema debe permitir indicar qué modelo cargar al inicializar el servicio de embeddings, usando el modelo por defecto si no se especifica otro."""
     with patch("src.embeddings.embedder.SentenceTransformer") as MockST:
         mock_model = MagicMock()
-        mock_model.get_sentence_embedding_dimension.return_value = EMBEDDING_DIM
+        mock_model.get_embedding_dimension.return_value = EMBEDDING_DIM
         MockST.return_value = mock_model
         Embedder("modelo-custom")
         MockST.assert_called_once_with("modelo-custom")
@@ -102,7 +102,7 @@ def test_uses_default_model_when_not_specified():
     """CA-3.1: El sistema debe permitir indicar qué modelo cargar al inicializar el servicio de embeddings, usando el modelo por defecto si no se especifica otro."""
     with patch("src.embeddings.embedder.SentenceTransformer") as MockST:
         mock_model = MagicMock()
-        mock_model.get_sentence_embedding_dimension.return_value = EMBEDDING_DIM
+        mock_model.get_embedding_dimension.return_value = EMBEDDING_DIM
         MockST.return_value = mock_model
         Embedder()
         MockST.assert_called_once_with(DEFAULT_MODEL)
@@ -179,7 +179,7 @@ def test_vectorizing_empty_list_returns_empty_without_generating(mock_embedder):
 
 def test_queried_dimension_reflects_loaded_model_not_a_fixed_value(mock_embedder):
     """CA-4.1: Al consultar la dimensión de los embeddings, el sistema debe devolver la dimensión real reportada por el modelo actualmente cargado, no un valor fijo definido de antemano."""
-    mock_embedder._model.get_sentence_embedding_dimension.return_value = 999
+    mock_embedder._model.get_embedding_dimension.return_value = 999
     assert mock_embedder.get_dimension() == 999
 
 
