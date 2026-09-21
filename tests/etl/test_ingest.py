@@ -1,6 +1,6 @@
 import pytest
 
-from ingest_files import DEFAULT_MAX_WORKERS, validate_max_workers, existing_dir
+from ingest_files import DEFAULT_MAX_WORKERS, existing_dir, validate_max_workers
 
 """
 Cubren "Paralelizar la ingesta de documentos (ETL)":
@@ -85,6 +85,7 @@ class TestConfigurableConcurrency:
         """CA-1.6: El sistema no debe reservar más capacidad de procesamiento
         simultáneo que la cantidad de archivos disponibles para procesar."""
         import threading
+
         import ingest_files as run_module
 
         raw_dir = tmp_path / "raw"
@@ -293,6 +294,7 @@ class TestConcurrentIndexingIntegrityAndCompatibility:
         corromper, perder ni duplicar los datos ya almacenados."""
         import threading
         from concurrent.futures import ThreadPoolExecutor
+
         from ingest_files import _SerializedVectorStore
 
         call_log: list[str] = []
@@ -334,6 +336,7 @@ class TestConcurrentIndexingIntegrityAndCompatibility:
         """CA-3.1: ídem, verificado contra el VectorStore real."""
         import threading
         from concurrent.futures import ThreadPoolExecutor
+
         from ingest_files import _SerializedVectorStore
         from src.retrieval.vectorstore import VectorStore
 
@@ -365,6 +368,7 @@ class TestConcurrentIndexingIntegrityAndCompatibility:
         paralelismo."""
         import importlib
         import os
+
         import ingest_files as run_module
 
         monkeypatch.delenv("TOKENIZERS_PARALLELISM", raising=False)

@@ -4,7 +4,7 @@ import os
 import threading
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 # tope del archivo, antes de cualquier otro import propio
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
@@ -17,6 +17,7 @@ VECTOR_STORE_PATH = ROOT_DIR / "data" / "vectorstore"
 LOG_DIR = ROOT_DIR / "logs"
 
 DEFAULT_MAX_WORKERS = min(os.cpu_count() or 4, 4)
+type PositiveInt = Annotated[int, "must be > 0"]
 
 
 class _SerializedVectorStore:
@@ -106,7 +107,8 @@ def file_iterator(sources):
 
 
 def run(
-    sources: list[Path] = [DEFAULT_DATA_DIR], max_workers: int = DEFAULT_MAX_WORKERS
+    sources: list[Path] = [DEFAULT_DATA_DIR],
+    max_workers: PositiveInt = DEFAULT_MAX_WORKERS,
 ):
     from src.embeddings.embedder import Embedder
     from src.etl import DoclingHybridChunker, DocumentProcessor
