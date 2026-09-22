@@ -57,3 +57,7 @@ class TestNormalize:
     def test_preserves_psi_pressure_unit(self):
         text = "presión de inyección: 1.200 psi en el intervalo Quintuco"
         assert "psi" in normalize(text)
+
+    def test_preserves_kpa_pressure_unit(self):
+        text = "gradiente de presión de 9.800 kPa/m en la formación"
+        assert "kPa" in normalize(text)
