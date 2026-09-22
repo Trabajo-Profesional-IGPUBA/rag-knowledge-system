@@ -1,9 +1,10 @@
+import argparse
 import logging
 import os
 import threading
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 # tope del archivo, antes de cualquier otro import propio
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
@@ -11,11 +12,12 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 from src.observability import setup_logging
 
 ROOT_DIR = Path(__file__).parent
-RAW_DIR = ROOT_DIR / "data" / "raw"
+DEFAULT_DATA_DIR = ROOT_DIR / "data" / "raw"
 VECTOR_STORE_PATH = ROOT_DIR / "data" / "vectorstore"
 LOG_DIR = ROOT_DIR / "logs"
 
 DEFAULT_MAX_WORKERS = min(os.cpu_count() or 4, 4)
+type PositiveInt = Annotated[int, "must be > 0"]
 
 
 class _SerializedVectorStore:
@@ -51,57 +53,72 @@ class _SerializedVectorStore:
         return getattr(self._inner, name)
 
 
-def _get_max_workers() -> int:
-    raw = os.environ.get("INGEST_MAX_WORKERS")
-    if raw is None:
-        return DEFAULT_MAX_WORKERS
+def validate_max_workers(max_workers_raw: str) -> int:
     try:
-        value = int(raw)
+        max_workers = int(max_workers_raw)
     except ValueError:
-        logging.getLogger().warning(
-            "INGEST_MAX_WORKERS=%r no es un número válido, usando default=%d",
-            raw,
-            DEFAULT_MAX_WORKERS,
-        )
-        return DEFAULT_MAX_WORKERS
+        raise argparse.ArgumentTypeError("MAX_WORKERS debe ser un entero positivo")
+    if max_workers < 1:
+        raise argparse.ArgumentTypeError("MAX_WORKERS debe ser un entero positivo")
 
-    if value < 1:
-        logging.getLogger().warning(
-            "INGEST_MAX_WORKERS=%d fuera de rango, usando default=%d",
-            value,
-            DEFAULT_MAX_WORKERS,
-        )
-        return DEFAULT_MAX_WORKERS
-
-    return value
+    return max_workers
 
 
-def run(max_workers: int | None = None):
+def existing_dir(path_str: str) -> Path:
+    path = Path(path_str)
+    if not path.is_dir() and not path.is_file():
+        raise argparse.ArgumentTypeError(f"'{path_str}' no existe.")
+    if path.is_file() and path.suffix != ".pdf":
+        raise argparse.ArgumentTypeError(f"'{path_str}' no es un archivo PDF.")
+    return path
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="ingesta de archivos al sistema RAG")
+
+    parser.add_argument(
+        "sources",
+        nargs="*",
+        type=existing_dir,
+        default=[
+            str(DEFAULT_DATA_DIR)  # Pasado como string para validarlo con existing_dir
+        ],
+        help="Rutas a los archivos de ingesta",
+    )
+
+    parser.add_argument(
+        "--max-workers",
+        "-w",
+        type=validate_max_workers,
+        default=DEFAULT_MAX_WORKERS,
+        help="Number de procesos usados en el procesamiento de SOURCES",
+    )
+
+    args = parser.parse_args()
+    return args
+
+
+def file_iterator(sources):
+    for s in sources:
+        if s.is_file():
+            yield s
+        else:
+            yield from s.rglob("*.pdf")
+
+
+def run(
+    sources: list[Path] = [DEFAULT_DATA_DIR],
+    max_workers: PositiveInt = DEFAULT_MAX_WORKERS,
+):
     from src.embeddings.embedder import Embedder
     from src.etl import DoclingHybridChunker, DocumentProcessor
     from src.retrieval.vectorstore import VectorStore
 
     logger = logging.getLogger()
 
-    if max_workers is None:
-        max_workers = _get_max_workers()
-    elif max_workers < 1:
-        raise ValueError("max_workers debe ser >= 1")
-
-    if not RAW_DIR.exists():
-        logger.error(f"No existe {RAW_DIR}")
+    if next(file_iterator(sources), None) is None:
+        logger.warning("No se encontraron archivos PDF")
         return
-
-    files = RAW_DIR.rglob("*.pdf")
-    first_file = next(files, None)
-
-    if first_file is None:
-        logger.warning("No se encontraron archivos PDF en %s", RAW_DIR)
-        return
-
-    def file_iterator():
-        yield first_file
-        yield from files
 
     # Cantidad máxima de Futures simultáneamente en memoria.
     # Esto NO limita la RAM usada dentro de cada worker; solamente
@@ -121,7 +138,7 @@ def run(max_workers: int | None = None):
     processed = 0
     failed = 0
 
-    files_iter = iter(file_iterator())
+    files_iter = file_iterator(sources)
     in_flight: dict = {}
     try:
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -185,4 +202,5 @@ def run(max_workers: int | None = None):
 
 if __name__ == "__main__":
     setup_logging(LOG_DIR)
-    run()
+    args = parse_args()
+    run(args.sources, args.max_workers)

@@ -1,5 +1,5 @@
 """
-Test de integración para la ingesta (main.py).
+Test de integración para la ingesta (ingest_files.py).
 
 Corre run() de punta a punta con componentes reales, no con mocks.
 """
@@ -21,7 +21,7 @@ class TestIngestEndToEnd:
     def test_full_pipeline_indexes_real_pdf_with_real_components(
         self, tmp_path, monkeypatch
     ):
-        import main as run_module
+        import ingest_files as run_module
         from src.retrieval.vectorstore import VectorStore
 
         raw_dir = tmp_path / "raw"
@@ -31,10 +31,9 @@ class TestIngestEndToEnd:
         assert PVT_FIXTURE.exists(), f"Falta el fixture {PVT_FIXTURE}."
         shutil.copy(PVT_FIXTURE, raw_dir / "pvt.pdf")
 
-        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
         monkeypatch.setattr(run_module, "VECTOR_STORE_PATH", vector_store_dir)
 
-        run_module.run(max_workers=2)
+        run_module.run(sources=[raw_dir], max_workers=2)
 
         store = VectorStore(vector_store_dir)
         try:
@@ -43,7 +42,7 @@ class TestIngestEndToEnd:
             store.close()
 
     def test_reingesting_same_pdf_is_idempotent_end_to_end(self, tmp_path, monkeypatch):
-        import main as run_module
+        import ingest_files as run_module
         from src.retrieval.vectorstore import VectorStore
 
         raw_dir = tmp_path / "raw"
@@ -52,15 +51,14 @@ class TestIngestEndToEnd:
 
         shutil.copy(PVT_FIXTURE, raw_dir / "pvt.pdf")
 
-        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
         monkeypatch.setattr(run_module, "VECTOR_STORE_PATH", vector_store_dir)
 
-        run_module.run(max_workers=2)
+        run_module.run(sources=[raw_dir], max_workers=2)
         store = VectorStore(vector_store_dir)
         count_after_first_run = store.count()
         store.close()
 
-        run_module.run(max_workers=2)
+        run_module.run(sources=[raw_dir], max_workers=2)
 
         store = VectorStore(vector_store_dir)
         try:
@@ -74,7 +72,7 @@ class TestIngestEndToEnd:
         """CA-3.1/3.2: 6+ PDFs reales y distintos, max_workers=2
         (max_in_flight=4), para forzar la reposición del `while` y no
         solo el envío inicial."""
-        import main as run_module
+        import ingest_files as run_module
         from src.retrieval.vectorstore import VectorStore
 
         raw_dir = tmp_path / "raw"
@@ -98,11 +96,10 @@ class TestIngestEndToEnd:
             "la reposición del while."
         )
 
-        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
         monkeypatch.setattr(run_module, "VECTOR_STORE_PATH", vector_store_dir)
 
         with caplog.at_level("INFO"):
-            run_module.run(max_workers=max_workers)
+            run_module.run(sources=[raw_dir], max_workers=max_workers)
 
         assert (
             f"Procesados={total_files} | OK={total_files} | Fallidos=0" in caplog.text
@@ -119,7 +116,7 @@ class TestIngestEndToEnd:
     ):
         """CA-2.2 + CA-5.1: un archivo corrupto no debe abortar el resto
         ni dejar el VectorStore en mal estado."""
-        import main as run_module
+        import ingest_files as run_module
         from src.retrieval.vectorstore import VectorStore
 
         raw_dir = tmp_path / "raw"
@@ -130,10 +127,9 @@ class TestIngestEndToEnd:
         shutil.copy(INY_FIXTURE, raw_dir / "iny.pdf")
         (raw_dir / "corrupto.pdf").write_bytes(b"esto no es un PDF valido")
 
-        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
         monkeypatch.setattr(run_module, "VECTOR_STORE_PATH", vector_store_dir)
 
-        run_module.run(max_workers=2)
+        run_module.run(sources=[raw_dir], max_workers=2)
 
         store = VectorStore(vector_store_dir)
         try:
@@ -146,7 +142,7 @@ class TestIngestEndToEnd:
     ):
         """Detecta metadata mal mapeada entre hilos: cada búsqueda debe
         traer contenido del documento correcto, no una mezcla."""
-        import main as run_module
+        import ingest_files as run_module
         from src.embeddings.embedder import Embedder
         from src.retrieval.vectorstore import VectorStore
 
@@ -157,10 +153,9 @@ class TestIngestEndToEnd:
         shutil.copy(PVT_FIXTURE, raw_dir / "pvt.pdf")
         shutil.copy(INY_FIXTURE, raw_dir / "iny.pdf")
 
-        monkeypatch.setattr(run_module, "RAW_DIR", raw_dir)
         monkeypatch.setattr(run_module, "VECTOR_STORE_PATH", vector_store_dir)
 
-        run_module.run(max_workers=2)
+        run_module.run(sources=[raw_dir], max_workers=2)
 
         store = VectorStore(vector_store_dir)
         embedder = Embedder()

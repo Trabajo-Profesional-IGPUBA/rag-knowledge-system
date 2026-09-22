@@ -35,7 +35,7 @@ FROM builder AS test
 
 COPY src/ ./src/
 COPY tests/ ./tests/
-COPY main.py .
+COPY ingest_files.py .
 COPY app.py .
 COPY run_evaluation.py .
 COPY generate_eval_file.py .
@@ -60,9 +60,9 @@ ENV HF_HOME=/cache/huggingface
 WORKDIR /app
 RUN chmod 777 /app
 COPY src/ ./src/
-COPY main.py .
+COPY ingest_files.py .
 COPY app.py .
 COPY run_evaluation.py .
 COPY generate_eval_file.py .
 
-CMD ["python", "main.py"]
+CMD ["python", "ingest_files.py"]

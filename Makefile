@@ -6,7 +6,7 @@ USER_FLAG  = --user $(UID):$(GID)
 OLLAMA_BASE_URL = http://host.docker.internal:11434
 CODE_VOLUMES_FLAG = -v ./src:/app/src \
 					-v ./tests:/app/tests \
-					-v ./main.py:/app/main.py \
+					-v ./ingest_files.py:/app/ingest_files.py \
 					-v ./generate_eval_file.py:/app/generate_eval_file.py \
 					-v ./run_evaluation.py:/app/run_evaluation.py \
 					-v ./app.py:/app/app.py \
@@ -20,7 +20,7 @@ build-test:
 	docker build --target test -t $(TEST_IMAGE) .
 
 run: build
-	docker run --rm $(USER_FLAG) -v ./data:/app/data -v ./logs:/app/logs $(IMAGE) python main.py
+	docker run --rm $(USER_FLAG) -v ./data:/app/data -v ./logs:/app/logs $(IMAGE) python ingest_files.py
 
 test: build-test
 	docker run --rm $(USER_FLAG) $(TEST_IMAGE) pytest -q
