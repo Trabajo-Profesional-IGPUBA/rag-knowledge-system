@@ -57,9 +57,9 @@ def validate_max_workers(max_workers_raw: str) -> int:
     try:
         max_workers = int(max_workers_raw)
     except ValueError:
-        raise argparse.ArgumentTypeError("MAX_WORKERS must be a positive integer")
+        raise argparse.ArgumentTypeError("MAX_WORKERS debe ser un entero positivo")
     if max_workers < 1:
-        raise argparse.ArgumentTypeError("MAX_WORKERS must be a positive integer")
+        raise argparse.ArgumentTypeError("MAX_WORKERS debe ser un entero positivo")
 
     return max_workers
 
@@ -67,14 +67,14 @@ def validate_max_workers(max_workers_raw: str) -> int:
 def existing_dir(path_str: str) -> Path:
     path = Path(path_str)
     if not path.is_dir() and not path.is_file():
-        raise argparse.ArgumentTypeError(f"'{path_str}' does not exist.")
+        raise argparse.ArgumentTypeError(f"'{path_str}' no existe.")
     if path.is_file() and path.suffix != ".pdf":
-        raise argparse.ArgumentTypeError(f"'{path_str}' is not a PDF file.")
+        raise argparse.ArgumentTypeError(f"'{path_str}' no es un archivo PDF.")
     return path
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Ingest local documents to RAG")
+    parser = argparse.ArgumentParser(description="ingesta de archivos al sistema RAG")
 
     parser.add_argument(
         "sources",
@@ -83,7 +83,7 @@ def parse_args():
         default=[
             str(DEFAULT_DATA_DIR)  # Pasado como string para validarlo con existing_dir
         ],
-        help="Path to raw files",
+        help="Rutas a los archivos de ingesta",
     )
 
     parser.add_argument(
@@ -91,7 +91,7 @@ def parse_args():
         "-w",
         type=validate_max_workers,
         default=DEFAULT_MAX_WORKERS,
-        help="Number of procceses",
+        help="Number de procesos usados en el procesamiento de SOURCES",
     )
 
     args = parser.parse_args()
