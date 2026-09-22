@@ -65,3 +65,7 @@ class TestNormalize:
     def test_preserves_bar_pressure_unit(self):
         text = "presión de cierre instantáneo (ISIP): 350 bar"
         assert "bar" in normalize(text)
+
+    def test_preserves_m3_dia_flow_unit(self):
+        text = "caudal de inyección: 50 m³/día promedio durante el piloto"
+        assert "m³/día" in normalize(text)
