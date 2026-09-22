@@ -89,3 +89,7 @@ class TestNormalize:
     def test_preserves_lcm_abbreviation(self):
         text = "se bombearon dos píldoras de LCM de alta concentración"
         assert "LCM" in normalize(text)
+
+    def test_preserves_bes_abbreviation(self):
+        text = "falla del sistema BES por baja aislación eléctrica"
+        assert "BES" in normalize(text)
