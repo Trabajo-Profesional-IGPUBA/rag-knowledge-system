@@ -85,3 +85,7 @@ class TestNormalize:
     def test_preserves_lb_gal_density_unit(self):
         text = "densidad del fluido de control: 9.2 lb/gal"
         assert "lb/gal" in normalize(text)
+
+    def test_preserves_lcm_abbreviation(self):
+        text = "se bombearon dos píldoras de LCM de alta concentración"
+        assert "LCM" in normalize(text)
