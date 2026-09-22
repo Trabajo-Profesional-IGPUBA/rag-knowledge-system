@@ -73,3 +73,7 @@ class TestNormalize:
     def test_preserves_bbl_volume_unit(self):
         text = "se bombearon 80 bbl de salmuera pesada por el espacio anular"
         assert "bbl" in normalize(text)
+
+    def test_preserves_m3_h_flow_unit(self):
+        text = "pérdida de circulación severa de 15 m³/h en la formación"
+        assert "m³/h" in normalize(text)
