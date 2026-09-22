@@ -93,3 +93,7 @@ class TestNormalize:
     def test_preserves_bes_abbreviation(self):
         text = "falla del sistema BES por baja aislación eléctrica"
         assert "BES" in normalize(text)
+
+    def test_preserves_ewr_abbreviation(self):
+        text = "informe final de perforación EWR del pozo PM-104"
+        assert "EWR" in normalize(text)
