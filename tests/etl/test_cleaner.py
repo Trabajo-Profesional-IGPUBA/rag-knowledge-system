@@ -69,3 +69,7 @@ class TestNormalize:
     def test_preserves_m3_dia_flow_unit(self):
         text = "caudal de inyección: 50 m³/día promedio durante el piloto"
         assert "m³/día" in normalize(text)
+
+    def test_preserves_bbl_volume_unit(self):
+        text = "se bombearon 80 bbl de salmuera pesada por el espacio anular"
+        assert "bbl" in normalize(text)
