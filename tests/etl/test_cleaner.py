@@ -101,3 +101,7 @@ class TestNormalize:
     def test_preserves_ocr_abbreviation(self):
         text = "extracción de texto mediante OCR avanzado"
         assert "OCR" in normalize(text)
+
+    def test_preserves_pm104_well_identifier(self):
+        text = "intervención de workover en el pozo PM-104 del bloque central"
+        assert "PM-104" in normalize(text)
