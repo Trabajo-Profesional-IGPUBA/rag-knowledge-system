@@ -61,3 +61,7 @@ class TestNormalize:
     def test_preserves_kpa_pressure_unit(self):
         text = "gradiente de presión de 9.800 kPa/m en la formación"
         assert "kPa" in normalize(text)
+
+    def test_preserves_bar_pressure_unit(self):
+        text = "presión de cierre instantáneo (ISIP): 350 bar"
+        assert "bar" in normalize(text)
