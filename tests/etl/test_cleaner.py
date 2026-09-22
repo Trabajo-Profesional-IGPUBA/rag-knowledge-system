@@ -77,3 +77,7 @@ class TestNormalize:
     def test_preserves_m3_h_flow_unit(self):
         text = "pérdida de circulación severa de 15 m³/h en la formación"
         assert "m³/h" in normalize(text)
+
+    def test_preserves_g_cm3_density_unit(self):
+        text = "peso del lodo reducido a un máximo de 1.15 g/cm³"
+        assert "g/cm³" in normalize(text)
