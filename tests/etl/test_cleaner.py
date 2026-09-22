@@ -97,3 +97,7 @@ class TestNormalize:
     def test_preserves_ewr_abbreviation(self):
         text = "informe final de perforación EWR del pozo PM-104"
         assert "EWR" in normalize(text)
+
+    def test_preserves_ocr_abbreviation(self):
+        text = "extracción de texto mediante OCR avanzado"
+        assert "OCR" in normalize(text)
