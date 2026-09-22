@@ -81,3 +81,7 @@ class TestNormalize:
     def test_preserves_g_cm3_density_unit(self):
         text = "peso del lodo reducido a un máximo de 1.15 g/cm³"
         assert "g/cm³" in normalize(text)
+
+    def test_preserves_lb_gal_density_unit(self):
+        text = "densidad del fluido de control: 9.2 lb/gal"
+        assert "lb/gal" in normalize(text)
