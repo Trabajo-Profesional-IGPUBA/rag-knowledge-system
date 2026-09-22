@@ -1,12 +1,12 @@
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 
-def load_documents(data_path: str = "data/processed.jsonl") -> list[dict]:
-    """Carga todos los JSON de data_dir (recursivamente) como lista de dicts, agregando la ruta de origen en '_source_file'."""
-    path = Path(data_path)
+def _load_single_file(path: Path) -> list[dict]:
+    """Carga un único archivo .jsonl como lista de dicts, agregando '_source_file'."""
     if not path.exists():
-        raise FileNotFoundError(f"File {data_path} does not exist")
+        raise FileNotFoundError(f"File {path} does not exist")
 
     docs = []
     for i, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
@@ -20,6 +20,45 @@ def load_documents(data_path: str = "data/processed.jsonl") -> list[dict]:
             continue
         data["_source_file"] = str(path)
         docs.append(data)
+
+    return docs
+
+
+def load_documents(data_path: str = "data/processed.jsonl") -> list[dict]:
+    """Carga un archivo .jsonl como lista de dicts, agregando la ruta de origen en '_source_file'."""
+    return _load_single_file(Path(data_path))
+
+
+def load_documents_dir(
+    data_dir: str,
+    pattern: str = "*.jsonl",
+    max_workers: int | None = None,
+) -> list[dict]:
+    """
+    Carga todos los archivos que matcheen 'pattern' dentro de data_dir,
+    leyéndolos en paralelo, y devuelve todos los
+    documentos juntos en una sola lista.
+    """
+    dir_path = Path(data_dir)
+    if not dir_path.exists():
+        raise FileNotFoundError(f"Directory {data_dir} does not exist")
+
+    files = sorted(dir_path.rglob(pattern))
+    if not files:
+        return []
+
+    docs: list[dict] = []
+    errors: list[tuple[Path, Exception]] = []
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(_load_single_file, f): f for f in files}
+        for future in as_completed(futures):
+            file = futures[future]
+            try:
+                docs.extend(future.result())
+            except Exception as e:
+                print(f"⚠️  No se pudo cargar {file}: {e}")
+                errors.append((file, e))
 
     return docs
 

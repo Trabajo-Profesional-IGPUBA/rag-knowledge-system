@@ -168,24 +168,27 @@ def run(
                             metrics.time_total_s,
                         )
 
-                        # Reponemos exactamente una tarea por cada
-                        # tarea terminada.
-                        next_file = next(files_iter, None)
+                    # Se repone SIEMPRE, haya fallado o no la tarea que terminó —
+                    # de lo contrario, cada falla reduce permanentemente la cantidad
+                    # de tareas en vuelo, y con suficientes fallas el pool se vacía
+                    # antes de agotar files_iter, dejando el resto del corpus sin
+                    # procesar de forma silenciosa.
+                    next_file = next(files_iter, None)
 
-                        if next_file is not None:
-                            next_future = executor.submit(
-                                document_processor.process_file,
-                                next_file,
-                            )
-                            in_flight[next_future] = next_file
+                    if next_file is not None:
+                        next_future = executor.submit(
+                            document_processor.process_file,
+                            next_file,
+                        )
+                        in_flight[next_future] = next_file
 
-                        if (processed + failed) % 50 == 0:
-                            logger.info(
-                                "Progreso: %d procesados | %d OK | %d fallidos",
-                                processed + failed,
-                                processed,
-                                failed,
-                            )
+                    if (processed + failed) % 50 == 0:
+                        logger.info(
+                            "Progreso: %d procesados | %d OK | %d fallidos",
+                            processed + failed,
+                            processed,
+                            failed,
+                        )
     finally:
         vector_store.close()
 

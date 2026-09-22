@@ -1,16 +1,21 @@
 """
 Módulo de generación de embeddings.
 
-Modelo seleccionado: paraphrase-multilingual-MiniLM-L12-v2
-  - Multilingüe (español + inglés), cubre la terminología técnica del dominio.
-  - Liviano (117MB), corre en CPU sin problemas.
-  - Dimensión: 384.
+Modelo seleccionado: intfloat/multilingual-e5-base
+  - Multilingüe, entrenado específicamente para retrieval asimétrico
+    (query corta vs. passage largo) — a diferencia del modelo anterior,
+    entrenado para similitud simétrica (parafraseo).
+  - max_seq_length real: 512 tokens (vs. 128 del modelo anterior).
+  - Dimensión: 768.
+  - Requiere prefijar los textos: "query: " para consultas del usuario,
+    "passage: " para chunks/documentos.
 
-Alternativas evaluadas:
-  - all-MiniLM-L6-v2: solo inglés, descartado.
-  - paraphrase-multilingual-mpnet-base-v2: mayor calidad pero 2x más pesado.
-  - text-embedding-ada-002 (OpenAI): requiere API key y conexión, descartado
-    por confidencialidad de los datos del IGPUBA.
+Migrado desde: paraphrase-multilingual-MiniLM-L12-v2
+  - Descartado por ser un modelo de similitud simétrica, no de retrieval,
+    y porque su max_seq_length real (128) truncaba silenciosamente los
+    chunks contextualizados (~500 tokens), perdiendo la mayor parte del
+    contenido en el embedding. Ver issue de migración para el detalle.
+...
 """
 
 from __future__ import annotations
@@ -21,8 +26,8 @@ from sentence_transformers import SentenceTransformer
 
 log = logging.getLogger(__name__)
 
-DEFAULT_MODEL = "paraphrase-multilingual-MiniLM-L12-v2"
-EMBEDDING_DIM = 384
+DEFAULT_MODEL = "intfloat/multilingual-e5-base"
+EMBEDDING_DIM = 768
 
 
 class Embedder:
@@ -35,11 +40,10 @@ class Embedder:
         log.info("Modelo cargado — dimensión: %d", self.get_dimension())
 
     def get_dimension(self) -> int:
-        return self._model.get_sentence_embedding_dimension()
+        return self._model.get_embedding_dimension()
 
     def embed(self, text: str) -> list[float]:
-        """Genera embedding para un texto individual."""
-        vector = self._model.encode(text, convert_to_numpy=True)
+        vector = self._model.encode(f"query: {text}", convert_to_numpy=True)
         return vector.tolist()
 
     def embed_batch(
@@ -48,17 +52,7 @@ class Embedder:
         batch_size: int = 32,
         show_progress: bool = False,
     ) -> list[list[float]]:
-        """
-        Genera embeddings para una lista de textos.
-
-        Args:
-            texts: lista de strings a vectorizar.
-            batch_size: tamaño de lote para procesamiento.
-            show_progress: mostrar barra de progreso.
-
-        Returns:
-            Lista de vectores (uno por texto).
-        """
+        """Genera embeddings para chunks/documentos (requiere prefijo 'passage: ')."""
         if not texts:
             return []
 
@@ -68,8 +62,9 @@ class Embedder:
             batch_size,
         )
 
+        prefixed = [f"passage: {t}" for t in texts]
         vectors = self._model.encode(
-            texts,
+            prefixed,
             batch_size=batch_size,
             show_progress_bar=show_progress,
             convert_to_numpy=True,
