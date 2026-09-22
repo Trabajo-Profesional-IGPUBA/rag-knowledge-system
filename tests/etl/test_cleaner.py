@@ -53,3 +53,7 @@ class TestNormalize:
         assert "línea 1" in result
         assert "línea 2" in result
         assert "párrafo 2" in result
+
+    def test_preserves_psi_pressure_unit(self):
+        text = "presión de inyección: 1.200 psi en el intervalo Quintuco"
+        assert "psi" in normalize(text)
