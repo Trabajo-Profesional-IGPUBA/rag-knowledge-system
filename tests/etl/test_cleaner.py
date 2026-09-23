@@ -53,3 +53,98 @@ class TestNormalize:
         assert "línea 1" in result
         assert "línea 2" in result
         assert "párrafo 2" in result
+
+    def test_preserves_psi_pressure_unit(self):
+        text = "presión de inyección: 1.200 psi en el intervalo Quintuco"
+        assert "psi" in normalize(text)
+
+    def test_preserves_kpa_pressure_unit(self):
+        text = "gradiente de presión de 9.800 kPa/m en la formación"
+        assert "kPa" in normalize(text)
+
+    def test_preserves_bar_pressure_unit(self):
+        text = "presión de cierre instantáneo (ISIP): 350 bar"
+        assert "bar" in normalize(text)
+
+    def test_preserves_m3_dia_flow_unit(self):
+        text = "caudal de inyección: 50 m³/día promedio durante el piloto"
+        assert "m³/día" in normalize(text)
+
+    def test_preserves_bbl_volume_unit(self):
+        text = "se bombearon 80 bbl de salmuera pesada por el espacio anular"
+        assert "bbl" in normalize(text)
+
+    def test_preserves_m3_h_flow_unit(self):
+        text = "pérdida de circulación severa de 15 m³/h en la formación"
+        assert "m³/h" in normalize(text)
+
+    def test_preserves_g_cm3_density_unit(self):
+        text = "peso del lodo reducido a un máximo de 1.15 g/cm³"
+        assert "g/cm³" in normalize(text)
+
+    def test_preserves_lb_gal_density_unit(self):
+        text = "densidad del fluido de control: 9.2 lb/gal"
+        assert "lb/gal" in normalize(text)
+
+    def test_preserves_lcm_abbreviation(self):
+        text = "se bombearon dos píldoras de LCM de alta concentración"
+        assert "LCM" in normalize(text)
+
+    def test_preserves_bes_abbreviation(self):
+        text = "falla del sistema BES por baja aislación eléctrica"
+        assert "BES" in normalize(text)
+
+    def test_preserves_ewr_abbreviation(self):
+        text = "informe final de perforación EWR del pozo PM-104"
+        assert "EWR" in normalize(text)
+
+    def test_preserves_ocr_abbreviation(self):
+        text = "extracción de texto mediante OCR avanzado"
+        assert "OCR" in normalize(text)
+
+    def test_preserves_pm104_well_identifier(self):
+        text = "intervención de workover en el pozo PM-104 del bloque central"
+        assert "PM-104" in normalize(text)
+
+    def test_preserves_ll205_well_identifier(self):
+        text = "rotura de varillas a 1.820 metros en el pozo LL-205"
+        assert "LL-205" in normalize(text)
+
+    def test_preserves_ch45_well_identifier(self):
+        text = "screen-out prematuro durante estimulación hidráulica en CH-45"
+        assert "CH-45" in normalize(text)
+
+    def test_preserves_timestamps_in_daily_report(self):
+        text = "08:00 - Se constata pozo parado por rotura de varillas.\n09:30 - Se procede a ahogar el pozo con 40 bbl."
+        result = normalize(text)
+        assert "08:00" in result
+        assert "09:30" in result
+
+    def test_preserves_pressure_values_in_daily_report(self):
+        text = "Presión de casing: 50 psi. Presión de tubing: 0 psi."
+        result = normalize(text)
+        assert "50 psi" in result
+        assert "0 psi" in result
+
+    def test_collapses_excess_newlines_in_daily_report(self):
+        text = "08:00 - Inicio turno.\n\n\n\n09:30 - Maniobra de extracción."
+        result = normalize(text)
+        assert "\n\n\n" not in result
+        assert "08:00" in result
+        assert "09:30" in result
+
+    def test_preserves_structure_between_daily_report_entries(self):
+        text = "08:00 - Inicio turno.\n\n15:00 - Fin turno."
+        result = normalize(text)
+        assert "08:00" in result
+        assert "15:00" in result
+
+    def test_preserves_pozo_metadata_header(self):
+        text = "TIPO: Informe Final de Perforación\nPOZO: PM-104\nAÑO: 2012"
+        result = normalize(text)
+        assert "POZO: PM-104" in result
+
+    def test_preserves_año_metadata_header(self):
+        text = "TIPO: Informe Final de Perforación\nPOZO: PM-104\nAÑO: 2012"
+        result = normalize(text)
+        assert "AÑO: 2012" in result
