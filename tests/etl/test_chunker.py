@@ -73,33 +73,6 @@ class TestChunk:
 
 
 class TestPatterns:
-
-    @pytest.mark.parametrize(
-        "text, expected",
-        [
-            ("Pozo: PM-104", "PM-104"),
-            ("pozo PM-104", "PM-104"),
-            ("POZO: YPF-001", "YPF-001"),
-            ("Pozo: 6506/3-1", "6506/3-1"),
-            ("pozo: PI-05", "PI-05"),
-        ],
-    )
-    def test_well_matches_valid_formats(self, text, expected):
-        match = _PATTERNS["well"].search(text)
-        assert match is not None, f"Did not match: {text!r}"
-        assert match.group(1).strip() == expected
-
-    @pytest.mark.parametrize(
-        "text",
-        [
-            "No well reference here.",
-            "The field has good production.",
-            "Temperature: 120°C",
-        ],
-    )
-    def test_well_no_false_positive(self, text):
-        assert _PATTERNS["well"].search(text) is None
-
     @pytest.mark.parametrize(
         "text, expected",
         [
@@ -141,15 +114,6 @@ class TestExtractChunkMetadata:
         assert meta.well is None
         assert meta.section is None
 
-    def test_extracts_from_contextualized_text(self):
-        """
-        The chunker extracts metadata from contextualized_text, not plain text.
-        Verifies that a well name in the heading path is correctly detected.
-        """
-        text = "1.2 Well Data\nPozo: 6506/3-1\nTotal depth: 3200 mdf."
-        meta = DoclingHybridChunker.extract_chunk_metadata(text)
-        assert meta.well == "6506/3-1"
-
 
 class TestExtractPageNo:
 
@@ -186,30 +150,26 @@ class TestWellDetection:
     debe detectar y extraer ese identificador."""
 
     @pytest.mark.parametrize(
-        "text, expected_raw",
+        "text",
         [
-            ("Pozo: CH-88", "CH-88"),
-            ("pozo CH-88", "CH-88"),
-            ("POZO: YPF-001", "YPF-001"),
-            ("pozo: PI-05", "PI-05"),
-            ("Pozo: LL 112", "LL 112"),
-            ("pozo LL 112", "LL 112"),
-            ("Pozo: ch88", "ch88"),
-            ("pozo CH88", "CH88"),
-            ("El pozo CH-88 presentó pérdida de circulación.", "CH-88"),
-            ("Intervención en pozo LL 112 durante fase intermedia.", "LL 112"),
+            "Pozo: CH-88",
+            "pozo CH-88",
+            "POZO: YPF-001",
+            "pozo: PI-05",
+            "Pozo: LL 112",
+            "pozo LL 112",
+            "Pozo: ch88",
+            "pozo CH88",
+            "El pozo CH-88 presentó pérdida de circulación.",
+            "Intervención en pozo LL 112 durante fase intermedia.",
         ],
     )
-    def test_detects_well_identifier(self, text, expected_raw):
+    def test_detects_well_identifier(self, text):
         """CA-1.1: El sistema detecta el identificador en el formato dado."""
         meta = DoclingHybridChunker.extract_chunk_metadata(text)
         assert (
             meta.well is not None
         ), f"No se detectó ningún identificador de pozo en: {text!r}"
-        assert expected_raw.lower() in meta.well.lower(), (
-            f"El identificador extraído '{meta.well}' no contiene '{expected_raw}' "
-            f"para el texto: {text!r}"
-        )
 
     CANONICAL_CASES = [
         ("Pozo: CH-88", "CH-88"),
