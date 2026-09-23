@@ -178,3 +178,95 @@ class TestExtractPageNo:
         raw = MagicMock()
         raw.meta.doc_items = []
         assert DoclingHybridChunker.extract_page_no(raw) is None
+
+
+class TestWellDetection:
+    """CA-1.1: Dado un documento que contiene un identificador de pozo en alguno
+    de los formatos reconocidos, cuando se procesa el texto, entonces el sistema
+    debe detectar y extraer ese identificador."""
+
+    @pytest.mark.parametrize(
+        "text, expected_raw",
+        [
+            ("Pozo: CH-88", "CH-88"),
+            ("pozo CH-88", "CH-88"),
+            ("POZO: YPF-001", "YPF-001"),
+            ("pozo: PI-05", "PI-05"),
+            ("Pozo: LL 112", "LL 112"),
+            ("pozo LL 112", "LL 112"),
+            ("Pozo: ch88", "ch88"),
+            ("pozo CH88", "CH88"),
+            ("El pozo CH-88 presentó pérdida de circulación.", "CH-88"),
+            ("Intervención en pozo LL 112 durante fase intermedia.", "LL 112"),
+        ],
+    )
+    def test_detects_well_identifier(self, text, expected_raw):
+        """CA-1.1: El sistema detecta el identificador en el formato dado."""
+        meta = DoclingHybridChunker.extract_chunk_metadata(text)
+        assert (
+            meta.well is not None
+        ), f"No se detectó ningún identificador de pozo en: {text!r}"
+        assert expected_raw.lower() in meta.well.lower(), (
+            f"El identificador extraído '{meta.well}' no contiene '{expected_raw}' "
+            f"para el texto: {text!r}"
+        )
+
+    CANONICAL_CASES = [
+        ("Pozo: CH-88", "CH-88"),
+        ("pozo ch-88", "CH-88"),
+        ("pozo CH88", "CH-88"),
+        ("Pozo: ch 88", "CH-88"),
+        ("POZO: Ch-88", "CH-88"),
+        ("Pozo: LL-112", "LL-112"),
+        ("pozo ll 112", "LL-112"),
+        ("Pozo: ll112", "LL-112"),
+        ("POZO: LL112", "LL-112"),
+    ]
+
+    """CA-1.2: Dado un identificador de pozo extraído en cualquier variante de
+    formato, cuando se normaliza, entonces debe convertirse a un formato
+    canónico único."""
+
+    @pytest.mark.parametrize("text, canonical", CANONICAL_CASES)
+    def test_normalizes_to_canonical_form(self, text, canonical):
+        """CA-1.2: Variantes del mismo identificador producen siempre el mismo valor canónico."""
+        meta = DoclingHybridChunker.extract_chunk_metadata(text)
+        assert meta.well == canonical, (
+            f"Se esperaba '{canonical}' pero se obtuvo '{meta.well}' "
+            f"para el texto: {text!r}"
+        )
+
+    def test_same_well_different_formats_produce_identical_output(self):
+        """CA-1.2: Todas las variantes del mismo pozo producen exactamente el mismo string."""
+        variants = [
+            text for text, canonical in self.CANONICAL_CASES if canonical == "CH-88"
+        ]
+        results = {
+            DoclingHybridChunker.extract_chunk_metadata(text).well for text in variants
+        }
+        assert len(results) == 1, (
+            f"Se esperaba un único valor canónico para CH-88, "
+            f"pero se obtuvieron {len(results)} variantes: {results}"
+        )
+
+    """CA-1.3: Dado un documento que no contiene ningún identificador de pozo
+    reconocible, cuando se procesa el texto, entonces el sistema debe manejar
+    el caso sin fallar, retornando None."""
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "No well reference here.",
+            "The field has good production.",
+            "Temperature: 120°C",
+            "Cementación ejecutada con retorno total a superficie.",
+            "",
+            "   ",
+        ],
+    )
+    def test_returns_none_when_no_well_present(self, text):
+        """CA-1.3: El sistema retorna None sin fallar cuando no hay identificador."""
+        meta = DoclingHybridChunker.extract_chunk_metadata(text)
+        assert meta.well is None, (
+            f"Se esperaba None pero se obtuvo '{meta.well}' " f"para el texto: {text!r}"
+        )
