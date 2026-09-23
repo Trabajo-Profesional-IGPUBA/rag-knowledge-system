@@ -143,3 +143,8 @@ class TestNormalize:
         text = "TIPO: Informe Final de Perforación\nPOZO: PM-104\nAÑO: 2012"
         result = normalize(text)
         assert "POZO: PM-104" in result
+
+    def test_preserves_año_metadata_header(self):
+        text = "TIPO: Informe Final de Perforación\nPOZO: PM-104\nAÑO: 2012"
+        result = normalize(text)
+        assert "AÑO: 2012" in result
