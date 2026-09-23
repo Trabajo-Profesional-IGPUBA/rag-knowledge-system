@@ -125,3 +125,10 @@ class TestNormalize:
         result = normalize(text)
         assert "50 psi" in result
         assert "0 psi" in result
+
+    def test_collapses_excess_newlines_in_daily_report(self):
+        text = "08:00 - Inicio turno.\n\n\n\n09:30 - Maniobra de extracción."
+        result = normalize(text)
+        assert "\n\n\n" not in result
+        assert "08:00" in result
+        assert "09:30" in result
