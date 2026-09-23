@@ -30,13 +30,20 @@ DEFAULT_EMBEDDING_MODEL = "intfloat/multilingual-e5-base"
 
 _PATTERNS: dict[str, re.Pattern] = {
     "well": re.compile(
-        r"(?:pozo)\s*[:\-–]?\s*"
-        r"([A-Z]{1,4}-\d{1,4}[A-Z]?"
-        r"|\d{3,4}/\d{1,2}-\d{1,2})",
+        r"(?:pozo\s*[:\-–]?\s*)?"  # prefijo opcional
+        r"([A-Z]{2,4})"  # letras (CH, LL, YPF...)
+        r"[\s\-]?"  # separador opcional (guión o espacio)
+        r"(\d{1,4}[A-Z]?)"  # número
+        r"(?=\s|$|[.,;)])",  # lookahead: fin de identificador
         re.IGNORECASE,
     ),
     "section": re.compile(r"(?:seccion|sección)[:\s]+(.+?)(?:\n|$)", re.IGNORECASE),
 }
+
+
+def _normalize_well(letters: str, digits: str) -> str:
+    """Convierte las partes del identificador al formato canónico LETRAS-NÚMERO."""
+    return f"{letters.upper()}-{digits.upper()}"
 
 
 @dataclass
@@ -133,7 +140,10 @@ class DoclingHybridChunker:
     @staticmethod
     def extract_chunk_metadata(text: str) -> ChunkMeta:
         well_m = _PATTERNS["well"].search(text)
-        well = well_m.group(1).strip() if well_m is not None else None
+        if well_m is not None:
+            well = _normalize_well(well_m.group(1), well_m.group(2))
+        else:
+            well = None
 
         section_m = _PATTERNS["section"].search(text)
         section = section_m.group(1).strip() if section_m is not None else None
