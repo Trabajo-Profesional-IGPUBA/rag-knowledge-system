@@ -109,3 +109,7 @@ class TestNormalize:
     def test_preserves_ll205_well_identifier(self):
         text = "rotura de varillas a 1.820 metros en el pozo LL-205"
         assert "LL-205" in normalize(text)
+
+    def test_preserves_ch45_well_identifier(self):
+        text = "screen-out prematuro durante estimulación hidráulica en CH-45"
+        assert "CH-45" in normalize(text)
