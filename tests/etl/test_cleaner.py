@@ -105,3 +105,7 @@ class TestNormalize:
     def test_preserves_pm104_well_identifier(self):
         text = "intervención de workover en el pozo PM-104 del bloque central"
         assert "PM-104" in normalize(text)
+
+    def test_preserves_ll205_well_identifier(self):
+        text = "rotura de varillas a 1.820 metros en el pozo LL-205"
+        assert "LL-205" in normalize(text)
