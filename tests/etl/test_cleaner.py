@@ -138,3 +138,8 @@ class TestNormalize:
         result = normalize(text)
         assert "08:00" in result
         assert "15:00" in result
+
+    def test_preserves_pozo_metadata_header(self):
+        text = "TIPO: Informe Final de Perforación\nPOZO: PM-104\nAÑO: 2012"
+        result = normalize(text)
+        assert "POZO: PM-104" in result
