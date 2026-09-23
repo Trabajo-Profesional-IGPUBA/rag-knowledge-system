@@ -119,3 +119,9 @@ class TestNormalize:
         result = normalize(text)
         assert "08:00" in result
         assert "09:30" in result
+
+    def test_preserves_pressure_values_in_daily_report(self):
+        text = "Presión de casing: 50 psi. Presión de tubing: 0 psi."
+        result = normalize(text)
+        assert "50 psi" in result
+        assert "0 psi" in result
