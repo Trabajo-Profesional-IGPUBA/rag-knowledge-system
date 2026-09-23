@@ -132,3 +132,9 @@ class TestNormalize:
         assert "\n\n\n" not in result
         assert "08:00" in result
         assert "09:30" in result
+
+    def test_preserves_structure_between_daily_report_entries(self):
+        text = "08:00 - Inicio turno.\n\n15:00 - Fin turno."
+        result = normalize(text)
+        assert "08:00" in result
+        assert "15:00" in result
