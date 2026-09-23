@@ -113,3 +113,9 @@ class TestNormalize:
     def test_preserves_ch45_well_identifier(self):
         text = "screen-out prematuro durante estimulación hidráulica en CH-45"
         assert "CH-45" in normalize(text)
+
+    def test_preserves_timestamps_in_daily_report(self):
+        text = "08:00 - Se constata pozo parado por rotura de varillas.\n09:30 - Se procede a ahogar el pozo con 40 bbl."
+        result = normalize(text)
+        assert "08:00" in result
+        assert "09:30" in result
