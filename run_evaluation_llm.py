@@ -20,7 +20,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--persist-dir",
         type=Path,
-        default=Path("data/qdrant"),
+        default=Path("data/vectorstore"),
         help="Carpeta donde persiste la base vectorial (Qdrant local).",
     )
     parser.add_argument(
