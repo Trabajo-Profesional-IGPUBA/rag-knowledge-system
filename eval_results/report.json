@@ -1,0 +1,147 @@
+{
+  "evaluated_at": "2026-09-24T01:49:05.882303+00:00",
+  "models_evaluated": [
+    "llama3.1:8b",
+    "mistral:7b"
+  ],
+  "results": [
+    {
+      "model": "llama3.1:8b",
+      "query_id": "q1",
+      "query": "¿Cuál es la presión de fondo del pozo PM-104?",
+      "response": "Lo siento, pero no tengo información disponible sobre el pozo PM-104 ni su presión de fondo. No encontré información sobre esto en los documentos disponibles.",
+      "elapsed_sec": 72.41,
+      "response_length": 158,
+      "keyword_hits": 3,
+      "keyword_total": 4,
+      "keyword_score": 0.75,
+      "error": null
+    },
+    {
+      "model": "llama3.1:8b",
+      "query_id": "q2",
+      "query": "¿Qué problemas se reportaron en los partes diarios del último workover?",
+      "response": "Lo siento, pero no tengo información disponible sobre el trabajo de campo o los partes diarios del último workover. No encontré información sobre esto en los documentos disponibles.",
+      "elapsed_sec": 8.44,
+      "response_length": 181,
+      "keyword_hits": 2,
+      "keyword_total": 4,
+      "keyword_score": 0.5,
+      "error": null
+    },
+    {
+      "model": "llama3.1:8b",
+      "query_id": "q3",
+      "query": "¿Cuál es la profundidad total del pozo y su formación productiva?",
+      "response": "Lo siento, pero no tengo información disponible para responder a esta pregunta. No se encontraron documentos relevantes en el contexto proporcionado.",
+      "elapsed_sec": 6.91,
+      "response_length": 149,
+      "keyword_hits": 1,
+      "keyword_total": 4,
+      "keyword_score": 0.25,
+      "error": null
+    },
+    {
+      "model": "llama3.1:8b",
+      "query_id": "q4",
+      "query": "Describí el procedimiento de estimulación utilizado.",
+      "response": "Lo siento, pero no tengo información disponible para responder a la pregunta. No se encontraron documentos relevantes en el contexto proporcionado.",
+      "elapsed_sec": 6.67,
+      "response_length": 147,
+      "keyword_hits": 0,
+      "keyword_total": 3,
+      "keyword_score": 0.0,
+      "error": null
+    },
+    {
+      "model": "llama3.1:8b",
+      "query_id": "q5",
+      "query": "¿Qué producción de gas se registró en el último parte diario?",
+      "response": "Lo siento, pero no tengo información disponible para responder a la pregunta. No se encontraron documentos relevantes en el contexto proporcionado.",
+      "elapsed_sec": 6.97,
+      "response_length": 147,
+      "keyword_hits": 0,
+      "keyword_total": 4,
+      "keyword_score": 0.0,
+      "error": null
+    },
+    {
+      "model": "mistral:7b",
+      "query_id": "q1",
+      "query": "¿Cuál es la presión de fondo del pozo PM-104?",
+      "response": "No encontré información sobre esto en los documentos disponibles.",
+      "elapsed_sec": 69.01,
+      "response_length": 65,
+      "keyword_hits": 0,
+      "keyword_total": 4,
+      "keyword_score": 0.0,
+      "error": null
+    },
+    {
+      "model": "mistral:7b",
+      "query_id": "q2",
+      "query": "¿Qué problemas se reportaron en los partes diarios del último workover?",
+      "response": "No encontré información sobre estos problemas en los documentos disponibles.",
+      "elapsed_sec": 5.19,
+      "response_length": 76,
+      "keyword_hits": 1,
+      "keyword_total": 4,
+      "keyword_score": 0.25,
+      "error": null
+    },
+    {
+      "model": "mistral:7b",
+      "query_id": "q3",
+      "query": "¿Cuál es la profundidad total del pozo y su formación productiva?",
+      "response": "No encontré información sobre esto en los documentos disponibles.",
+      "elapsed_sec": 4.42,
+      "response_length": 65,
+      "keyword_hits": 1,
+      "keyword_total": 4,
+      "keyword_score": 0.25,
+      "error": null
+    },
+    {
+      "model": "mistral:7b",
+      "query_id": "q4",
+      "query": "Describí el procedimiento de estimulación utilizado.",
+      "response": "No encontré información sobre esto en los documentos disponibles.",
+      "elapsed_sec": 4.2,
+      "response_length": 65,
+      "keyword_hits": 0,
+      "keyword_total": 3,
+      "keyword_score": 0.0,
+      "error": null
+    },
+    {
+      "model": "mistral:7b",
+      "query_id": "q5",
+      "query": "¿Qué producción de gas se registró en el último parte diario?",
+      "response": "No encontré información sobre esto en los documentos disponibles.",
+      "elapsed_sec": 4.38,
+      "response_length": 65,
+      "keyword_hits": 0,
+      "keyword_total": 4,
+      "keyword_score": 0.0,
+      "error": null
+    }
+  ],
+  "summary": {
+    "llama3.1:8b": {
+      "avg_elapsed_sec": 20.28,
+      "avg_keyword_score": 0.3,
+      "avg_response_length": 156.4,
+      "error_count": 0,
+      "total_queries": 5
+    },
+    "mistral:7b": {
+      "avg_elapsed_sec": 17.44,
+      "avg_keyword_score": 0.1,
+      "avg_response_length": 67.2,
+      "error_count": 0,
+      "total_queries": 5
+    }
+  },
+  "selected_model": "llama3.1:8b",
+  "selection_rationale": "Mayor score de relevancia (30%) con latencia de 20.3s promedio. Mejor balance entre calidad de respuesta y rendimiento en CPU."
+}
