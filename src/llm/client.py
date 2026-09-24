@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import time
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -8,7 +9,7 @@ import requests
 
 log = logging.getLogger(__name__)
 
-OLLAMA_BASE_URL = "http://localhost:11434"
+OLLAMA_BASE_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 DEFAULT_MODEL = "llama3:8b"
 DEFAULT_TIMEOUT = 120
 

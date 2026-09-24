@@ -41,8 +41,12 @@ evaluate: build
 	docker run --rm $(USER_FLAG) -v ./data:/app/data $(IMAGE) python run_evaluation.py
 
 evaluate-llm: build
-	docker run --rm $(USER_FLAG) -v ./data:/app/data $(IMAGE) python run_evaluation_llm.py
-
+	docker run --rm $(USER_FLAG) \
+		--add-host=host.docker.internal:host-gateway \
+		-e OLLAMA_URL=http://host.docker.internal:11434 \
+		-v ./data:/app/data \
+		$(IMAGE) python run_evaluation_llm.py
+		
 app: build
 	docker run --rm \
 		$(USER_FLAG) \
