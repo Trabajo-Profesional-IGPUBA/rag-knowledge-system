@@ -16,18 +16,6 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Ingesta de archivos
-
-```bash
-python ingest_files.py
-```
-
-### Correr Interfaz
-
-```bash
-streamlit run app.py --server.fileWatcherType none
-```
-
 ## Docker
 
 ### Construir las imágenes
@@ -75,6 +63,12 @@ make lint-check     # solo reporta errores de lint
 
 ```bash
 make evaluate
+```
+
+### Evaluación de llm
+
+```bash
+make evaluate-llm
 ```
 
 ## CI
