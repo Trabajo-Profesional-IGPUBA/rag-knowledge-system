@@ -65,6 +65,7 @@ def validate_max_workers(max_workers_raw: str) -> int:
 
 
 def existing_dir(path_str: str) -> Path:
+    print(path_str)
     path = Path(path_str)
     if not path.is_dir() and not path.is_file():
         raise argparse.ArgumentTypeError(f"'{path_str}' no existe.")
@@ -80,9 +81,7 @@ def parse_args():
         "sources",
         nargs="*",
         type=existing_dir,
-        default=[
-            str(DEFAULT_DATA_DIR)  # Pasado como string para validarlo con existing_dir
-        ],
+        default=[DEFAULT_DATA_DIR],
         help="Rutas a los archivos de ingesta",
     )
 
@@ -135,8 +134,10 @@ def run(
         embedder=embedder,
     )
 
-    processed = 0
-    failed = 0
+    docs_processed = 0
+    docs_failed = 0
+    chunks_processed = 0
+    well_ids_extracted = 0
 
     files_iter = file_iterator(sources)
     in_flight: dict = {}
@@ -156,13 +157,15 @@ def run(
                     try:
                         metrics = future.result()
                     except Exception:
-                        failed += 1
+                        docs_failed += 1
                         logger.exception("Fallo no controlado procesando %s", file.name)
                     else:
-                        processed += 1
+                        docs_processed += 1
+                        chunks_processed += metrics.n_chunks
+                        well_ids_extracted += metrics.n_well_ids_exracted
                         logger.info(
                             "[%d] OK: %s | chunks=%d | total=%.2fs",
-                            processed,
+                            docs_processed,
                             file.name,
                             metrics.n_chunks,
                             metrics.time_total_s,
@@ -182,21 +185,22 @@ def run(
                         )
                         in_flight[next_future] = next_file
 
-                    if (processed + failed) % 50 == 0:
+                    if (docs_processed + docs_failed) % 50 == 0:
                         logger.info(
                             "Progreso: %d procesados | %d OK | %d fallidos",
-                            processed + failed,
-                            processed,
-                            failed,
+                            docs_processed + docs_failed,
+                            docs_processed,
+                            docs_failed,
                         )
     finally:
         vector_store.close()
 
     logger.info(
-        "Ingesta finalizada. Procesados=%d | OK=%d | Fallidos=%d",
-        processed + failed,
-        processed,
-        failed,
+        "Ingesta finalizada. Procesados=%d | OK=%d | Fallidos=%d | %% Chunks con Well IDs extraidos=%.2f%%",
+        docs_processed + docs_failed,
+        docs_processed,
+        docs_failed,
+        100 * well_ids_extracted / chunks_processed,
     )
 
 
