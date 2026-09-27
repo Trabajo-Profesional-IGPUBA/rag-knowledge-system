@@ -45,6 +45,7 @@ evaluate-llm: build
 		--add-host=host.docker.internal:host-gateway \
 		-e OLLAMA_URL=http://host.docker.internal:11434 \
 		-v ./data:/app/data \
+		-v ./eval_results:/app/eval_results \
 		$(IMAGE) python run_evaluation_llm.py
 		
 app: build
