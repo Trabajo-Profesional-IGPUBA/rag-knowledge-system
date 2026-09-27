@@ -26,7 +26,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--models",
         nargs="+",
-        default=["llama3.1:8b", "mistral:7b"],
+        default=["llama3.1:8b", "mistral:7b", "qwen3:8b", "qwen3:4b", "llama3.2:3b"],
         help="Nombres de modelos de Ollama a comparar.",
     )
     parser.add_argument(
