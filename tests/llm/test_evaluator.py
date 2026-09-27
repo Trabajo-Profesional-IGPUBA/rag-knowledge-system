@@ -13,6 +13,7 @@ Cubre "Mejorar precisión del scoring en la evaluación de LLMs: el matching exa
 subestimaba la calidad real de las respuestas":
   - Normalización de keywords -> CA-16.1
   - Detección de abstención -> CA-17.1 a 17.2
+  - Similitud semántica-> CA-18.1, 18.2, 18.4 y 18.5
 
 """
 
