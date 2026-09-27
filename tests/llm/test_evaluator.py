@@ -9,6 +9,10 @@ Cubre "ÉPICA: Cliente LLM sobre Ollama":
   - Selección del modelo -> CA-14.1 a CA-14.2
   - Persistencia de resultados -> CA-15.1 
 
+Cubre "Mejorar precisión del scoring en la evaluación de LLMs: el matching exacto de keywords 
+subestimaba la calidad real de las respuestas":
+  - Normalización de keywords -> CA-16.1
+  
 """
 
 
