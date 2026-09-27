@@ -10,7 +10,7 @@ import requests
 log = logging.getLogger(__name__)
 
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
-DEFAULT_MODEL = "llama3:8b"
+DEFAULT_MODEL = "qwen3:8b"
 DEFAULT_TIMEOUT = 600
 
 

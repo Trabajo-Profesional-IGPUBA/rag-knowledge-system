@@ -49,7 +49,7 @@ def load_pipeline():
 
     llm_client = LLMClient(
         LLMConfig(
-            model="llama3:8b",
+            model="qwen3:8b",
             timeout=600,
             base_url=getenv("OLLAMA_BASE_URL", OLLAMA_BASE_URL),
         )
