@@ -150,6 +150,7 @@ class ModelEvalResult:
     keyword_total: int
     keyword_score: float
     error: str | None = None
+    is_no_info_response: bool = False
 
     @property
     def ok(self) -> bool:
@@ -279,6 +280,7 @@ def evaluate_models(
                     keyword_hits=hits,
                     keyword_total=len(q.get("expected_keywords", [])),
                     keyword_score=round(score, 4),
+                    is_no_info_response=_is_no_info_response(rag_resp.answer),
                 )
 
             except Exception as e:
@@ -293,6 +295,7 @@ def evaluate_models(
                     keyword_total=len(q.get("expected_keywords", [])),
                     keyword_score=0.0,
                     error=str(e),
+                    is_no_info_response=False,
                 )
                 log.error("Error evaluando %s en %s: %s", model_name, q["id"], e)
 
@@ -304,6 +307,8 @@ def evaluate_models(
             continue
 
         ok_results = [r for r in model_results if r.ok]
+        no_info_count = sum(1 for r in ok_results if r.is_no_info_response)
+
         report.summary[model_name] = {
             "avg_elapsed_sec": (
                 round(sum(r.elapsed_sec for r in ok_results) / len(ok_results), 2)
@@ -320,6 +325,9 @@ def evaluate_models(
                 if ok_results
                 else 0.0
             ),
+            "no_info_rate": (
+                round(no_info_count / len(ok_results), 4) if ok_results else 0.0
+            ),
             "error_count": len([r for r in model_results if not r.ok]),
             "total_queries": len(model_results),
         }
@@ -335,6 +343,7 @@ def evaluate_models(
             f"Mayor score de relevancia ({stats['avg_keyword_score']:.0%}) "
             f"con latencia de {stats['avg_elapsed_sec']:.1f}s promedio. "
             f"Mejor balance entre calidad de respuesta y rendimiento en CPU."
+            f"Tasa de abstención: {stats['no_info_rate']:.0%}."
         )
 
     if output_path:
