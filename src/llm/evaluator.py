@@ -154,6 +154,7 @@ class ModelEvalResult:
     keyword_score: float
     error: str | None = None
     is_no_info_response: bool = False
+    semantic_similarity: float | None = None
 
     @property
     def ok(self) -> bool:
@@ -250,6 +251,7 @@ def evaluate_models(
     models: list[str],
     queries: list[dict[str, Any]] | None = None,
     output_path: Path | None = None,
+    embedder: Embedder | None = None,
 ) -> EvaluationReport:
     """Evalúa cada modelo contra el set de queries, arma el resumen y selecciona el mejor."""
     queries = queries or EVAL_QUERIES
@@ -293,6 +295,12 @@ def evaluate_models(
                     q.get("expected_keywords", []),
                 )
 
+                sem_sim = _semantic_similarity(
+                    rag_resp.answer,
+                    q.get("reference_answer"),
+                    embedder,
+                )
+
                 result = ModelEvalResult(
                     model=model_name,
                     query_id=q["id"],
@@ -304,6 +312,7 @@ def evaluate_models(
                     keyword_total=len(q.get("expected_keywords", [])),
                     keyword_score=round(score, 4),
                     is_no_info_response=_is_no_info_response(rag_resp.answer),
+                    semantic_similarity=sem_sim,
                 )
 
             except Exception as e:
@@ -330,6 +339,11 @@ def evaluate_models(
             continue
 
         ok_results = [r for r in model_results if r.ok]
+        sim_values = [
+            r.semantic_similarity
+            for r in ok_results
+            if r.semantic_similarity is not None
+        ]
         no_info_count = sum(1 for r in ok_results if r.is_no_info_response)
 
         report.summary[model_name] = {
@@ -342,6 +356,9 @@ def evaluate_models(
                 round(sum(r.keyword_score for r in ok_results) / len(ok_results), 4)
                 if ok_results
                 else 0.0
+            ),
+            "avg_semantic_similarity": (
+                round(sum(sim_values) / len(sim_values), 4) if sim_values else 0.0
             ),
             "avg_response_length": (
                 round(sum(r.response_length for r in ok_results) / len(ok_results), 1)
@@ -364,6 +381,7 @@ def evaluate_models(
         stats = best[1]
         report.selection_rationale = (
             f"Mayor score de relevancia ({stats['avg_keyword_score']:.0%}) "
+            f"+ similitud semántica {stats['avg_semantic_similarity']:.0%}) "
             f"con latencia de {stats['avg_elapsed_sec']:.1f}s promedio. "
             f"Mejor balance entre calidad de respuesta y rendimiento en CPU."
             f"Tasa de abstención: {stats['no_info_rate']:.0%}."
