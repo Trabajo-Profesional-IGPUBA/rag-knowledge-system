@@ -353,3 +353,24 @@ class TestEvaluateModels:
         )
 
         assert output_path.exists()
+
+
+class TestNormalization:
+    # CA-16.1: El sistema debe normalizar acentos y mayúsculas al comparar palabras
+    # clave esperadas contra la respuesta generada.
+    def test_normalize_removes_accents_and_lowercases(self):
+        from src.llm.evaluator import _normalize
+
+        assert _normalize("Pérdida de Circulación") == "perdida de circulacion"
+
+    # CA-16.1: El sistema debe normalizar acentos y mayúsculas al comparar palabras
+    # clave esperadas contra la respuesta generada, para que variaciones ortográficas
+    # no reduzcan el score injustamente.
+    def test_score_keywords_matches_despite_accent_mismatch(self):
+        from src.llm.evaluator import _score_keywords
+
+        response = "Hubo perdida de circulacion en el pozo"
+        keywords = ["pérdida de circulación"]
+        hits, score = _score_keywords(response, keywords)
+        assert hits == 1
+        assert score == 1.0
