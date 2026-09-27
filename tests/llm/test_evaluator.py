@@ -583,3 +583,14 @@ class TestSelectionCriteria:
         selected, _ = _select_best_model(summary)
 
         assert selected == "modelo_rapido"
+
+    # CA-19.3: Si no hay ningún modelo evaluado (resumen vacío), el sistema no debe fallar al intentar seleccionar el mejor modelo,
+    # y debe devolver un modelo seleccionado y una justificación vacíos.
+
+    def test_empty_summary_returns_empty_selection(self):
+        from src.llm.evaluator import _select_best_model
+
+        selected, rationale = _select_best_model({})
+
+        assert selected == ""
+        assert rationale == ""
