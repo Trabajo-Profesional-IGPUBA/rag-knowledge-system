@@ -128,6 +128,26 @@ def _semantic_similarity(
     return round(_cosine_similarity(resp_emb, ref_emb), 4)
 
 
+def _select_best_model(summary: dict[str, dict[str, float]]) -> tuple[str, str]:
+    """Selecciona el mejor modelo por calidad combinada (keywords + similitud
+    semántica), desempatando por menor latencia. Devuelve (modelo, justificación)."""
+
+    def _quality(stats: dict[str, float]) -> float:
+        return (stats["avg_keyword_score"] + stats["avg_semantic_similarity"]) / 2
+
+    best_model, stats = max(
+        summary.items(),
+        key=lambda x: (_quality(x[1]), -x[1]["avg_elapsed_sec"]),
+    )
+    rationale = (
+        f"Mayor calidad combinada (keywords {stats['avg_keyword_score']:.0%} "
+        f"+ similitud semántica {stats['avg_semantic_similarity']:.0%}) "
+        f"con latencia de {stats['avg_elapsed_sec']:.1f}s promedio. "
+        f"Tasa de abstención: {stats['no_info_rate']:.0%}."
+    )
+    return best_model, rationale
+
+
 def evaluate_models(
     retriever: Retriever,
     models: list[str],
@@ -255,18 +275,8 @@ def evaluate_models(
         }
 
     if report.summary:
-        best = max(
-            report.summary.items(),
-            key=lambda x: (x[1]["avg_keyword_score"], -x[1]["avg_elapsed_sec"]),
-        )
-        report.selected_model = best[0]
-        stats = best[1]
-        report.selection_rationale = (
-            f"Mayor score de relevancia ({stats['avg_keyword_score']:.0%}) "
-            f"+ similitud semántica {stats['avg_semantic_similarity']:.0%}) "
-            f"con latencia de {stats['avg_elapsed_sec']:.1f}s promedio. "
-            f"Mejor balance entre calidad de respuesta y rendimiento en CPU."
-            f"Tasa de abstención: {stats['no_info_rate']:.0%}."
+        report.selected_model, report.selection_rationale = _select_best_model(
+            report.summary
         )
 
     if output_path:
