@@ -399,3 +399,47 @@ class TestNoInfoDetection:
         assert not _is_no_info_response(
             "El pozo PM-104 tuvo pérdida de circulación en Quintuco."
         )
+
+
+class TestSummaryNoInfoRate:
+    # CA-17.2: El resumen por modelo debe reportar la tasa de abstención, calculada
+    # solo sobre las consultas ejecutadas sin error.
+    def test_summary_includes_no_info_rate(self):
+        from src.llm.evaluator import EvaluationReport, ModelEvalResult
+
+        report = EvaluationReport(models_evaluated=["modelo_x"])
+        report.results = [
+            ModelEvalResult(
+                model="modelo_x",
+                query_id="q1",
+                query="test",
+                response="No encontré información sobre esto.",
+                elapsed_sec=1.0,
+                response_length=30,
+                keyword_hits=0,
+                keyword_total=3,
+                keyword_score=0.0,
+                is_no_info_response=True,
+            ),
+            ModelEvalResult(
+                model="modelo_x",
+                query_id="q2",
+                query="test2",
+                response="Respuesta con contenido real",
+                elapsed_sec=2.0,
+                response_length=30,
+                keyword_hits=2,
+                keyword_total=3,
+                keyword_score=0.67,
+                is_no_info_response=False,
+            ),
+        ]
+        report.summary["modelo_x"] = {
+            "avg_elapsed_sec": 1.5,
+            "avg_keyword_score": 0.335,
+            "no_info_rate": 0.5,
+            "avg_response_length": 30.0,
+            "error_count": 0,
+            "total_queries": 2,
+        }
+        assert report.summary["modelo_x"]["no_info_rate"] == 0.5
