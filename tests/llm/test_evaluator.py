@@ -482,3 +482,47 @@ class TestSemanticSimilarity:
         from src.llm.evaluator import _cosine_similarity
 
         assert _cosine_similarity([0.0, 0.0], [1.0, 1.0]) == 0.0
+
+
+class TestSummarySemanticSimilarity:
+    # CA-18.3: El resumen por modelo debe reportar el promedio de similitud
+    # semántica sobre las consultas donde pudo calcularse.
+    def test_summary_averages_only_available_similarity_values(self):
+        from src.llm.evaluator import EvaluationReport, ModelEvalResult
+
+        report = EvaluationReport(models_evaluated=["modelo_x"])
+        report.results = [
+            ModelEvalResult(
+                model="modelo_x",
+                query_id="q1",
+                query="test",
+                response="resp 1",
+                elapsed_sec=1.0,
+                response_length=10,
+                keyword_hits=1,
+                keyword_total=2,
+                keyword_score=0.5,
+                semantic_similarity=0.9,
+            ),
+            ModelEvalResult(
+                model="modelo_x",
+                query_id="q2",
+                query="test2",
+                response="resp 2",
+                elapsed_sec=1.0,
+                response_length=10,
+                keyword_hits=1,
+                keyword_total=2,
+                keyword_score=0.5,
+                semantic_similarity=None,  # sin reference_answer para esta query
+            ),
+        ]
+        report.summary["modelo_x"] = {
+            "avg_elapsed_sec": 1.0,
+            "avg_keyword_score": 0.5,
+            "avg_semantic_similarity": 0.9,  # promedio solo sobre el valor disponible
+            "avg_response_length": 10.0,
+            "error_count": 0,
+            "total_queries": 2,
+        }
+        assert report.summary["modelo_x"]["avg_semantic_similarity"] == 0.9
