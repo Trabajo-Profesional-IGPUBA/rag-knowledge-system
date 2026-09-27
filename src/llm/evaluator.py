@@ -15,37 +15,114 @@ from src.retrieval.retriever import Retriever
 
 log = logging.getLogger(__name__)
 
-
 EVAL_QUERIES: list[dict[str, Any]] = [
     {
         "id": "q1",
-        "query": "¿Cuál es la presión de fondo del pozo PM-104?",
-        "expected_keywords": ["presión", "psi", "fondo", "PM-104"],
-        "category": "datos_técnicos",
+        "query": "¿Tuvimos problemas de pérdida de circulación en la formación Quintuco?",
+        "expected_keywords": ["pérdida de circulación", "Quintuco", "LCM", "PM-104"],
+        "category": "perforación",
     },
     {
         "id": "q2",
-        "query": "¿Qué problemas se reportaron en los partes diarios del último workover?",
-        "expected_keywords": ["workover", "problema", "reporte", "parte"],
-        "category": "operaciones",
+        "query": "¿Qué pasó con la sarta de varillas en el pozo LL-205?",
+        "expected_keywords": ["varillas", "pesca", "overshot", "LL-205", "fatiga"],
+        "category": "workover",
     },
     {
         "id": "q3",
-        "query": "¿Cuál es la profundidad total del pozo y su formación productiva?",
-        "expected_keywords": ["profundidad", "metros", "formación", "productiva"],
-        "category": "geología",
+        "query": "¿Qué causó el screen-out durante la fractura hidráulica en CH-45?",
+        "expected_keywords": [
+            "screen-out",
+            "arenamiento",
+            "presión",
+            "CH-45",
+            "estimulación",
+        ],
+        "category": "estimulación",
     },
     {
         "id": "q4",
-        "query": "Describí el procedimiento de estimulación utilizado.",
-        "expected_keywords": ["estimulación", "procedimiento", "tratamiento"],
-        "category": "operaciones",
+        "query": "¿Qué mecanismo de corrosión afectó al tubing del pozo YPF-X2?",
+        "expected_keywords": [
+            "corrosión",
+            "CO2",
+            "bacterias sulfato-reductoras",
+            "tubing",
+            "Water Cut",
+        ],
+        "category": "integridad",
     },
     {
         "id": "q5",
-        "query": "¿Qué producción de gas se registró en el último parte diario?",
-        "expected_keywords": ["gas", "producción", "m3", "parte diario"],
-        "category": "producción",
+        "query": "¿Hubo canalización preferencial entre el inyector PI-08 y algún pozo productor?",
+        "expected_keywords": ["trazador", "canalización", "PI-08", "PM-102", "barrido"],
+        "category": "reservorio_inyección",
+    },
+    {
+        "id": "q6",
+        "query": "¿Tuvimos problemas con el cable de la BES?",
+        "expected_keywords": [
+            "VSD",
+            "aislamiento",
+            "caja de venteo",
+            "BES",
+            "cable de potencia",
+        ],
+        "category": "BES",
+    },
+    {
+        "id": "q7",
+        "query": "¿A qué profundidad falló la tubería en el pozo LP-15?",
+        "expected_keywords": ["tubing", "junta", "metros", "erosión", "LP-15"],
+        "category": "workover",
+    },
+    {
+        "id": "q8",
+        "query": "¿Qué problemas tuvimos con las BES en este yacimiento por baja tasa de flujo?",
+        "expected_keywords": [
+            "downthrust",
+            "Run Life",
+            "sobrecalentamiento",
+            "declinación",
+            "BES",
+        ],
+        "category": "BES",
+    },
+    {
+        "id": "q9",
+        "query": "¿Por qué el pozo PM-104 está produciendo más gas si no se tocó el estrangulador?",
+        "expected_keywords": [
+            "presión de burbuja",
+            "gas disuelto",
+            "PM-104",
+            "GOR",
+            "PVT",
+        ],
+        "category": "reservorio",
+    },
+    {
+        "id": "q10",
+        "query": "¿Por qué el pozo PM-108 tiene baja productividad crónica?",
+        "expected_keywords": [
+            "facies",
+            "arcillosa",
+            "canales fluviales",
+            "PM-108",
+            "conectividad",
+        ],
+        "category": "geología",
+    },
+    {
+        "id": "q11",
+        "query": "¿Qué falla mecánica ocurrió en el packer del pozo inyector PI-44?",
+        "expected_keywords": [
+            "packer",
+            "incrustaciones",
+            "sulfato de bario",
+            "PI-44",
+            "tracción",
+        ],
+        "category": "workover",
     },
 ]
 

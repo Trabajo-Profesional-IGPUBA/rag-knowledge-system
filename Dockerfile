@@ -38,6 +38,7 @@ COPY tests/ ./tests/
 COPY ingest_files.py .
 COPY app.py .
 COPY run_evaluation.py .
+COPY run_evaluation_llm.py .
 COPY generate_eval_file.py .
 COPY pyproject.toml .
 RUN chmod 777 /app
@@ -63,6 +64,7 @@ COPY src/ ./src/
 COPY ingest_files.py .
 COPY app.py .
 COPY run_evaluation.py .
+COPY run_evaluation_llm.py .
 COPY generate_eval_file.py .
 
 CMD ["python", "ingest_files.py"]

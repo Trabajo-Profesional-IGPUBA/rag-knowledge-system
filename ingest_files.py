@@ -80,9 +80,7 @@ def parse_args():
         "sources",
         nargs="*",
         type=existing_dir,
-        default=[
-            str(DEFAULT_DATA_DIR)  # Pasado como string para validarlo con existing_dir
-        ],
+        default=[DEFAULT_DATA_DIR],
         help="Rutas a los archivos de ingesta",
     )
 
