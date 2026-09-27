@@ -14,7 +14,7 @@ subestimaba la calidad real de las respuestas":
   - Normalización de keywords -> CA-16.1
   - Detección de abstención -> CA-17.1 a 17.2
   - Similitud semántica-> CA-18.1 a 18.5
-  - Selección del modelo con criterio combinado -> CA-19.1 a 19.2
+  - Selección del modelo con criterio combinado -> CA-19.1 a 19.3
 
 """
 
