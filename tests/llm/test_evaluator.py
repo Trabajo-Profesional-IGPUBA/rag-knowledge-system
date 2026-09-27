@@ -327,7 +327,7 @@ class TestEvaluateModels:
         )
 
         assert report.selected_model == "modelo_bueno"
-        assert "Mayor score de relevancia" in report.selection_rationale
+        assert "Mayor calidad combinada" in report.selection_rationale
 
     # CA-15.1: Si se indica una ruta de salida, el sistema debe guardar el reporte generado en esa ubicación.
     @patch("src.llm.evaluator.RAGPipeline")
