@@ -131,6 +131,8 @@ def _semantic_similarity(
 def _select_best_model(summary: dict[str, dict[str, float]]) -> tuple[str, str]:
     """Selecciona el mejor modelo por calidad combinada (keywords + similitud
     semántica), desempatando por menor latencia. Devuelve (modelo, justificación)."""
+    if not summary:
+        return "", ""
 
     def _quality(stats: dict[str, float]) -> float:
         return (stats["avg_keyword_score"] + stats["avg_semantic_similarity"]) / 2
