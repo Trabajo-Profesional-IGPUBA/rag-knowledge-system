@@ -12,6 +12,7 @@ Cubre "ÉPICA: Cliente LLM sobre Ollama":
 Cubre "Mejorar precisión del scoring en la evaluación de LLMs: el matching exacto de keywords 
 subestimaba la calidad real de las respuestas":
   - Normalización de keywords -> CA-16.1
+  - Detección de abstención -> CA-17.1
 
 """
 
