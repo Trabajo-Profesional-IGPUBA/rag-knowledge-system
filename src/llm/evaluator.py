@@ -16,6 +16,14 @@ from src.retrieval.retriever import Retriever
 
 log = logging.getLogger(__name__)
 
+NO_INFO_PATTERNS = [
+    "no encontré información",
+    "no tengo información",
+    "no se proporcionan detalles",
+    "no encontré datos",
+    "no dispongo de información",
+]
+
 EVAL_QUERIES: list[dict[str, Any]] = [
     {
         "id": "q1",
@@ -205,6 +213,12 @@ def _score_keywords(response: str, keywords: list[str]) -> tuple[int, float]:
     hits = sum(1 for kw in keywords if _normalize(kw) in response_norm)
     score = hits / len(keywords) if keywords else 0.0
     return hits, score
+
+
+def _is_no_info_response(response: str) -> bool:
+    """Detecta si la respuesta es una abstención ('no encontré información...')."""
+    response_norm = _normalize(response)
+    return any(_normalize(p) in response_norm for p in NO_INFO_PATTERNS)
 
 
 def evaluate_models(
