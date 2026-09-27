@@ -3,6 +3,7 @@
 import json
 import logging
 import time
+import unicodedata
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -191,10 +192,17 @@ class EvaluationReport:
         print("═" * 60)
 
 
+def _normalize(text: str) -> str:
+    """Normaliza texto: minúsculas y sin acentos, para matching más tolerante."""
+    text = text.lower()
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+    return text
+
+
 def _score_keywords(response: str, keywords: list[str]) -> tuple[int, float]:
-    """Cuenta keywords esperadas presentes en la respuesta (case-insensitive)."""
-    response_lower = response.lower()
-    hits = sum(1 for kw in keywords if kw.lower() in response_lower)
+    """Cuenta keywords esperadas presentes en la respuesta (case/acentos-insensitive)."""
+    response_norm = _normalize(response)
+    hits = sum(1 for kw in keywords if _normalize(kw) in response_norm)
     score = hits / len(keywords) if keywords else 0.0
     return hits, score
 
