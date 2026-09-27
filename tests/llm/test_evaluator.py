@@ -444,3 +444,40 @@ class TestSummaryNoInfoRate:
             "total_queries": 2,
         }
         assert report.summary["modelo_x"]["no_info_rate"] == 0.5
+
+
+class TestSemanticSimilarity:
+    # CA-18.2: Si no hay respuesta de referencia, el cálculo de similitud semántica
+    # debe devolver None sin fallar.
+    def test_returns_none_without_reference(self):
+        from src.llm.evaluator import _semantic_similarity
+
+        result = _semantic_similarity("cualquier respuesta", None, MagicMock())
+        assert result is None
+
+    # CA-18.4: Si no se provee un embedder, el cálculo de similitud semántica debe
+    # devolver None sin fallar.
+    def test_returns_none_without_embedder(self):
+        from src.llm.evaluator import _semantic_similarity
+
+        result = _semantic_similarity("respuesta", "referencia", None)
+        assert result is None
+
+    # CA-18.1: El sistema debe poder calcular la similitud semántica entre la
+    # respuesta generada y una respuesta de referencia, cuando esta última esté
+    # definida para la consulta.
+    def test_identical_texts_have_similarity_close_to_one(self):
+        from src.llm.evaluator import _semantic_similarity
+
+        embedder = MagicMock()
+        embedder.embed.return_value = [1.0, 0.0, 0.0]
+
+        result = _semantic_similarity("mismo texto", "mismo texto", embedder)
+        assert result == 1.0
+
+    # CA-18.5: El cálculo de similitud semántica (coseno) no debe fallar ante un
+    # vector nulo, debe devolver 0.0 en ese caso.
+    def test_cosine_similarity_zero_vector_returns_zero(self):
+        from src.llm.evaluator import _cosine_similarity
+
+        assert _cosine_similarity([0.0, 0.0], [1.0, 1.0]) == 0.0
