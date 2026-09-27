@@ -526,3 +526,59 @@ class TestSummarySemanticSimilarity:
             "total_queries": 2,
         }
         assert report.summary["modelo_x"]["avg_semantic_similarity"] == 0.9
+
+
+class TestSelectionCriteria:
+    # CA-19.1: El sistema debe seleccionar el mejor modelo combinando el score de
+    # keywords y la similitud semántica como medida de calidad, usando la latencia
+    # como criterio de desempate.
+    # CA-19.2: La justificación de selección debe reportar por separado el score
+    # de keywords, la similitud semántica y la tasa de abstención del modelo elegido.
+    def test_selects_model_with_best_combined_quality(self):
+        from src.llm.evaluator import _select_best_model
+
+        summary = {
+            "modelo_a": {
+                "avg_elapsed_sec": 10.0,
+                "avg_keyword_score": 0.3,
+                "avg_semantic_similarity": 0.3,
+                "no_info_rate": 0.5,
+            },
+            "modelo_b": {
+                "avg_elapsed_sec": 20.0,
+                "avg_keyword_score": 0.8,
+                "avg_semantic_similarity": 0.8,
+                "no_info_rate": 0.0,
+            },
+        }
+
+        selected, rationale = _select_best_model(summary)
+
+        assert selected == "modelo_b"
+        assert "80%" in rationale
+        assert "Tasa de abstención: 0%" in rationale
+
+    # CA-19.1: El sistema debe seleccionar el mejor modelo combinando el score de
+    # keywords y la similitud semántica como medida de calidad, usando la latencia
+    # como criterio de desempate.
+    def test_selects_lower_latency_on_quality_tie(self):
+        from src.llm.evaluator import _select_best_model
+
+        summary = {
+            "modelo_rapido": {
+                "avg_elapsed_sec": 5.0,
+                "avg_keyword_score": 0.5,
+                "avg_semantic_similarity": 0.5,
+                "no_info_rate": 0.0,
+            },
+            "modelo_lento": {
+                "avg_elapsed_sec": 50.0,
+                "avg_keyword_score": 0.5,
+                "avg_semantic_similarity": 0.5,
+                "no_info_rate": 0.0,
+            },
+        }
+
+        selected, _ = _select_best_model(summary)
+
+        assert selected == "modelo_rapido"
