@@ -9,6 +9,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
+from src.embeddings.embedder import Embedder
 from src.llm.client import LLMClient, LLMConfig
 from src.llm.prompt_builder import PromptBuilder
 from src.llm.rag_pipeline import RAGConfig, RAGPipeline
@@ -220,6 +223,26 @@ def _is_no_info_response(response: str) -> bool:
     """Detecta si la respuesta es una abstención ('no encontré información...')."""
     response_norm = _normalize(response)
     return any(_normalize(p) in response_norm for p in NO_INFO_PATTERNS)
+
+
+def _cosine_similarity(a: list[float], b: list[float]) -> float:
+    """Similitud coseno entre dos vectores."""
+    a_arr, b_arr = np.array(a), np.array(b)
+    denom = np.linalg.norm(a_arr) * np.linalg.norm(b_arr)
+    if denom == 0:
+        return 0.0
+    return float(np.dot(a_arr, b_arr) / denom)
+
+
+def _semantic_similarity(
+    response: str, reference: str | None, embedder: Embedder | None
+) -> float | None:
+    """Similitud semántica (coseno) entre la respuesta generada y la referencia."""
+    if not reference or embedder is None:
+        return None
+    resp_emb = embedder.embed(response)
+    ref_emb = embedder.embed(reference)
+    return round(_cosine_similarity(resp_emb, ref_emb), 4)
 
 
 def evaluate_models(
