@@ -12,7 +12,7 @@ Cubre "ÉPICA: Cliente LLM sobre Ollama":
 Cubre "Mejorar precisión del scoring en la evaluación de LLMs: el matching exacto de keywords 
 subestimaba la calidad real de las respuestas":
   - Normalización de keywords -> CA-16.1
-  - Detección de abstención -> CA-17.1
+  - Detección de abstención -> CA-17.1 a 17.2
 
 """
 
@@ -382,8 +382,9 @@ class TestNormalization:
 
 
 class TestNoInfoDetection:
-    # CA-17.1: El sistema debe distinguir cuándo una respuesta corresponde a una
-    # abstención explícita del modelo (ej. "no encontré información").
+    # CA-17.1: El sistema debe distinguir cuándo una respuesta corresponde a una abstención explícita del modelo
+    # (ej. "no encontré información"), en lugar de tratarla igual que una respuesta con contenido incorrecto.
+
     def test_detects_no_info_response(self):
         from src.llm.evaluator import _is_no_info_response
 
@@ -391,8 +392,8 @@ class TestNoInfoDetection:
             "No encontré información sobre esto en los documentos disponibles."
         )
 
-    # CA-17.1: El sistema debe distinguir la abstención explícita de una respuesta
-    # con contenido, sin marcar como abstención una respuesta normal.
+    # CA-17.1: El sistema debe distinguir cuándo una respuesta corresponde a una abstención explícita del modelo
+    # (ej. "no encontré información"), en lugar de tratarla igual que una respuesta con contenido incorrecto.
     def test_does_not_flag_normal_response(self):
         from src.llm.evaluator import _is_no_info_response
 
