@@ -6,7 +6,6 @@ de crear los chunks.
 """
 
 import logging
-import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -15,6 +14,7 @@ from docling_core.transforms.chunker.hybrid_chunker import HybridChunker
 from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
 from transformers import AutoTokenizer
 
+from src.etl.chunk_meta import extract_chunk_metadata
 from src.etl.cleaner import normalize
 
 logger = logging.getLogger()
@@ -27,29 +27,6 @@ truncado silencioso al embeddear (ver issue de migración a e5-base).
 MAX_TOKENS = 500
 
 DEFAULT_EMBEDDING_MODEL = "intfloat/multilingual-e5-base"
-
-_PATTERNS: dict[str, re.Pattern] = {
-    "well": re.compile(
-        r"(?:pozo\s*[:\-–]?\s*)?"  # prefijo opcional
-        r"([A-Z]{2,4})"  # letras (CH, LL, YPF...)
-        r"[\s\-]?"  # separador opcional (guión o espacio)
-        r"(\d{1,4}[A-Z]?)"  # número
-        r"(?=\s|$|[.,;)])",  # lookahead: fin de identificador
-        re.IGNORECASE,
-    ),
-    "section": re.compile(r"(?:seccion|sección)[:\s]+(.+?)(?:\n|$)", re.IGNORECASE),
-}
-
-
-def _normalize_well(letters: str, digits: str) -> str:
-    """Convierte las partes del identificador al formato canónico LETRAS-NÚMERO."""
-    return f"{letters.upper()}-{digits.upper()}"
-
-
-@dataclass
-class ChunkMeta:
-    well: str | None
-    section: str | None
 
 
 @dataclass
@@ -115,7 +92,7 @@ class DoclingHybridChunker:
             contextualized_text = self._chunker.contextualize(chunk)
             # al contener datos de la jerarquia del documento conviene usar el texto contextualizado
             # para extraer la metadata
-            meta = self.extract_chunk_metadata(contextualized_text)
+            meta = extract_chunk_metadata(contextualized_text)
             page = self.extract_page_no(chunk)
 
             yield Chunk(
@@ -136,19 +113,3 @@ class DoclingHybridChunker:
         except IndexError:
             page = None
         return page
-
-    @staticmethod
-    def extract_chunk_metadata(text: str) -> ChunkMeta:
-        well_m = _PATTERNS["well"].search(text)
-        if well_m is not None:
-            well = _normalize_well(well_m.group(1), well_m.group(2))
-        else:
-            well = None
-
-        section_m = _PATTERNS["section"].search(text)
-        section = section_m.group(1).strip() if section_m is not None else None
-
-        return ChunkMeta(
-            well=well,
-            section=section,
-        )
