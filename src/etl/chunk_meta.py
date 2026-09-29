@@ -23,18 +23,12 @@ class ChunkMeta:
     @classmethod
     def from_text(cls, text: str) -> Self:
         well_m = _PATTERNS["well"].search(text)
-        if well_m is not None:
-            well = _normalize_well(well_m.group(1), well_m.group(2))
-        else:
-            well = None
+        well = _normalize_well(well_m.group(1), well_m.group(2)) if well_m else None
 
         section_m = _PATTERNS["section"].search(text)
         section = section_m.group(1).strip() if section_m is not None else None
 
-        return cls(
-            well=well,
-            section=section,
-        )
+        return cls(well=well, section=section)
 
 
 def _normalize_well(letters: str, digits: str) -> str:
