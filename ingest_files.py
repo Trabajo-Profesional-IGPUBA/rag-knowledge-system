@@ -161,7 +161,7 @@ def run(
                     else:
                         docs_processed += 1
                         chunks_processed += metrics.n_chunks
-                        well_ids_extracted += metrics.n_well_ids_exracted
+                        well_ids_extracted += metrics.n_well_ids_extracted
                         logger.info(
                             "[%d] OK: %s | chunks=%d | total=%.2fs",
                             docs_processed,

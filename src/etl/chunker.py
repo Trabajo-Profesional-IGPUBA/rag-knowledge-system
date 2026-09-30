@@ -90,7 +90,7 @@ class DoclingHybridChunker:
             contextualized_text = self._chunker.contextualize(chunk)
             # al contener datos de la jerarquia del documento conviene usar el texto contextualizado
             # para extraer la metadata
-            wells = extract_wells(contextualized_text)
+            wells = extract_wells(contextualized_text) or None
             logger.info(f"Chunk meta: {wells} {filename}")
             page = self.extract_page_no(chunk)
 

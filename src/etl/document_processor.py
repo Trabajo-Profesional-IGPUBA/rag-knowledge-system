@@ -43,7 +43,7 @@ class ProcessingMetrics:
 
     filename: str
     n_chunks: int = 0
-    n_well_ids_exracted: int = 0
+    n_well_ids_extracted: int = 0
     time_chunking_s: float = 0.0
     time_embedding_s: float = 0.0
     time_indexing_s: float = 0.0
@@ -97,7 +97,7 @@ class DocumentProcessor:
 
         t0 = time.perf_counter()
         chunks = list(self.chunker.chunk(file_path))
-        metrics.n_well_ids_exracted = sum(map(lambda c: c.wells is not None, chunks))
+        metrics.n_well_ids_extracted = sum(map(lambda c: c.wells is not None, chunks))
         metrics.time_chunking_s = time.perf_counter() - t0
         metrics.n_chunks = len(chunks)
 
