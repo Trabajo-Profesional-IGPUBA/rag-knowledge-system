@@ -66,19 +66,19 @@ def _to_point_id(chunk_id: str) -> str:
 
 def _build_filter(filters: dict[str, Any] | None) -> Filter | None:
     """
-    Traduce el formato de filtros usado en el dominio (dict simple, con
-    soporte de {"$in": [...]}"} a un Filter nativo de Qdrant.
+    Traduce el formato de filtros usado en el dominio (dict simple, con la sintaxis
+    de Python) a un filtro nativo de QDrant
 
     Ej: {"doc_type": "parte_diario"}
-    Ej: {"doc_type": {"$in": ["ewrs", "workover_report"]}}
+    Ej: {"wells": ["ewrs", "workover_report"]}
     """
     if not filters:
         return None
 
     conditions = []
     for key, value in filters.items():
-        if isinstance(value, dict) and "$in" in value:
-            conditions.append(FieldCondition(key=key, match=MatchAny(any=value["$in"])))
+        if isinstance(value, list):
+            conditions.append(FieldCondition(key=key, match=MatchAny(any=value)))
         else:
             conditions.append(FieldCondition(key=key, match=MatchValue(value=value)))
 
