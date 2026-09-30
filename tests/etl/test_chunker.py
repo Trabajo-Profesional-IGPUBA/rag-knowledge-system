@@ -1,6 +1,5 @@
 from unittest.mock import MagicMock
 
-
 from src.etl.chunker import Chunk, DoclingHybridChunker
 
 

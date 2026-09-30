@@ -1,4 +1,7 @@
+from typing import ClassVar
+
 import pytest
+
 from src.etl.chunk_meta import extract_wells
 
 
@@ -30,7 +33,7 @@ class TestChunkMetaFromText:
             len(wells) > 0
         ), f"No se detectó ningún identificador de pozo en: {text!r}"
 
-    CANONICAL_CASES = [
+    CANONICAL_CASES: ClassVar = [
         ("Pozo: CH-88", "CH-88"),
         ("pozo ch-88", "CH-88"),
         ("pozo CH88", "CH-88"),

@@ -6,10 +6,10 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any
 
+from src.etl.chunk_meta import extract_wells
 from src.llm.client import LLMClient, LLMResponse
 from src.llm.prompt_builder import BuiltPrompt, PromptBuilder
 from src.retrieval.retriever import RetrievalResult, Retriever
-from src.etl.chunk_meta import extract_wells
 
 log = logging.getLogger(__name__)
 
