@@ -4,7 +4,7 @@ import re
 # múltiples identificadores y el patrón puede producir falsos positivos.
 # Esto es preferible a perder menciones de pozos relevantes para retrieval.
 _WELL_PATTERN = re.compile(
-    r"([A-Z]{2,4})" r"[\s\-]?" r"(\d{1,4}[A-Z]?)" r"(?=\s|$|[.,;)])",
+    r"([A-Z]{2,4})" r"[\s\-]?" r"(\d{1,4}[A-Z]?)" r"(?=\s|$|[.,;)?])",
     re.IGNORECASE,
 )
 
