@@ -14,7 +14,7 @@ from docling_core.transforms.chunker.hybrid_chunker import HybridChunker
 from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
 from transformers import AutoTokenizer
 
-from src.etl.chunk_meta import ChunkMeta
+from src.etl.chunk_meta import extract_wells
 from src.etl.cleaner import normalize
 
 logger = logging.getLogger()
@@ -36,15 +36,13 @@ class Chunk:
     source_file: str
     source_hash: str
     page: int | None
-    section: str | None
     chunk_index: int
-    well: str | None
+    wells: list[str] | None
 
     @property
     def meta(self):
         return {
-            "well": self.well,
-            "section": self.section,
+            "wells": self.wells,
             "source_file": self.source_file,
             "source_hash": self.source_hash,
             "page": self.page,
@@ -92,7 +90,8 @@ class DoclingHybridChunker:
             contextualized_text = self._chunker.contextualize(chunk)
             # al contener datos de la jerarquia del documento conviene usar el texto contextualizado
             # para extraer la metadata
-            meta = ChunkMeta.from_text(contextualized_text)
+            wells = extract_wells(contextualized_text)
+            logger.info(f"Chunk meta: {wells} {filename}")
             page = self.extract_page_no(chunk)
 
             yield Chunk(
@@ -102,8 +101,7 @@ class DoclingHybridChunker:
                 contextualized_text=contextualized_text,
                 chunk_index=index,
                 page=page,
-                section=meta.section,
-                well=meta.well,
+                wells=wells,
             )
 
     @staticmethod

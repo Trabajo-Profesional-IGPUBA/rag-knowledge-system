@@ -1,36 +1,23 @@
 import re
-from dataclasses import dataclass
-from typing import Self
 
-_PATTERNS: dict[str, re.Pattern] = {
-    "well": re.compile(
-        r"(?:pozo\s*[:\-–]?\s*)?"  # prefijo opcional
-        r"([A-Z]{2,4})"  # letras (CH, LL, YPF...)
-        r"[\s\-]?"  # separador opcional (guión o espacio)
-        r"(\d{1,4}[A-Z]?)"  # número
-        r"(?=\s|$|[.,;)])",  # lookahead: fin de identificador
-        re.IGNORECASE,
-    ),
-    "section": re.compile(r"(?:seccion|sección)[:\s]+(.+?)(?:\n|$)", re.IGNORECASE),
-}
-
-
-@dataclass
-class ChunkMeta:
-    well: str | None
-    section: str | None
-
-    @classmethod
-    def from_text(cls, text: str) -> Self:
-        well_m = _PATTERNS["well"].search(text)
-        well = _normalize_well(well_m.group(1), well_m.group(2)) if well_m else None
-
-        section_m = _PATTERNS["section"].search(text)
-        section = section_m.group(1).strip() if section_m is not None else None
-
-        return cls(well=well, section=section)
+# Se prioriza recall sobre precision: un chunk puede contener
+# múltiples identificadores y el patrón puede producir falsos positivos.
+# Esto es preferible a perder menciones de pozos relevantes para retrieval.
+_WELL_PATTERN = re.compile(
+    r"([A-Z]{2,4})" r"[\s\-]?" r"(\d{1,4}[A-Z]?)" r"(?=\s|$|[.,;)])",
+    re.IGNORECASE,
+)
 
 
 def _normalize_well(letters: str, digits: str) -> str:
     """Convierte las partes del identificador al formato canónico LETRAS-NÚMERO."""
     return f"{letters.upper()}-{digits.upper()}"
+
+
+def extract_wells(text: str) -> list[str]:
+    return list(
+        dict.fromkeys(
+            _normalize_well(match.group(1), match.group(2))
+            for match in _WELL_PATTERN.finditer(text)
+        )
+    )

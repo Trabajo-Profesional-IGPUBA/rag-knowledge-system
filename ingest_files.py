@@ -65,7 +65,6 @@ def validate_max_workers(max_workers_raw: str) -> int:
 
 
 def existing_dir(path_str: str) -> Path:
-    print(path_str)
     path = Path(path_str)
     if not path.is_dir() and not path.is_file():
         raise argparse.ArgumentTypeError(f"'{path_str}' no existe.")
