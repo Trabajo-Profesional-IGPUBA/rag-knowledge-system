@@ -12,9 +12,8 @@ def make_chunk(**kwargs) -> Chunk:
         "source_file": "data/ewr/EWR_PM104_2012.pdf",
         "source_hash": "abc123",
         "page": 1,
-        "section": "Operational Incidents",
         "chunk_index": 0,
-        "well": "PM-104",
+        "wells": ["PM-104"],
     }
     defaults.update(kwargs)
     return Chunk(**defaults)
@@ -34,23 +33,6 @@ class TestChunk:
     def test_char_count(self):
         chunk = make_chunk(text="hello world")
         assert chunk.char_count == 11
-
-    def test_meta_contains_required_fields(self):
-        chunk = make_chunk()
-        for field in ["well", "section", "source_file", "source_hash", "page"]:
-            assert field in chunk.meta, f"Required field missing from meta: {field}"
-
-    def test_meta_values_correct(self):
-        chunk = make_chunk(well="PM-104", section="Incidents", page=47)
-        assert chunk.meta["well"] == "PM-104"
-        assert chunk.meta["section"] == "Incidents"
-        assert chunk.meta["page"] == 47
-
-    def test_meta_accepts_none(self):
-        chunk = make_chunk(well=None, section=None, page=None)
-        assert chunk.meta["well"] is None
-        assert chunk.meta["section"] is None
-        assert chunk.meta["page"] is None
 
     def test_chunks_never_exceed_max_tokens(self, tmp_path):
         """CA-1.2: El tamaño máximo de texto que puede procesar el modelo debe
