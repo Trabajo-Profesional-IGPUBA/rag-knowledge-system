@@ -66,6 +66,12 @@ class Retriever:
             filters=filters,
         )
 
+        if filters and len(chunks) == 0:
+            # Se rehace la busqueda sin los filtros como fallback
+            chunks = self._vectorstore.search(
+                query_embedding=query_embedding, n_results=top_k
+            )
+
         log.info(
             "Recuperados %d chunks — mejor score: %.4f",
             len(chunks),
