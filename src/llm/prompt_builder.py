@@ -32,7 +32,7 @@ PREGUNTA DEL USUARIO:
 RESPUESTA:"""
 
 # Plantilla para formatear cada chunk individual junto con su metadata (documento, tipo, relevancia).
-_CHUNK_TEMPLATE = """[{idx}] Documento: {filename} | Tipo: {doc_type} | Relevancia: {score:.0%}
+_CHUNK_TEMPLATE = """[{idx}] Documento: {filename} | Relevancia: {score:.0%}
 {text}
 """
 
@@ -71,15 +71,13 @@ class PromptBuilder:
 
         for idx, chunk in enumerate(chunks, start=1):
             meta = chunk.get("metadata", {})
-            filename = meta.get("filename", meta.get("doc_id", f"doc_{idx}"))
-            doc_type = meta.get("doc_type", "desconocido")
+            filename = meta.get("source_file", f"doc_{idx}")
             score = chunk.get("score", 0.0)
             text = chunk.get("text", "")
 
             chunk_str = _CHUNK_TEMPLATE.format(
                 idx=idx,
                 filename=filename,
-                doc_type=doc_type,
                 score=score,
                 text=text,
             )

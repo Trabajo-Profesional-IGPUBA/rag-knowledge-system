@@ -95,7 +95,7 @@ class DoclingHybridChunker:
             page = self.extract_page_no(chunk)
 
             yield Chunk(
-                source_file=str(filename),
+                source_file=str(filename.name),
                 source_hash=str(chunk.meta.origin.binary_hash),  # type: ignore
                 text=normalize(chunk.text),
                 contextualized_text=contextualized_text,
