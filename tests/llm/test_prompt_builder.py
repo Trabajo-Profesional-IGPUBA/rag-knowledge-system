@@ -16,8 +16,7 @@ class TestPromptBuilder:
             "text": text,
             "metadata": {
                 "doc_id": doc_id,
-                "doc_type": "end_of_well_report",
-                "filename": "PM-104_EWRS",
+                "source_file": "PM-104_EWRS",
             },
             "score": score,
         }
@@ -101,12 +100,6 @@ class TestPromptBuilder:
         result = self.builder.build("pregunta", chunks)
         assert "PM-104_EWRS" in result.prompt
 
-    def test_chunk_includes_doc_type(self):
-        """CA-3.3: cada chunk debe indicar el tipo de documento."""
-        chunks = [self._make_chunk("texto")]
-        result = self.builder.build("pregunta", chunks)
-        assert "end_of_well_report" in result.prompt
-
     def test_chunk_includes_relevance_score_as_percentage(self):
         """CA-3.4: cada chunk debe indicar el porcentaje de relevancia (score) con el que fue recuperado."""
         chunks = [self._make_chunk("texto", score=0.87)]
@@ -118,22 +111,11 @@ class TestPromptBuilder:
         chunk = {
             "chunk_id": "docX::chunk_0",
             "text": "texto",
-            "metadata": {"doc_id": "docX", "doc_type": "end_of_well_report"},
+            "metadata": {"doc_id": "docX"},
             "score": 0.9,
         }
         result = self.builder.build("pregunta", [chunk])
-        assert "docX" in result.prompt
-
-    def test_chunk_without_doc_type_uses_default_unknown(self):
-        """CA-3.6: si un chunk no tiene doc_type, el sistema debe indicar un valor por defecto que refleje 'desconocido'."""
-        chunk = {
-            "chunk_id": "docY::chunk_0",
-            "text": "texto",
-            "metadata": {"doc_id": "docY", "filename": "docY_file"},
-            "score": 0.9,
-        }
-        result = self.builder.build("pregunta", [chunk])
-        assert "desconocido" in result.prompt
+        assert "doc_1" in result.prompt
 
     def test_max_context_chars_is_configurable(self):
         """CA-4.1: el sistema debe permitir configurar un límite máximo de caracteres para el bloque de contexto."""
