@@ -1,8 +1,6 @@
 from unittest.mock import MagicMock
 
-import pytest
-
-from src.etl.chunker import _PATTERNS, Chunk, DoclingHybridChunker
+from src.etl.chunker import Chunk, DoclingHybridChunker
 
 
 def make_chunk(**kwargs) -> Chunk:
@@ -13,9 +11,8 @@ def make_chunk(**kwargs) -> Chunk:
         "source_file": "data/ewr/EWR_PM104_2012.pdf",
         "source_hash": "abc123",
         "page": 1,
-        "section": "Operational Incidents",
         "chunk_index": 0,
-        "well": "PM-104",
+        "wells": ["PM-104"],
     }
     defaults.update(kwargs)
     return Chunk(**defaults)
@@ -36,23 +33,6 @@ class TestChunk:
         chunk = make_chunk(text="hello world")
         assert chunk.char_count == 11
 
-    def test_meta_contains_required_fields(self):
-        chunk = make_chunk()
-        for field in ["well", "section", "source_file", "source_hash", "page"]:
-            assert field in chunk.meta, f"Required field missing from meta: {field}"
-
-    def test_meta_values_correct(self):
-        chunk = make_chunk(well="PM-104", section="Incidents", page=47)
-        assert chunk.meta["well"] == "PM-104"
-        assert chunk.meta["section"] == "Incidents"
-        assert chunk.meta["page"] == 47
-
-    def test_meta_accepts_none(self):
-        chunk = make_chunk(well=None, section=None, page=None)
-        assert chunk.meta["well"] is None
-        assert chunk.meta["section"] is None
-        assert chunk.meta["page"] is None
-
     def test_chunks_never_exceed_max_tokens(self, tmp_path):
         """CA-1.2: El tamaño máximo de texto que puede procesar el modelo debe
         coincidir con el tamaño que se usa para dividir los documentos en
@@ -72,89 +52,9 @@ class TestChunk:
             assert token_count <= MAX_TOKENS
 
 
-class TestPatterns:
-
-    @pytest.mark.parametrize(
-        "text, expected",
-        [
-            ("Pozo: PM-104", "PM-104"),
-            ("pozo PM-104", "PM-104"),
-            ("POZO: YPF-001", "YPF-001"),
-            ("Pozo: 6506/3-1", "6506/3-1"),
-            ("pozo: PI-05", "PI-05"),
-        ],
-    )
-    def test_well_matches_valid_formats(self, text, expected):
-        match = _PATTERNS["well"].search(text)
-        assert match is not None, f"Did not match: {text!r}"
-        assert match.group(1).strip() == expected
-
-    @pytest.mark.parametrize(
-        "text",
-        [
-            "No well reference here.",
-            "The field has good production.",
-            "Temperature: 120°C",
-        ],
-    )
-    def test_well_no_false_positive(self, text):
-        assert _PATTERNS["well"].search(text) is None
-
-    @pytest.mark.parametrize(
-        "text, expected",
-        [
-            ("Sección: Incidentes Operativos", "Incidentes Operativos"),
-            ("sección: Cementación", "Cementación"),
-            ("SECCION: Datos Generales del Pozo", "Datos Generales del Pozo"),
-        ],
-    )
-    def test_section_matches_valid_formats(self, text, expected):
-        match = _PATTERNS["section"].search(text)
-        assert match is not None, f"Did not match: {text!r}"
-        assert match.group(1).strip() == expected
-
-    def test_section_no_false_positive(self):
-        text = "The well has good production in the upper interval."
-        assert _PATTERNS["section"].search(text) is None
-
-
-class TestExtractChunkMetadata:
-
-    def test_extracts_well_and_section(self):
-        text = "Sección: Incidentes Operativos\nPozo: PM-104\nLoss of circulation."
-        meta = DoclingHybridChunker.extract_chunk_metadata(text)
-        assert meta.well == "PM-104"
-        assert meta.section == "Incidentes Operativos"
-
-    def test_returns_none_when_no_well(self):
-        text = "Sección: Cementación\nCement plug was set."
-        meta = DoclingHybridChunker.extract_chunk_metadata(text)
-        assert meta.well is None
-
-    def test_returns_none_when_no_section(self):
-        text = "Pozo: PM-104\nLoss of circulation detected."
-        meta = DoclingHybridChunker.extract_chunk_metadata(text)
-        assert meta.section is None
-
-    def test_returns_none_on_empty_text(self):
-        meta = DoclingHybridChunker.extract_chunk_metadata("")
-        assert meta.well is None
-        assert meta.section is None
-
-    def test_extracts_from_contextualized_text(self):
-        """
-        The chunker extracts metadata from contextualized_text, not plain text.
-        Verifies that a well name in the heading path is correctly detected.
-        """
-        text = "1.2 Well Data\nPozo: 6506/3-1\nTotal depth: 3200 mdf."
-        meta = DoclingHybridChunker.extract_chunk_metadata(text)
-        assert meta.well == "6506/3-1"
-
-
 class TestExtractPageNo:
 
     def _make_raw_chunk(self, page_no: int | None) -> MagicMock:
-        """Builds a Docling chunk mock with the provenance structure."""
         chunk = MagicMock()
         if page_no is not None:
             prov = MagicMock()

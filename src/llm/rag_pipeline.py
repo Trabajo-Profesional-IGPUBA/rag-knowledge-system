@@ -6,6 +6,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any
 
+from src.etl.chunk_meta import extract_wells
 from src.llm.client import LLMClient, LLMResponse
 from src.llm.prompt_builder import BuiltPrompt, PromptBuilder
 from src.retrieval.retriever import RetrievalResult, Retriever
@@ -23,6 +24,7 @@ class RAGResponse:
     prompt: BuiltPrompt
     llm_response: LLMResponse
     total_elapsed_sec: float = 0.0
+    detected_wells: list[str] | None = None
 
     @property
     def ok(self) -> bool:
@@ -86,6 +88,18 @@ class RAGPipeline:
             self._llm.config.model,
         )
 
+    def _build_filters(self, question: str) -> dict[str, Any] | None:
+        filters = dict(self._config.filters) if self._config.filters else {}
+
+        detected_wells = extract_wells(question)
+        if detected_wells:
+            filters["wells"] = detected_wells
+            log.info(
+                "Pozos detectados en query: '%s' — aplicando filtro", detected_wells
+            )
+
+        return filters or None
+
     def query(
         self,
         question: str,
@@ -101,15 +115,18 @@ class RAGPipeline:
                 vacío, no se incluye historial en el prompt.
 
         Returns:
-            RAGResponse con respuesta, fuentes y métricas.
+            RAGResponse con respuesta, fuentes, métricas y pozo detectado.
         """
         t0 = time.perf_counter()
         log.info("RAG query: '%s'", question)
 
+        filters = self._build_filters(question)
+        detected_wells = (filters or {}).get("wells")
+
         retrieval = self._retriever.retrieve(
             query=question,
             top_k=self._config.top_k,
-            filters=self._config.filters,
+            filters=filters,
         )
 
         filtered_chunks = [
@@ -151,6 +168,7 @@ class RAGPipeline:
             prompt=built,
             llm_response=llm_resp,
             total_elapsed_sec=elapsed,
+            detected_wells=detected_wells,
         )
 
     def query_stream(
@@ -163,10 +181,12 @@ class RAGPipeline:
         Mismo comportamiento de history que query(): sin historial no cambia
         nada, y si viene, se tiene en cuenta al armar el prompt.
         """
+        filters = self._build_filters(question)
+
         retrieval = self._retriever.retrieve(
             query=question,
             top_k=self._config.top_k,
-            filters=self._config.filters,
+            filters=filters,
         )
 
         filtered_chunks = [

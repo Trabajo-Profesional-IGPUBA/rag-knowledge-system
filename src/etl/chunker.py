@@ -6,7 +6,6 @@ de crear los chunks.
 """
 
 import logging
-import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -15,6 +14,7 @@ from docling_core.transforms.chunker.hybrid_chunker import HybridChunker
 from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
 from transformers import AutoTokenizer
 
+from src.etl.chunk_meta import extract_wells
 from src.etl.cleaner import normalize
 
 logger = logging.getLogger()
@@ -28,22 +28,6 @@ MAX_TOKENS = 500
 
 DEFAULT_EMBEDDING_MODEL = "intfloat/multilingual-e5-base"
 
-_PATTERNS: dict[str, re.Pattern] = {
-    "well": re.compile(
-        r"(?:pozo)\s*[:\-–]?\s*"
-        r"([A-Z]{1,4}-\d{1,4}[A-Z]?"
-        r"|\d{3,4}/\d{1,2}-\d{1,2})",
-        re.IGNORECASE,
-    ),
-    "section": re.compile(r"(?:seccion|sección)[:\s]+(.+?)(?:\n|$)", re.IGNORECASE),
-}
-
-
-@dataclass
-class ChunkMeta:
-    well: str | None
-    section: str | None
-
 
 @dataclass
 class Chunk:
@@ -52,15 +36,13 @@ class Chunk:
     source_file: str
     source_hash: str
     page: int | None
-    section: str | None
     chunk_index: int
-    well: str | None
+    wells: list[str] | None
 
     @property
     def meta(self):
         return {
-            "well": self.well,
-            "section": self.section,
+            "wells": self.wells,
             "source_file": self.source_file,
             "source_hash": self.source_hash,
             "page": self.page,
@@ -108,18 +90,18 @@ class DoclingHybridChunker:
             contextualized_text = self._chunker.contextualize(chunk)
             # al contener datos de la jerarquia del documento conviene usar el texto contextualizado
             # para extraer la metadata
-            meta = self.extract_chunk_metadata(contextualized_text)
+            wells = extract_wells(contextualized_text) or None
+            logger.info(f"Chunk meta: {wells} {filename}")
             page = self.extract_page_no(chunk)
 
             yield Chunk(
-                source_file=str(filename),
+                source_file=str(filename.name),
                 source_hash=str(chunk.meta.origin.binary_hash),  # type: ignore
                 text=normalize(chunk.text),
                 contextualized_text=contextualized_text,
                 chunk_index=index,
                 page=page,
-                section=meta.section,
-                well=meta.well,
+                wells=wells,
             )
 
     @staticmethod
@@ -129,16 +111,3 @@ class DoclingHybridChunker:
         except IndexError:
             page = None
         return page
-
-    @staticmethod
-    def extract_chunk_metadata(text: str) -> ChunkMeta:
-        well_m = _PATTERNS["well"].search(text)
-        well = well_m.group(1).strip() if well_m is not None else None
-
-        section_m = _PATTERNS["section"].search(text)
-        section = section_m.group(1).strip() if section_m is not None else None
-
-        return ChunkMeta(
-            well=well,
-            section=section,
-        )

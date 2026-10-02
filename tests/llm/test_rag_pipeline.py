@@ -398,3 +398,54 @@ class TestRAGPipeline:
         assert tokens == ["Hola", " ", "mundo"]
         sent_prompt = mock_llm.generate_stream.call_args.args[0]
         assert "HISTORIAL DE CONVERSACIÓN" not in sent_prompt
+
+
+class TestWellFilterFromQuery:
+    """
+    CA-3.1: La query extrae el identificador de pozo con la misma lógica que los documentos.
+    CA-3.2: El filtro por pozo descarta documentos de otros pozos aunque sean semánticamente similares.
+    """
+
+    def _make_pipeline(self, retriever):
+        from src.llm.prompt_builder import PromptBuilder
+        from src.llm.rag_pipeline import RAGConfig, RAGPipeline
+
+        llm = MagicMock()
+        llm.config.model = "llama3:8b"
+        llm.generate.return_value = MagicMock(ok=True, text="respuesta")
+
+        return RAGPipeline(
+            retriever=retriever,
+            llm_client=llm,
+            prompt_builder=PromptBuilder(),
+            config=RAGConfig(top_k=5, min_score=0.0),
+        )
+
+    def test_well_in_query_is_extracted_and_applied_as_filter(self):
+        """CA-3.1 + CA-3.2: Si la query menciona un pozo, el retriever recibe
+        ese pozo como filtro exacto."""
+        retriever = MagicMock()
+        retriever.retrieve.return_value = MagicMock(chunks=[])
+
+        pipeline = self._make_pipeline(retriever)
+        pipeline.query("¿Cuál es la presión del pozo CH-88?")
+
+        call_kwargs = retriever.retrieve.call_args.kwargs
+        assert call_kwargs.get("filters") == {
+            "wells": ["CH-88"]
+        }, f"Se esperaba filtro {{'well': ['CH-88']}} pero se recibió: {call_kwargs.get('filters')}"
+
+    def test_query_without_well_does_not_apply_well_filter(self):
+        """CA-3.4: Sin identificador de pozo en la query, el filtro es None
+        y el retrieval busca en todo el corpus."""
+        retriever = MagicMock()
+        retriever.retrieve.return_value = MagicMock(chunks=[])
+
+        pipeline = self._make_pipeline(retriever)
+        pipeline.query("¿Cuáles son las formaciones con mejor porosidad?")
+
+        call_kwargs = retriever.retrieve.call_args.kwargs
+        filters = call_kwargs.get("filters")
+        assert (
+            filters is None or "wells" not in filters
+        ), f"No se esperaba filtro de pozo pero se recibió: {filters}"

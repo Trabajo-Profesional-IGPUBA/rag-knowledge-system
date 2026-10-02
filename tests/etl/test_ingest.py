@@ -19,7 +19,11 @@ def make_fake_processor(processed_files=None, fail_on=None):
                 raise RuntimeError("fallo simulado")
             if processed_files is not None:
                 processed_files.append(file.name)
-            return type("M", (), {"n_chunks": 1, "time_total_s": 0.01})()
+            return type(
+                "M",
+                (),
+                {"n_chunks": 1, "n_well_ids_extracted": 1, "time_total_s": 0.01},
+            )()
 
     return _FakeProcessor()
 
@@ -108,7 +112,11 @@ class TestConfigurableConcurrency:
                 time.sleep(0.05)
                 with lock:
                     currently_running -= 1
-                return type("M", (), {"n_chunks": 1, "time_total_s": 0.01})()
+                return type(
+                    "M",
+                    (),
+                    {"n_chunks": 1, "n_well_ids_extracted": 1, "time_total_s": 0.01},
+                )()
 
         patch_dependencies(monkeypatch, _FakeProcessor())
         run_module.run(sources=[raw_dir], max_workers=10)

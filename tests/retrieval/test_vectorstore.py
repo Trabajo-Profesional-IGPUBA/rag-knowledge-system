@@ -139,7 +139,7 @@ class TestVectorStore:
 
     def test_build_filter_in_set_match(self):
         """CA-4.2: El sistema debe permitir filtrar resultados por pertenencia a un conjunto de valores posibles de metadata."""
-        filters = {"doc_type": {"$in": ["ewrs", "workover_report"]}}
+        filters = {"doc_type": ["ewrs", "workover_report"]}
         expected = Filter(
             must=[
                 FieldCondition(
@@ -186,7 +186,7 @@ class TestVectorStore:
         results = store.search(
             _fake_embedding(),
             n_results=5,
-            filters={"doc_type": {"$in": ["ewrs", "workover_report"]}},
+            filters={"doc_type": ["ewrs", "workover_report"]},
         )
         doc_types = {r["metadata"]["doc_type"] for r in results}
         assert doc_types.issubset({"ewrs", "workover_report"})

@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock, call
 
 import pytest
 
@@ -63,6 +63,45 @@ class TestRetriever:
         mock_retriever._vectorstore.search.assert_called_once()
         call_kwargs = mock_retriever._vectorstore.search.call_args[1]
         assert call_kwargs.get("filters") == {"doc_type": "ewrs"}
+
+    def test_retrieves_without_filters_when_filtered_search_returns_no_results(self):
+        embedder = Mock()
+        vectorstore = Mock()
+
+        embedder.embed.return_value = [0.1, 0.2, 0.3]
+        vectorstore.search.side_effect = [
+            [],
+            [{"text": "chunk recuperado", "score": 0.9, "metadata": {}}],
+        ]
+
+        retriever = Retriever(embedder, vectorstore)
+
+        filters = {"wells": ["PM-104", "PM-105"]}
+
+        result = retriever.retrieve(
+            "¿Qué pérdidas se registraron?",
+            top_k=5,
+            filters=filters,
+        )
+
+        assert result.chunks == [
+            {"text": "chunk recuperado", "score": 0.9, "metadata": {}}
+        ]
+
+        assert vectorstore.search.call_count == 2
+        vectorstore.search.assert_has_calls(
+            [
+                call(
+                    query_embedding=[0.1, 0.2, 0.3],
+                    n_results=5,
+                    filters=filters,
+                ),
+                call(
+                    query_embedding=[0.1, 0.2, 0.3],
+                    n_results=5,
+                ),
+            ]
+        )
 
 
 class TestEvaluateTopKAccuracy:
