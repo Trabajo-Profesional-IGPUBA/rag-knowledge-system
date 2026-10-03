@@ -14,7 +14,7 @@ PVT_FIXTURE = FIXTURES_DIR / "pvt_los_perales.pdf"
 @pytest.mark.e2e
 class TestRagEndToEnd:
 
-    def test_pipeline_indexes_at_least_one_chunk(self, tmp_path):
+    def test_pipeline_indexes_at_least_one_chunk(self, tmp_path, monkeypatch):
         import ingest_files as run_module
 
         raw_dir = tmp_path / "raw"
@@ -23,6 +23,7 @@ class TestRagEndToEnd:
 
         assert PVT_FIXTURE.exists(), f"Falta el fixture {PVT_FIXTURE}."
         shutil.copy(PVT_FIXTURE, raw_dir / "pvt.pdf")
+        monkeypatch.setattr(run_module, "VECTOR_STORE_PATH", vector_store_dir)
 
         run_module.run(sources=[raw_dir], max_workers=1)
 
