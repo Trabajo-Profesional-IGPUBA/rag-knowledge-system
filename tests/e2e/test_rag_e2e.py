@@ -15,6 +15,9 @@ PVT_FIXTURE = FIXTURES_DIR / "pvt_los_perales.pdf"
 class TestRagEndToEnd:
 
     def test_pipeline_indexes_at_least_one_chunk(self, tmp_path, monkeypatch):
+        import sys
+        import ingest_files as run_module
+        sys.modules.pop("ingest_files", None)
         import ingest_files as run_module
 
         raw_dir = tmp_path / "raw"
