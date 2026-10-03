@@ -92,3 +92,17 @@ class TestRagEndToEnd:
             assert any(term in texts for term in ["presión", "burbuja", "yacimiento", "psi"])
         finally:
             store.close()
+
+    def test_full_pipeline_runs_without_errors(self, tmp_path, monkeypatch):
+        import ingest_files as run_module
+
+        raw_dir = tmp_path / "raw"
+        raw_dir.mkdir()
+        vector_store_dir = tmp_path / "vectorstore"
+        shutil.copy(PVT_FIXTURE, raw_dir / "pvt.pdf")
+        monkeypatch.setattr(run_module, "VECTOR_STORE_PATH", vector_store_dir)
+
+        try:
+            run_module.run(sources=[raw_dir], max_workers=1)
+        except Exception as e:
+            pytest.fail(f"El pipeline lanzó una excepción inesperada: {e}")
