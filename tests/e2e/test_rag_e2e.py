@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 
 from src.embeddings.embedder import Embedder
-from src.retrieval.vectorstore import VectorStore
 from src.retrieval.retriever import Retriever
+from src.retrieval.vectorstore import VectorStore
 
 FIXTURES_DIR = Path(__file__).parent.parent / "etl" / "fixtures" / "pdfs"
 PVT_FIXTURE = FIXTURES_DIR / "pvt_los_perales.pdf"
@@ -16,9 +16,10 @@ class TestRagEndToEnd:
 
     def test_pipeline_indexes_at_least_one_chunk(self, tmp_path, monkeypatch):
         import sys
+
         import ingest_files as run_module
+
         sys.modules.pop("ingest_files", None)
-        import ingest_files as run_module
 
         raw_dir = tmp_path / "raw"
         raw_dir.mkdir()
@@ -93,7 +94,9 @@ class TestRagEndToEnd:
         try:
             result = retriever.retrieve("presión de burbuja yacimiento", top_k=3)
             texts = " ".join(c["text"] for c in result.chunks).lower()
-            assert any(term in texts for term in ["presión", "burbuja", "yacimiento", "psi"])
+            assert any(
+                term in texts for term in ["presión", "burbuja", "yacimiento", "psi"]
+            )
         finally:
             store.close()
 
@@ -111,7 +114,9 @@ class TestRagEndToEnd:
         except Exception as e:
             pytest.fail(f"El pipeline lanzó una excepción inesperada: {e}")
 
-    def test_reingesting_same_pdf_does_not_duplicate_chunks(self, tmp_path, monkeypatch):
+    def test_reingesting_same_pdf_does_not_duplicate_chunks(
+        self, tmp_path, monkeypatch
+    ):
         import ingest_files as run_module
 
         raw_dir = tmp_path / "raw"
