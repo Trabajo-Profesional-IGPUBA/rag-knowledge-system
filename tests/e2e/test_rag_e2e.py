@@ -106,3 +106,24 @@ class TestRagEndToEnd:
             run_module.run(sources=[raw_dir], max_workers=1)
         except Exception as e:
             pytest.fail(f"El pipeline lanzó una excepción inesperada: {e}")
+
+    def test_reingesting_same_pdf_does_not_duplicate_chunks(self, tmp_path, monkeypatch):
+        import ingest_files as run_module
+
+        raw_dir = tmp_path / "raw"
+        raw_dir.mkdir()
+        vector_store_dir = tmp_path / "vectorstore"
+        shutil.copy(PVT_FIXTURE, raw_dir / "pvt.pdf")
+        monkeypatch.setattr(run_module, "VECTOR_STORE_PATH", vector_store_dir)
+
+        run_module.run(sources=[raw_dir], max_workers=1)
+        store = VectorStore(vector_store_dir)
+        count_first = store.count()
+        store.close()
+
+        run_module.run(sources=[raw_dir], max_workers=1)
+        store = VectorStore(vector_store_dir)
+        count_second = store.count()
+        store.close()
+
+        assert count_first == count_second
