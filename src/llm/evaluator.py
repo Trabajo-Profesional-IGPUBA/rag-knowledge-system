@@ -3,128 +3,22 @@
 import json
 import logging
 import time
+import unicodedata
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
+from src.embeddings.embedder import Embedder
 from src.llm.client import LLMClient, LLMConfig
+from src.llm.eval_queries import EVAL_QUERIES, NO_INFO_PATTERNS
 from src.llm.prompt_builder import PromptBuilder
 from src.llm.rag_pipeline import RAGConfig, RAGPipeline
 from src.retrieval.retriever import Retriever
 
 log = logging.getLogger(__name__)
-
-EVAL_QUERIES: list[dict[str, Any]] = [
-    {
-        "id": "q1",
-        "query": "¿Tuvimos problemas de pérdida de circulación en la formación Quintuco?",
-        "expected_keywords": ["pérdida de circulación", "Quintuco", "LCM", "PM-104"],
-        "category": "perforación",
-    },
-    {
-        "id": "q2",
-        "query": "¿Qué pasó con la sarta de varillas en el pozo LL-205?",
-        "expected_keywords": ["varillas", "pesca", "overshot", "LL-205", "fatiga"],
-        "category": "workover",
-    },
-    {
-        "id": "q3",
-        "query": "¿Qué causó el screen-out durante la fractura hidráulica en CH-45?",
-        "expected_keywords": [
-            "screen-out",
-            "arenamiento",
-            "presión",
-            "CH-45",
-            "estimulación",
-        ],
-        "category": "estimulación",
-    },
-    {
-        "id": "q4",
-        "query": "¿Qué mecanismo de corrosión afectó al tubing del pozo YPF-X2?",
-        "expected_keywords": [
-            "corrosión",
-            "CO2",
-            "bacterias sulfato-reductoras",
-            "tubing",
-            "Water Cut",
-        ],
-        "category": "integridad",
-    },
-    {
-        "id": "q5",
-        "query": "¿Hubo canalización preferencial entre el inyector PI-08 y algún pozo productor?",
-        "expected_keywords": ["trazador", "canalización", "PI-08", "PM-102", "barrido"],
-        "category": "reservorio_inyección",
-    },
-    {
-        "id": "q6",
-        "query": "¿Tuvimos problemas con el cable de la BES?",
-        "expected_keywords": [
-            "VSD",
-            "aislamiento",
-            "caja de venteo",
-            "BES",
-            "cable de potencia",
-        ],
-        "category": "BES",
-    },
-    {
-        "id": "q7",
-        "query": "¿A qué profundidad falló la tubería en el pozo LP-15?",
-        "expected_keywords": ["tubing", "junta", "metros", "erosión", "LP-15"],
-        "category": "workover",
-    },
-    {
-        "id": "q8",
-        "query": "¿Qué problemas tuvimos con las BES en este yacimiento por baja tasa de flujo?",
-        "expected_keywords": [
-            "downthrust",
-            "Run Life",
-            "sobrecalentamiento",
-            "declinación",
-            "BES",
-        ],
-        "category": "BES",
-    },
-    {
-        "id": "q9",
-        "query": "¿Por qué el pozo PM-104 está produciendo más gas si no se tocó el estrangulador?",
-        "expected_keywords": [
-            "presión de burbuja",
-            "gas disuelto",
-            "PM-104",
-            "GOR",
-            "PVT",
-        ],
-        "category": "reservorio",
-    },
-    {
-        "id": "q10",
-        "query": "¿Por qué el pozo PM-108 tiene baja productividad crónica?",
-        "expected_keywords": [
-            "facies",
-            "arcillosa",
-            "canales fluviales",
-            "PM-108",
-            "conectividad",
-        ],
-        "category": "geología",
-    },
-    {
-        "id": "q11",
-        "query": "¿Qué falla mecánica ocurrió en el packer del pozo inyector PI-44?",
-        "expected_keywords": [
-            "packer",
-            "incrustaciones",
-            "sulfato de bario",
-            "PI-44",
-            "tracción",
-        ],
-        "category": "workover",
-    },
-]
 
 
 @dataclass
@@ -141,6 +35,8 @@ class ModelEvalResult:
     keyword_total: int
     keyword_score: float
     error: str | None = None
+    is_no_info_response: bool = False
+    semantic_similarity: float | None = None
 
     @property
     def ok(self) -> bool:
@@ -191,12 +87,67 @@ class EvaluationReport:
         print("═" * 60)
 
 
+def _normalize(text: str) -> str:
+    """Normaliza texto: minúsculas y sin acentos, para matching más tolerante."""
+    text = text.lower()
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+    return text
+
+
 def _score_keywords(response: str, keywords: list[str]) -> tuple[int, float]:
-    """Cuenta keywords esperadas presentes en la respuesta (case-insensitive)."""
-    response_lower = response.lower()
-    hits = sum(1 for kw in keywords if kw.lower() in response_lower)
+    """Cuenta keywords esperadas presentes en la respuesta (case/acentos-insensitive)."""
+    response_norm = _normalize(response)
+    hits = sum(1 for kw in keywords if _normalize(kw) in response_norm)
     score = hits / len(keywords) if keywords else 0.0
     return hits, score
+
+
+def _is_no_info_response(response: str) -> bool:
+    """Detecta si la respuesta es una abstención ('no encontré información...')."""
+    response_norm = _normalize(response)
+    return any(_normalize(p) in response_norm for p in NO_INFO_PATTERNS)
+
+
+def _cosine_similarity(a: list[float], b: list[float]) -> float:
+    """Similitud coseno entre dos vectores."""
+    a_arr, b_arr = np.array(a), np.array(b)
+    denom = np.linalg.norm(a_arr) * np.linalg.norm(b_arr)
+    if denom == 0:
+        return 0.0
+    return float(np.dot(a_arr, b_arr) / denom)
+
+
+def _semantic_similarity(
+    response: str, reference: str | None, embedder: Embedder | None
+) -> float | None:
+    """Similitud semántica (coseno) entre la respuesta generada y la referencia."""
+    if not reference or embedder is None:
+        return None
+    resp_emb = embedder.embed(response)
+    ref_emb = embedder.embed(reference)
+    return round(_cosine_similarity(resp_emb, ref_emb), 4)
+
+
+def _select_best_model(summary: dict[str, dict[str, float]]) -> tuple[str, str]:
+    """Selecciona el mejor modelo por calidad combinada (keywords + similitud
+    semántica), desempatando por menor latencia. Devuelve (modelo, justificación)."""
+    if not summary:
+        return "", ""
+
+    def _quality(stats: dict[str, float]) -> float:
+        return (stats["avg_keyword_score"] + stats["avg_semantic_similarity"]) / 2
+
+    best_model, stats = max(
+        summary.items(),
+        key=lambda x: (_quality(x[1]), -x[1]["avg_elapsed_sec"]),
+    )
+    rationale = (
+        f"Mayor calidad combinada (keywords {stats['avg_keyword_score']:.0%} "
+        f"+ similitud semántica {stats['avg_semantic_similarity']:.0%}) "
+        f"con latencia de {stats['avg_elapsed_sec']:.1f}s promedio. "
+        f"Tasa de abstención: {stats['no_info_rate']:.0%}."
+    )
+    return best_model, rationale
 
 
 def evaluate_models(
@@ -204,6 +155,7 @@ def evaluate_models(
     models: list[str],
     queries: list[dict[str, Any]] | None = None,
     output_path: Path | None = None,
+    embedder: Embedder | None = None,
 ) -> EvaluationReport:
     """Evalúa cada modelo contra el set de queries, arma el resumen y selecciona el mejor."""
     queries = queries or EVAL_QUERIES
@@ -247,6 +199,12 @@ def evaluate_models(
                     q.get("expected_keywords", []),
                 )
 
+                sem_sim = _semantic_similarity(
+                    rag_resp.answer,
+                    q.get("reference_answer"),
+                    embedder,
+                )
+
                 result = ModelEvalResult(
                     model=model_name,
                     query_id=q["id"],
@@ -257,6 +215,8 @@ def evaluate_models(
                     keyword_hits=hits,
                     keyword_total=len(q.get("expected_keywords", [])),
                     keyword_score=round(score, 4),
+                    is_no_info_response=_is_no_info_response(rag_resp.answer),
+                    semantic_similarity=sem_sim,
                 )
 
             except Exception as e:
@@ -271,6 +231,7 @@ def evaluate_models(
                     keyword_total=len(q.get("expected_keywords", [])),
                     keyword_score=0.0,
                     error=str(e),
+                    is_no_info_response=False,
                 )
                 log.error("Error evaluando %s en %s: %s", model_name, q["id"], e)
 
@@ -282,6 +243,13 @@ def evaluate_models(
             continue
 
         ok_results = [r for r in model_results if r.ok]
+        sim_values = [
+            r.semantic_similarity
+            for r in ok_results
+            if r.semantic_similarity is not None
+        ]
+        no_info_count = sum(1 for r in ok_results if r.is_no_info_response)
+
         report.summary[model_name] = {
             "avg_elapsed_sec": (
                 round(sum(r.elapsed_sec for r in ok_results) / len(ok_results), 2)
@@ -293,26 +261,24 @@ def evaluate_models(
                 if ok_results
                 else 0.0
             ),
+            "avg_semantic_similarity": (
+                round(sum(sim_values) / len(sim_values), 4) if sim_values else 0.0
+            ),
             "avg_response_length": (
                 round(sum(r.response_length for r in ok_results) / len(ok_results), 1)
                 if ok_results
                 else 0.0
+            ),
+            "no_info_rate": (
+                round(no_info_count / len(ok_results), 4) if ok_results else 0.0
             ),
             "error_count": len([r for r in model_results if not r.ok]),
             "total_queries": len(model_results),
         }
 
     if report.summary:
-        best = max(
-            report.summary.items(),
-            key=lambda x: (x[1]["avg_keyword_score"], -x[1]["avg_elapsed_sec"]),
-        )
-        report.selected_model = best[0]
-        stats = best[1]
-        report.selection_rationale = (
-            f"Mayor score de relevancia ({stats['avg_keyword_score']:.0%}) "
-            f"con latencia de {stats['avg_elapsed_sec']:.1f}s promedio. "
-            f"Mejor balance entre calidad de respuesta y rendimiento en CPU."
+        report.selected_model, report.selection_rationale = _select_best_model(
+            report.summary
         )
 
     if output_path:

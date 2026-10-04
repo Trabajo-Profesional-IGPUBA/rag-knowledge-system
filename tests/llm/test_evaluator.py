@@ -9,6 +9,13 @@ Cubre "ÉPICA: Cliente LLM sobre Ollama":
   - Selección del modelo -> CA-14.1 a CA-14.2
   - Persistencia de resultados -> CA-15.1 
 
+Cubre "Mejorar precisión del scoring en la evaluación de LLMs: el matching exacto de keywords 
+subestimaba la calidad real de las respuestas":
+  - Normalización de keywords -> CA-16.1
+  - Detección de abstención -> CA-17.1 a 17.2
+  - Similitud semántica-> CA-18.1 a 18.5
+  - Selección del modelo con criterio combinado -> CA-19.1 a 19.3
+
 """
 
 
@@ -320,7 +327,7 @@ class TestEvaluateModels:
         )
 
         assert report.selected_model == "modelo_bueno"
-        assert "Mayor score de relevancia" in report.selection_rationale
+        assert "Mayor calidad combinada" in report.selection_rationale
 
     # CA-15.1: Si se indica una ruta de salida, el sistema debe guardar el reporte generado en esa ubicación.
     @patch("src.llm.evaluator.RAGPipeline")
@@ -353,3 +360,237 @@ class TestEvaluateModels:
         )
 
         assert output_path.exists()
+
+
+class TestNormalization:
+    # CA-16.1: El sistema debe normalizar acentos y mayúsculas al comparar palabras
+    # clave esperadas contra la respuesta generada.
+    def test_normalize_removes_accents_and_lowercases(self):
+        from src.llm.evaluator import _normalize
+
+        assert _normalize("Pérdida de Circulación") == "perdida de circulacion"
+
+    # CA-16.1: El sistema debe normalizar acentos y mayúsculas al comparar palabras
+    # clave esperadas contra la respuesta generada, para que variaciones ortográficas
+    # no reduzcan el score injustamente.
+    def test_score_keywords_matches_despite_accent_mismatch(self):
+        from src.llm.evaluator import _score_keywords
+
+        response = "Hubo perdida de circulacion en el pozo"
+        keywords = ["pérdida de circulación"]
+        hits, score = _score_keywords(response, keywords)
+        assert hits == 1
+        assert score == 1.0
+
+
+class TestNoInfoDetection:
+    # CA-17.1: El sistema debe distinguir cuándo una respuesta corresponde a una abstención explícita del modelo
+    # (ej. "no encontré información"), en lugar de tratarla igual que una respuesta con contenido incorrecto.
+
+    def test_detects_no_info_response(self):
+        from src.llm.evaluator import _is_no_info_response
+
+        assert _is_no_info_response(
+            "No encontré información sobre esto en los documentos disponibles."
+        )
+
+    # CA-17.1: El sistema debe distinguir cuándo una respuesta corresponde a una abstención explícita del modelo
+    # (ej. "no encontré información"), en lugar de tratarla igual que una respuesta con contenido incorrecto.
+    def test_does_not_flag_normal_response(self):
+        from src.llm.evaluator import _is_no_info_response
+
+        assert not _is_no_info_response(
+            "El pozo PM-104 tuvo pérdida de circulación en Quintuco."
+        )
+
+
+class TestSummaryNoInfoRate:
+    # CA-17.2: El resumen por modelo debe reportar la tasa de abstención, calculada
+    # solo sobre las consultas ejecutadas sin error.
+    def test_summary_includes_no_info_rate(self):
+        from src.llm.evaluator import EvaluationReport, ModelEvalResult
+
+        report = EvaluationReport(models_evaluated=["modelo_x"])
+        report.results = [
+            ModelEvalResult(
+                model="modelo_x",
+                query_id="q1",
+                query="test",
+                response="No encontré información sobre esto.",
+                elapsed_sec=1.0,
+                response_length=30,
+                keyword_hits=0,
+                keyword_total=3,
+                keyword_score=0.0,
+                is_no_info_response=True,
+            ),
+            ModelEvalResult(
+                model="modelo_x",
+                query_id="q2",
+                query="test2",
+                response="Respuesta con contenido real",
+                elapsed_sec=2.0,
+                response_length=30,
+                keyword_hits=2,
+                keyword_total=3,
+                keyword_score=0.67,
+                is_no_info_response=False,
+            ),
+        ]
+        report.summary["modelo_x"] = {
+            "avg_elapsed_sec": 1.5,
+            "avg_keyword_score": 0.335,
+            "no_info_rate": 0.5,
+            "avg_response_length": 30.0,
+            "error_count": 0,
+            "total_queries": 2,
+        }
+        assert report.summary["modelo_x"]["no_info_rate"] == 0.5
+
+
+class TestSemanticSimilarity:
+    # CA-18.2: Si no hay respuesta de referencia, el cálculo de similitud semántica
+    # debe devolver None sin fallar.
+    def test_returns_none_without_reference(self):
+        from src.llm.evaluator import _semantic_similarity
+
+        result = _semantic_similarity("cualquier respuesta", None, MagicMock())
+        assert result is None
+
+    # CA-18.4: Si no se provee un embedder, el cálculo de similitud semántica debe
+    # devolver None sin fallar.
+    def test_returns_none_without_embedder(self):
+        from src.llm.evaluator import _semantic_similarity
+
+        result = _semantic_similarity("respuesta", "referencia", None)
+        assert result is None
+
+    # CA-18.1: El sistema debe poder calcular la similitud semántica entre la
+    # respuesta generada y una respuesta de referencia, cuando esta última esté
+    # definida para la consulta.
+    def test_identical_texts_have_similarity_close_to_one(self):
+        from src.llm.evaluator import _semantic_similarity
+
+        embedder = MagicMock()
+        embedder.embed.return_value = [1.0, 0.0, 0.0]
+
+        result = _semantic_similarity("mismo texto", "mismo texto", embedder)
+        assert result == 1.0
+
+    # CA-18.5: El cálculo de similitud semántica (coseno) no debe fallar ante un
+    # vector nulo, debe devolver 0.0 en ese caso.
+    def test_cosine_similarity_zero_vector_returns_zero(self):
+        from src.llm.evaluator import _cosine_similarity
+
+        assert _cosine_similarity([0.0, 0.0], [1.0, 1.0]) == 0.0
+
+
+class TestSummarySemanticSimilarity:
+    # CA-18.3: El resumen por modelo debe reportar el promedio de similitud
+    # semántica sobre las consultas donde pudo calcularse.
+    def test_summary_averages_only_available_similarity_values(self):
+        from src.llm.evaluator import EvaluationReport, ModelEvalResult
+
+        report = EvaluationReport(models_evaluated=["modelo_x"])
+        report.results = [
+            ModelEvalResult(
+                model="modelo_x",
+                query_id="q1",
+                query="test",
+                response="resp 1",
+                elapsed_sec=1.0,
+                response_length=10,
+                keyword_hits=1,
+                keyword_total=2,
+                keyword_score=0.5,
+                semantic_similarity=0.9,
+            ),
+            ModelEvalResult(
+                model="modelo_x",
+                query_id="q2",
+                query="test2",
+                response="resp 2",
+                elapsed_sec=1.0,
+                response_length=10,
+                keyword_hits=1,
+                keyword_total=2,
+                keyword_score=0.5,
+                semantic_similarity=None,  # sin reference_answer para esta query
+            ),
+        ]
+        report.summary["modelo_x"] = {
+            "avg_elapsed_sec": 1.0,
+            "avg_keyword_score": 0.5,
+            "avg_semantic_similarity": 0.9,  # promedio solo sobre el valor disponible
+            "avg_response_length": 10.0,
+            "error_count": 0,
+            "total_queries": 2,
+        }
+        assert report.summary["modelo_x"]["avg_semantic_similarity"] == 0.9
+
+
+class TestSelectionCriteria:
+    # CA-19.1: El sistema debe seleccionar el mejor modelo combinando el score de
+    # keywords y la similitud semántica como medida de calidad, usando la latencia
+    # como criterio de desempate.
+    # CA-19.2: La justificación de selección debe reportar por separado el score
+    # de keywords, la similitud semántica y la tasa de abstención del modelo elegido.
+    def test_selects_model_with_best_combined_quality(self):
+        from src.llm.evaluator import _select_best_model
+
+        summary = {
+            "modelo_a": {
+                "avg_elapsed_sec": 10.0,
+                "avg_keyword_score": 0.3,
+                "avg_semantic_similarity": 0.3,
+                "no_info_rate": 0.5,
+            },
+            "modelo_b": {
+                "avg_elapsed_sec": 20.0,
+                "avg_keyword_score": 0.8,
+                "avg_semantic_similarity": 0.8,
+                "no_info_rate": 0.0,
+            },
+        }
+
+        selected, rationale = _select_best_model(summary)
+
+        assert selected == "modelo_b"
+        assert "80%" in rationale
+        assert "Tasa de abstención: 0%" in rationale
+
+    # CA-19.1: El sistema debe seleccionar el mejor modelo combinando el score de
+    # keywords y la similitud semántica como medida de calidad, usando la latencia
+    # como criterio de desempate.
+    def test_selects_lower_latency_on_quality_tie(self):
+        from src.llm.evaluator import _select_best_model
+
+        summary = {
+            "modelo_rapido": {
+                "avg_elapsed_sec": 5.0,
+                "avg_keyword_score": 0.5,
+                "avg_semantic_similarity": 0.5,
+                "no_info_rate": 0.0,
+            },
+            "modelo_lento": {
+                "avg_elapsed_sec": 50.0,
+                "avg_keyword_score": 0.5,
+                "avg_semantic_similarity": 0.5,
+                "no_info_rate": 0.0,
+            },
+        }
+
+        selected, _ = _select_best_model(summary)
+
+        assert selected == "modelo_rapido"
+
+    # CA-19.3: Si no hay ningún modelo evaluado (resumen vacío), el sistema no debe fallar al intentar seleccionar el mejor modelo,
+    # y debe devolver un modelo seleccionado y una justificación vacíos.
+
+    def test_empty_summary_returns_empty_selection(self):
+        from src.llm.evaluator import _select_best_model
+
+        selected, rationale = _select_best_model({})
+
+        assert selected == ""
+        assert rationale == ""

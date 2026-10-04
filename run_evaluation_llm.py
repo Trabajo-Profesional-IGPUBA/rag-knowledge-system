@@ -57,6 +57,7 @@ def main() -> None:
         retriever=retriever,
         models=args.models,
         output_path=args.output,
+        embedder=embedder,
     )
 
     vectorstore.close()
