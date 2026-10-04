@@ -19,6 +19,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 ENV HF_HOME=/cache/huggingface
+RUN mkdir -p /cache/huggingface
 
 # Inicializar modelos
 RUN python - <<'EOF'
