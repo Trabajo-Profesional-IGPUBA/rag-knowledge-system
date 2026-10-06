@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 import time
 import unicodedata
 from dataclasses import asdict, dataclass, field
@@ -110,6 +111,23 @@ def _score_keywords(
     hits = sum(1 for g in groups if any(_normalize(a) in t_norm for a in g))
     total = len(groups)
     return hits, total, (hits / total if total else 0.0)
+
+
+def _nums(text: str) -> set[str]:
+    """Números sin separadores ('2.450' == '2450'); ignora los de 1 dígito."""
+    found = re.findall(r"\d+(?:[.,]\d+)*", text)
+    cleaned = {n.replace(".", "").replace(",", "") for n in found}
+    return {n for n in cleaned if len(n) >= 2}
+
+
+def _score_numbers(text: str, reference: str | None, query: str = "") -> float | None:
+    """Fracción de los números de la referencia que aparecen en `text`."""
+    if not reference:
+        return None
+    ref = _nums(reference) - _nums(query)
+    if not ref:
+        return None
+    return len(ref & _nums(text)) / len(ref)
 
 
 def _is_no_info_response(response: str) -> bool:
