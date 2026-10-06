@@ -20,11 +20,11 @@ from unittest.mock import MagicMock, patch
 
 import requests
 
+from src.llm.client import LLMClient, LLMConfig
+
 
 class TestLLMClient:
     def setup_method(self):
-        from src.llm.client import LLMClient, LLMConfig
-
         self.config_cls = LLMConfig
         self.client_cls = LLMClient
 
@@ -574,3 +574,19 @@ class TestLLMClient:
 
         sent_payload = mock_post.call_args.kwargs["json"]
         assert "seed" not in sent_payload["options"]
+
+
+class TestThinkOption:
+    def _payload(self, think):
+        with patch("src.llm.client.requests.post") as post:
+            post.return_value.json.return_value = {"response": "ok"}
+            LLMClient(LLMConfig(think=think)).generate("hola")
+        return post.call_args.kwargs["json"]
+
+    # CA-29.4: Si se configura think, el cliente debe enviarlo al servidor.
+    def test_think_is_sent_when_set(self):
+        assert self._payload(False)["think"] is False
+
+    # CA-29.5: Si no se configura think, el cliente no debe enviarlo al servidor.
+    def test_think_is_omitted_by_default(self):
+        assert "think" not in self._payload(None)
