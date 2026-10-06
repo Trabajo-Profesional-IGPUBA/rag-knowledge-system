@@ -18,6 +18,7 @@ subestimaba la calidad real de las respuestas":
 
 Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más robusto, medición de latencia confiable y elección que combina calidad y tiempo de respuesta"
   - Palabras clave esperadas-> CA-20.1 a CA-20.2
+  - Datos numéricos-> CA-21.1 a CA-21.3
 """
 
 
