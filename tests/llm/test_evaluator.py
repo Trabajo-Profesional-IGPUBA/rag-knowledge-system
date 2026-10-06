@@ -16,6 +16,8 @@ subestimaba la calidad real de las respuestas":
   - Similitud semántica-> CA-18.1 a 18.5
   - Selección del modelo con criterio combinado -> CA-19.1 a 19.3
 
+Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más robusto, medición de latencia confiable y elección que combina calidad y tiempo de respuesta"
+  - Palabras clave esperadas-> CA-20.1 
 """
 
 
@@ -26,8 +28,9 @@ class TestEvaluator:
 
         response = "La presión de fondo del pozo PM-104 es 3500 psi"
         keywords = ["presión", "psi", "fondo", "PM-104"]
-        hits, score = _score_keywords(response, keywords)
+        hits, total, score = _score_keywords(response, keywords)
         assert hits == 4
+        assert total == 4
         assert score == 1.0
 
     # CA-11.2: El sistema debe calcular correctamente el score cuando solo una parte de las palabras clave está presente.
@@ -36,16 +39,18 @@ class TestEvaluator:
 
         response = "La presión es alta"
         keywords = ["presión", "psi", "fondo"]
-        hits, score = _score_keywords(response, keywords)
+        hits, total, score = _score_keywords(response, keywords)
         assert hits == 1
+        assert total == 3
         assert round(score, 4) == round(1 / 3, 4)
 
     # CA-11.3: Si no hay palabras clave esperadas para una consulta, el sistema no debe fallar y debe devolver un score de cero.
     def test_keyword_scoring_empty_keywords(self):
         from src.llm.evaluator import _score_keywords
 
-        hits, score = _score_keywords("cualquier texto", [])
+        hits, total, score = _score_keywords("cualquier texto", [])
         assert hits == 0
+        assert total == 0.0
         assert score == 0.0
 
     # CA-10.1: El sistema debe registrar si una evaluación puntual fue exitosa o no, según si tiene un error asociado.
@@ -378,8 +383,9 @@ class TestNormalization:
 
         response = "Hubo perdida de circulacion en el pozo"
         keywords = ["pérdida de circulación"]
-        hits, score = _score_keywords(response, keywords)
+        hits, total, score = _score_keywords(response, keywords)
         assert hits == 1
+        assert total == 1
         assert score == 1.0
 
 
@@ -594,3 +600,26 @@ class TestSelectionCriteria:
 
         assert selected == ""
         assert rationale == ""
+
+
+class TestKeywordGroups:
+    # CA-20.1: El sistema debe aceptar varias formas equivalentes de decir lo mismo
+    # para una palabra clave esperada (ej. "Water Cut" o "corte de agua"),
+    # y contarla como un solo acierto si aparece cualquiera de ellas.
+
+    def test_synonym_group_counts_as_single_hit(self):
+        from src.llm.evaluator import _score_keywords
+
+        hits, total, _ = _score_keywords(
+            "el corte de agua subió", [["Water Cut", "corte de agua"], "CO2"]
+        )
+        assert hits == 1
+        assert total == 2
+
+    # CA-20.1: El sistema debe aceptar varias formas equivalentes de decir lo mismo
+    # para una palabra clave esperada (ej. "Water Cut" o "corte de agua"),
+    # y contarla como un solo acierto si aparece cualquiera de ellas.
+    def test_as_groups_accepts_strings_and_lists(self):
+        from src.llm.evaluator import _as_groups
+
+        assert _as_groups(["a", ["b", "c"]]) == [["a"], ["b", "c"]]
