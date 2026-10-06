@@ -40,6 +40,7 @@ class LLMConfig:
     seed: int | None = None
     base_url: str = OLLAMA_BASE_URL
     timeout: int = DEFAULT_TIMEOUT
+    think: bool | None = None
 
 
 class LLMClient:
@@ -113,6 +114,9 @@ class LLMClient:
             "stream": False,
             "options": self._build_options(),
         }
+
+        if self.config.think is not None:
+            payload["think"] = self.config.think
 
         try:
             r = requests.post(
