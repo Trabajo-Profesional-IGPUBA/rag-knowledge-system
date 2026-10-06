@@ -99,10 +99,14 @@ def _as_groups(keywords: list) -> list[list[str]]:
     return [[k] if isinstance(k, str) else list(k) for k in keywords]
 
 
-def _score_keywords(text: str, keywords: list) -> tuple[int, int, float]:
-    """Cuenta grupos de keywords presentes en `text`. Devuelve (hits, total, score)."""
+def _score_keywords(
+    text: str, keywords: list, query: str = ""
+) -> tuple[int, int, float]:
+    q_norm = _normalize(query)
     t_norm = _normalize(text)
-    groups = _as_groups(keywords)
+    groups = [
+        g for g in _as_groups(keywords) if not any(_normalize(a) in q_norm for a in g)
+    ]
     hits = sum(1 for g in groups if any(_normalize(a) in t_norm for a in g))
     total = len(groups)
     return hits, total, (hits / total if total else 0.0)
@@ -201,7 +205,8 @@ def evaluate_models(
                 elapsed = time.perf_counter() - t0
 
                 hits, total, score = _score_keywords(
-                    rag_resp.answer, q.get("expected_keywords", [])
+                    rag_resp.answer,
+                    q.get("expected_keywords", []),
                 )
 
                 sem_sim = _semantic_similarity(
