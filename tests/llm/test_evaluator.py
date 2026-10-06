@@ -635,3 +635,54 @@ class TestKeywordGroups:
         assert hits == 0
         assert total == 1
         assert score == 0.0
+
+
+class TestNumberScoring:
+    # CA-21.1: El sistema debe medir qué proporción de las cifras de la respuesta
+    # de referencia aparece en la respuesta generada, sin que influya
+    # cómo están escritos los separadores de miles (ej. "2.450" y "2450").
+    def test_thousand_separators_are_equivalent(self):
+        from src.llm.evaluator import _score_numbers
+
+        assert _score_numbers("a 2450 metros", "a 2.450 metros") == 1.0
+
+    # CA-21.1: El sistema debe medir qué proporción de las cifras de la respuesta
+    # de referencia aparece en la respuesta generada, sin que influya
+    # cómo están escritos los separadores de miles (ej. "2.450" y "2450").
+    def test_partial_coverage(self):
+        from src.llm.evaluator import _score_numbers
+
+        assert _score_numbers("15", "15 m³/h y 2.450 m") == 0.5
+
+    # CA-21.2: Si no hay respuesta de referencia, o ésta no contiene cifras,
+    # la medición numérica debe devolver None sin fallar.
+    def test_returns_none_without_reference(self):
+        from src.llm.evaluator import _score_numbers
+
+        assert _score_numbers("2450", None) is None
+
+    # CA-21.2: Si no hay respuesta de referencia, o ésta no contiene cifras,
+    # la medición numérica debe devolver None sin fallar.
+    def test_returns_none_when_reference_has_no_numbers(self):
+        from src.llm.evaluator import _score_numbers
+
+        assert (
+            _score_numbers("falló por fatiga", "falló por fatiga del material") is None
+        )
+
+    # CA-21.3: El sistema debe ignorar las cifras de un solo dígito
+    # y las que ya aparecen en la pregunt
+    def test_ignores_single_digit_numbers(self):
+        from src.llm.evaluator import _score_numbers
+
+        assert _score_numbers("etapa 4", "etapa 4") is None
+
+    # CA-21.3: El sistema debe ignorar las cifras de un solo dígito
+    # y las que ya aparecen en la pregunta.
+    def test_ignores_numbers_present_in_query(self):
+        from src.llm.evaluator import _score_numbers
+
+        score = _score_numbers(
+            "2450", "pozo PM-104 a 2.450", query="¿Qué pasó en PM-104?"
+        )
+        assert score == 1.0
