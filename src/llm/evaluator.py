@@ -90,7 +90,11 @@ class EvaluationReport:
             print(f"    Latencia promedio : {stats['avg_elapsed_sec']:.2f}s")
             print(f"    Score keywords    : {stats['avg_keyword_score']:.0%}")
             print(f"    Resp. promedio    : {stats['avg_response_length']:.0f} chars")
-            print(f"    Errores           : {stats['error_count']:.0f}")
+            print(f"    Calidad global (errores=0) : {stats['quality']:.0%}")
+            print(f"    Números                    : {stats['avg_number_score']:.0%}")
+            print(
+                f"    Errores                    : {stats['error_count']:.0f} de {stats['total_runs']:.0f}"
+            )
         print(f"\n  → Modelo seleccionado: {self.selected_model}")
         print(f"  → Justificación: {self.selection_rationale}")
         print("═" * 60)
@@ -160,6 +164,30 @@ def _run_quality(r: ModelEvalResult) -> float:
         return 0.0
     weight_sum = sum(QUALITY_WEIGHTS[k] for k in components)
     return sum(QUALITY_WEIGHTS[k] * v for k, v in components.items()) / weight_sum
+
+
+def _mean(values: list[float]) -> float:
+    return round(sum(values) / len(values), 4) if values else 0.0
+
+
+def _summarize(results: list[ModelEvalResult]) -> dict[str, float]:
+    ok = [r for r in results if r.ok]
+    return {
+        "quality": _mean([r.quality for r in results]),  # errores cuentan como 0
+        "avg_elapsed_sec": _mean([r.elapsed_sec for r in ok]),
+        "avg_keyword_score": _mean([r.keyword_score for r in ok]),
+        "avg_number_score": _mean(
+            [r.number_score for r in ok if r.number_score is not None]
+        ),
+        "avg_semantic_similarity": _mean(
+            [r.semantic_similarity for r in ok if r.semantic_similarity is not None]
+        ),
+        "avg_response_length": _mean([float(r.response_length) for r in ok]),
+        "no_info_rate": _mean([1.0 if r.is_no_info_response else 0.0 for r in ok]),
+        "error_count": float(len(results) - len(ok)),
+        "ok_runs": float(len(ok)),
+        "total_runs": float(len(results)),
+    }
 
 
 def _is_no_info_response(response: str) -> bool:
@@ -299,42 +327,8 @@ def evaluate_models(
 
     for model_name in models:
         model_results = [r for r in report.results if r.model == model_name]
-        if not model_results:
-            continue
-
-        ok_results = [r for r in model_results if r.ok]
-        sim_values = [
-            r.semantic_similarity
-            for r in ok_results
-            if r.semantic_similarity is not None
-        ]
-        no_info_count = sum(1 for r in ok_results if r.is_no_info_response)
-
-        report.summary[model_name] = {
-            "avg_elapsed_sec": (
-                round(sum(r.elapsed_sec for r in ok_results) / len(ok_results), 2)
-                if ok_results
-                else 0.0
-            ),
-            "avg_keyword_score": (
-                round(sum(r.keyword_score for r in ok_results) / len(ok_results), 4)
-                if ok_results
-                else 0.0
-            ),
-            "avg_semantic_similarity": (
-                round(sum(sim_values) / len(sim_values), 4) if sim_values else 0.0
-            ),
-            "avg_response_length": (
-                round(sum(r.response_length for r in ok_results) / len(ok_results), 1)
-                if ok_results
-                else 0.0
-            ),
-            "no_info_rate": (
-                round(no_info_count / len(ok_results), 4) if ok_results else 0.0
-            ),
-            "error_count": len([r for r in model_results if not r.ok]),
-            "total_queries": len(model_results),
-        }
+        if model_results:
+            report.summary[model_name] = _summarize(model_results)
 
     if report.summary:
         report.selected_model, report.selection_rationale = _select_best_model(
