@@ -160,24 +160,32 @@ class TestEvaluator:
 
     # CA-10.4: El sistema debe poder mostrar en consola un resumen legible por modelo, incluyendo latencia, score de calidad, longitud de respuesta, errores y el modelo seleccionado con su justificación.
     def test_evaluation_report_print_summary(self, capsys):
-        from src.llm.evaluator import EvaluationReport
+        from src.llm.evaluator import EvaluationReport, _summarize
 
         report = EvaluationReport(models_evaluated=["llama3:8b"])
-        report.summary["llama3:8b"] = {
-            "avg_elapsed_sec": 2.5,
-            "avg_keyword_score": 0.75,
-            "avg_response_length": 100.0,
-            "error_count": 0,
-        }
+        report.summary["llama3:8b"] = _summarize(
+            [
+                _result(
+                    model="llama3:8b",
+                    elapsed_sec=2.5,
+                    response_length=100,
+                    keyword_hits=3,
+                    keyword_total=4,
+                    keyword_score=0.75,
+                )
+            ]
+        )
         report.selected_model = "llama3:8b"
         report.selection_rationale = "Mejor balance calidad/latencia."
 
         report.print_summary()
 
-        captured = capsys.readouterr()
-        assert "llama3:8b" in captured.out
-        assert "75%" in captured.out
-        assert "Mejor balance calidad/latencia." in captured.out
+        out = capsys.readouterr().out
+        assert "llama3:8b" in out
+        assert "75%" in out
+        assert "2.50s" in out
+        assert "100 chars" in out
+        assert "Mejor balance calidad/latencia." in out
 
 
 class TestEvaluateModels:
