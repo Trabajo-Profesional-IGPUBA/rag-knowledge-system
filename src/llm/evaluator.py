@@ -21,6 +21,8 @@ from src.retrieval.retriever import Retriever
 
 log = logging.getLogger(__name__)
 
+QUALITY_WEIGHTS = {"keywords": 0.25}
+
 
 @dataclass
 class ModelEvalResult:
@@ -38,6 +40,7 @@ class ModelEvalResult:
     error: str | None = None
     is_no_info_response: bool = False
     semantic_similarity: float | None = None
+    quality: float = 0.0
 
     @property
     def ok(self) -> bool:
@@ -128,6 +131,21 @@ def _score_numbers(text: str, reference: str | None, query: str = "") -> float |
     if not ref:
         return None
     return len(ref & _nums(text)) / len(ref)
+
+
+def _run_quality(r: ModelEvalResult) -> float:
+    """Calidad 0-1 de una corrida. Error = 0."""
+    if not r.ok:
+        return 0.0
+
+    components: dict[str, float] = {}
+    if r.keyword_total > 0:
+        components["keywords"] = r.keyword_score
+
+    if not components:
+        return 0.0
+    weight_sum = sum(QUALITY_WEIGHTS[k] for k in components)
+    return sum(QUALITY_WEIGHTS[k] * v for k, v in components.items()) / weight_sum
 
 
 def _is_no_info_response(response: str) -> bool:
