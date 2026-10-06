@@ -17,7 +17,7 @@ subestimaba la calidad real de las respuestas":
   - Selección del modelo con criterio combinado -> CA-19.1 a 19.3
 
 Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más robusto, medición de latencia confiable y elección que combina calidad y tiempo de respuesta"
-  - Palabras clave esperadas-> CA-20.1 
+  - Palabras clave esperadas-> CA-20.1 a CA-20.2
 """
 
 
