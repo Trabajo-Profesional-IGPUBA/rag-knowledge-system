@@ -238,6 +238,57 @@ def _select_best_model(summary: dict[str, dict[str, float]]) -> tuple[str, str]:
     return best_model, rationale
 
 
+def _evaluate_one(pipeline, q, model_name, embedder) -> ModelEvalResult:
+    """Ejecuta una query una vez y calcula las métricas."""
+    keywords = q.get("expected_keywords", [])
+    reference = q.get("reference_answer")
+    query = q["query"]
+
+    try:
+        t0 = time.perf_counter()
+        rag_resp = pipeline.query(query)
+        elapsed = time.perf_counter() - t0
+        answer = rag_resp.answer
+
+        hits, total, kw_score = _score_keywords(answer, keywords, query)
+        num_score = _score_numbers(answer, reference, query)
+        sem_sim = _semantic_similarity(answer, reference, embedder)
+
+        result = ModelEvalResult(
+            model=model_name,
+            query_id=q["id"],
+            query=query,
+            response=answer,
+            elapsed_sec=round(elapsed, 2),
+            response_length=len(answer),
+            keyword_hits=hits,
+            keyword_total=total,
+            keyword_score=round(kw_score, 4),
+            is_no_info_response=_is_no_info_response(answer),
+            semantic_similarity=sem_sim,
+            number_score=None if num_score is None else round(num_score, 4),
+        )
+    except Exception as e:
+        log.error("Error evaluando %s en %s: %s", model_name, q["id"], e)
+        result = ModelEvalResult(
+            model=model_name,
+            query_id=q["id"],
+            query=query,
+            response="",
+            elapsed_sec=0.0,
+            response_length=0,
+            keyword_hits=0,
+            keyword_total=0,
+            keyword_score=0.0,
+            error=str(e),
+            number_score=0.0 if reference else None,
+            semantic_similarity=0.0 if reference else None,
+        )
+
+    result.quality = round(_run_quality(result), 4)
+    return result
+
+
 def evaluate_models(
     retriever: Retriever,
     models: list[str],
@@ -275,55 +326,7 @@ def evaluate_models(
         )
 
         for q in queries:
-            print(f"  → {q['id']}: {q['query'][:50]}...")
-
-            try:
-                t0 = time.perf_counter()
-                rag_resp = pipeline.query(q["query"])
-                elapsed = time.perf_counter() - t0
-
-                hits, total, score = _score_keywords(
-                    rag_resp.answer,
-                    q.get("expected_keywords", []),
-                )
-
-                sem_sim = _semantic_similarity(
-                    rag_resp.answer,
-                    q.get("reference_answer"),
-                    embedder,
-                )
-
-                result = ModelEvalResult(
-                    model=model_name,
-                    query_id=q["id"],
-                    query=q["query"],
-                    response=rag_resp.answer,
-                    elapsed_sec=round(elapsed, 2),
-                    response_length=len(rag_resp.answer),
-                    keyword_hits=hits,
-                    keyword_total=total,
-                    keyword_score=round(score, 4),
-                    is_no_info_response=_is_no_info_response(rag_resp.answer),
-                    semantic_similarity=sem_sim,
-                )
-
-            except Exception as e:
-                result = ModelEvalResult(
-                    model=model_name,
-                    query_id=q["id"],
-                    query=q["query"],
-                    response="",
-                    elapsed_sec=0.0,
-                    response_length=0,
-                    keyword_hits=0,
-                    keyword_total=len(q.get("expected_keywords", [])),
-                    keyword_score=0.0,
-                    error=str(e),
-                    is_no_info_response=False,
-                )
-                log.error("Error evaluando %s en %s: %s", model_name, q["id"], e)
-
-            report.results.append(result)
+            report.results.append(_evaluate_one(pipeline, q, model_name, embedder))
 
     for model_name in models:
         model_results = [r for r in report.results if r.model == model_name]
