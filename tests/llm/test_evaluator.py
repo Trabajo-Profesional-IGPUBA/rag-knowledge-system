@@ -21,6 +21,8 @@ subestimaba la calidad real de las respuestas":
 Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más robusto, medición de latencia confiable y elección que combina calidad y tiempo de respuesta"
   - Palabras clave esperadas-> CA-20.1 a CA-20.2
   - Datos numéricos-> CA-21.1 a CA-21.3
+  - Errores durante la evaluación-> CA-22.1 
+  - Calidad de cada respuesta-> CA-23.1 
 """
 
 
@@ -710,12 +712,17 @@ def _result(**overrides):
 
 
 class TestRunQuality:
+    # CA-22.1: Una consulta que falla debe contar como calidad cero para el modelo,
+    # en lugar de quedar fuera del promedio.
     def test_failed_run_has_zero_quality(self):
         from src.llm.evaluator import _run_quality
 
         r = _result(error="boom", keyword_total=2, keyword_score=1.0)
         assert _run_quality(r) == 0.0
 
+    # CA-23.1: El sistema debe calcular la calidad de cada respuesta combinando
+    # las medidas disponibles (evaluación del juez, palabras clave, cifras
+    # y similitud semántica), usando solo las que se pudieron obtener.
     def test_uses_only_available_components(self):
         from src.llm.evaluator import _run_quality
 
