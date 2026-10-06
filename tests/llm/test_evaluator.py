@@ -769,3 +769,25 @@ class TestRunQuality:
         from src.llm.evaluator import QUALITY_WEIGHTS
 
         assert QUALITY_WEIGHTS["semantic"] == min(QUALITY_WEIGHTS.values())
+
+
+class TestErrorPenalty:
+    # CA-22.1
+    def test_errors_count_as_zero_quality(self):
+        from src.llm.evaluator import _summarize
+
+        results = [
+            _result(quality=1.0),
+            _result(quality=0.5),
+            _result(quality=0.0, error="boom", elapsed_sec=0.0),
+        ]
+        assert _summarize(results)["quality"] == pytest.approx(0.5)
+
+    # CA-22.2
+    def test_summary_reports_error_count_and_total_runs(self):
+        from src.llm.evaluator import _summarize
+
+        summary = _summarize([_result(), _result(error="boom")])
+        assert summary["error_count"] == 1
+        assert summary["total_runs"] == 2
+        assert summary["ok_runs"] == 1
