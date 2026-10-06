@@ -43,6 +43,7 @@ class ModelEvalResult:
     quality: float = 0.0
     number_score: float | None = None
     judge_correctness: float | None = None
+    should_abstain: bool = False
 
     @property
     def ok(self) -> bool:
