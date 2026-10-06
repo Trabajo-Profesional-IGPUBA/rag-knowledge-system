@@ -21,7 +21,7 @@ from src.retrieval.retriever import Retriever
 
 log = logging.getLogger(__name__)
 
-QUALITY_WEIGHTS = {"keywords": 0.25}
+QUALITY_WEIGHTS = {"judge": 0.40, "keywords": 0.25, "numbers": 0.25, "semantic": 0.10}
 
 
 @dataclass
@@ -41,6 +41,8 @@ class ModelEvalResult:
     is_no_info_response: bool = False
     semantic_similarity: float | None = None
     quality: float = 0.0
+    number_score: float | None = None
+    judge_correctness: float | None = None
 
     @property
     def ok(self) -> bool:
@@ -134,13 +136,22 @@ def _score_numbers(text: str, reference: str | None, query: str = "") -> float |
 
 
 def _run_quality(r: ModelEvalResult) -> float:
-    """Calidad 0-1 de una corrida. Error = 0."""
+    """Calidad 0-1 de una corrida. Error = 0. Negativas: 1 si se abstuvo, 0 si no."""
     if not r.ok:
         return 0.0
+    if r.should_abstain:
+        return 1.0 if r.abstained else 0.0
 
     components: dict[str, float] = {}
+    if r.judge_correctness is not None:
+        components["judge"] = (r.judge_correctness - 1) / 4
     if r.keyword_total > 0:
         components["keywords"] = r.keyword_score
+    if r.number_score is not None:
+        components["numbers"] = r.number_score
+    if r.semantic_similarity is not None:
+        # reescala: 0.5 o menos → 0, 1.0 → 1 (el coseno crudo casi no separa)
+        components["semantic"] = max(0.0, (r.semantic_similarity - 0.5) / 0.5)
 
     if not components:
         return 0.0
