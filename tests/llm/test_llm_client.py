@@ -14,6 +14,8 @@ Cubre "El asistente puede dar respuestas distintas cada vez, aunque la pregunta 
   - Uso de la configuración con el número fijado-> CA-11.1 a CA-11.2
   - Uso de la configuración sin el número fijado-> CA-12.1 a CA-12.2
 
+Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más robusto, medición de latencia confiable y elección que combina calidad y tiempo de respuesta"
+  - Robustez de la ejecución-> CA-29.4 a CA-29.5
 """
 
 from unittest.mock import MagicMock, patch
