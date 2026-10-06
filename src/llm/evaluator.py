@@ -21,6 +21,8 @@ from src.retrieval.retriever import Retriever
 
 log = logging.getLogger(__name__)
 
+# Pesos de cada componente en la calidad de una respuesta (se renormalizan
+# si algún componente no está disponible, p. ej. sin judge).
 QUALITY_WEIGHTS = {"judge": 0.40, "keywords": 0.25, "numbers": 0.25, "semantic": 0.10}
 
 

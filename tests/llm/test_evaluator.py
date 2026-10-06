@@ -22,7 +22,7 @@ Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más 
   - Palabras clave esperadas-> CA-20.1 a CA-20.2
   - Datos numéricos-> CA-21.1 a CA-21.3
   - Errores durante la evaluación-> CA-22.1 
-  - Calidad de cada respuesta-> CA-23.1 
+  - Calidad de cada respuesta-> CA-23.1 a CA-23.2 docs: documentar CA 23.1 a 23.2
 """
 
 
@@ -729,23 +729,34 @@ class TestRunQuality:
         r = _result(keyword_total=2, keyword_hits=1, keyword_score=0.5)
         assert _run_quality(r) == pytest.approx(0.5)
 
+    # CA-23.1: El sistema debe calcular la calidad de cada respuesta combinando
+    # las medidas disponibles (evaluación del juez, palabras clave, cifras
+    # y similitud semántica), usando solo las que se pudieron obtener.
     def test_judge_score_is_normalized(self):
         from src.llm.evaluator import _run_quality
 
         assert _run_quality(_result(judge_correctness=5.0)) == pytest.approx(1.0)
         assert _run_quality(_result(judge_correctness=1.0)) == pytest.approx(0.0)
 
+    # CA-23.1: El sistema debe calcular la calidad de cada respuesta combinando
+    # las medidas disponibles (evaluación del juez, palabras clave, cifras
+    # y similitud semántica), usando solo las que se pudieron obtener.
     def test_number_score_is_used(self):
         from src.llm.evaluator import _run_quality
 
         assert _run_quality(_result(number_score=0.5)) == pytest.approx(0.5)
 
+    # CA-23.1: El sistema debe calcular la calidad de cada respuesta combinando
+    # las medidas disponibles (evaluación del juez, palabras clave, cifras
+    # y similitud semántica), usando solo las que se pudieron obtener.
     def test_semantic_similarity_is_rescaled(self):
         from src.llm.evaluator import _run_quality
 
         assert _run_quality(_result(semantic_similarity=0.75)) == pytest.approx(0.5)
         assert _run_quality(_result(semantic_similarity=0.4)) == 0.0
 
+    # CA-23.2: La similitud semántica debe pesar menos que las demás medidas,
+    # porque distingue poco entre respuestas buenas y malas sobre el mismo tema.
     def test_semantic_weight_is_lowest(self):
         from src.llm.evaluator import QUALITY_WEIGHTS
 
