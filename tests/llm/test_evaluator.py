@@ -623,3 +623,15 @@ class TestKeywordGroups:
         from src.llm.evaluator import _as_groups
 
         assert _as_groups(["a", ["b", "c"]]) == [["a"], ["b", "c"]]
+
+    # CA-20.2: El sistema no debe sumar puntos por palabras clave
+    # que ya están escritas en la propia pregunta.
+    def test_ignores_keywords_present_in_query(self):
+        from src.llm.evaluator import _score_keywords
+
+        hits, total, score = _score_keywords(
+            "Quintuco", ["Quintuco", "LCM"], query="¿Problemas en Quintuco?"
+        )
+        assert hits == 0
+        assert total == 1
+        assert score == 0.0
