@@ -728,3 +728,25 @@ class TestRunQuality:
 
         r = _result(keyword_total=2, keyword_hits=1, keyword_score=0.5)
         assert _run_quality(r) == pytest.approx(0.5)
+
+    def test_judge_score_is_normalized(self):
+        from src.llm.evaluator import _run_quality
+
+        assert _run_quality(_result(judge_correctness=5.0)) == pytest.approx(1.0)
+        assert _run_quality(_result(judge_correctness=1.0)) == pytest.approx(0.0)
+
+    def test_number_score_is_used(self):
+        from src.llm.evaluator import _run_quality
+
+        assert _run_quality(_result(number_score=0.5)) == pytest.approx(0.5)
+
+    def test_semantic_similarity_is_rescaled(self):
+        from src.llm.evaluator import _run_quality
+
+        assert _run_quality(_result(semantic_similarity=0.75)) == pytest.approx(0.5)
+        assert _run_quality(_result(semantic_similarity=0.4)) == 0.0
+
+    def test_semantic_weight_is_lowest(self):
+        from src.llm.evaluator import QUALITY_WEIGHTS
+
+        assert QUALITY_WEIGHTS["semantic"] == min(QUALITY_WEIGHTS.values())
