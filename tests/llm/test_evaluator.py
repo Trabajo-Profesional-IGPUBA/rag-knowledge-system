@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 """
 Cubre "ÉPICA: Cliente LLM sobre Ollama":
   - Definición de resultados y reportes -> CA-10.1 Y  CA-10.4
@@ -687,3 +689,35 @@ class TestNumberScoring:
             "2450", "pozo PM-104 a 2.450", query="¿Qué pasó en PM-104?"
         )
         assert score == 1.0
+
+
+def _result(**overrides):
+    from src.llm.evaluator import ModelEvalResult
+
+    base = {
+        "model": "m",
+        "query_id": "q1",
+        "query": "test",
+        "response": "respuesta",
+        "elapsed_sec": 1.0,
+        "response_length": 9,
+        "keyword_hits": 0,
+        "keyword_total": 0,
+        "keyword_score": 0.0,
+    }
+    base.update(overrides)
+    return ModelEvalResult(**base)
+
+
+class TestRunQuality:
+    def test_failed_run_has_zero_quality(self):
+        from src.llm.evaluator import _run_quality
+
+        r = _result(error="boom", keyword_total=2, keyword_score=1.0)
+        assert _run_quality(r) == 0.0
+
+    def test_uses_only_available_components(self):
+        from src.llm.evaluator import _run_quality
+
+        r = _result(keyword_total=2, keyword_hits=1, keyword_score=0.5)
+        assert _run_quality(r) == pytest.approx(0.5)
