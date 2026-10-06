@@ -94,12 +94,18 @@ def _normalize(text: str) -> str:
     return text
 
 
-def _score_keywords(response: str, keywords: list[str]) -> tuple[int, float]:
-    """Cuenta keywords esperadas presentes en la respuesta (case/acentos-insensitive)."""
-    response_norm = _normalize(response)
-    hits = sum(1 for kw in keywords if _normalize(kw) in response_norm)
-    score = hits / len(keywords) if keywords else 0.0
-    return hits, score
+def _as_groups(keywords: list) -> list[list[str]]:
+    """Convierte ['a', ['b', 'c']] en [['a'], ['b', 'c']] (grupos de sinónimos)."""
+    return [[k] if isinstance(k, str) else list(k) for k in keywords]
+
+
+def _score_keywords(text: str, keywords: list) -> tuple[int, int, float]:
+    """Cuenta grupos de keywords presentes en `text`. Devuelve (hits, total, score)."""
+    t_norm = _normalize(text)
+    groups = _as_groups(keywords)
+    hits = sum(1 for g in groups if any(_normalize(a) in t_norm for a in g))
+    total = len(groups)
+    return hits, total, (hits / total if total else 0.0)
 
 
 def _is_no_info_response(response: str) -> bool:
@@ -194,9 +200,8 @@ def evaluate_models(
                 rag_resp = pipeline.query(q["query"])
                 elapsed = time.perf_counter() - t0
 
-                hits, score = _score_keywords(
-                    rag_resp.answer,
-                    q.get("expected_keywords", []),
+                hits, total, score = _score_keywords(
+                    rag_resp.answer, q.get("expected_keywords", [])
                 )
 
                 sem_sim = _semantic_similarity(
@@ -213,7 +218,7 @@ def evaluate_models(
                     elapsed_sec=round(elapsed, 2),
                     response_length=len(rag_resp.answer),
                     keyword_hits=hits,
-                    keyword_total=len(q.get("expected_keywords", [])),
+                    keyword_total=total,
                     keyword_score=round(score, 4),
                     is_no_info_response=_is_no_info_response(rag_resp.answer),
                     semantic_similarity=sem_sim,
