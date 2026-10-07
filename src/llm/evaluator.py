@@ -250,7 +250,7 @@ def _generate(client: LLMClient, prompt: str) -> str:
 def _judge(
     judge_client, query, response, context, reference, should_abstain
 ) -> dict | None:
-    """Evalúa la respuesta con un modelo juez. Devuelve dict con puntajes."""
+    """Evalúa la respuesta con un modelo juez. Devuelve dict con puntajes o None si falla."""
     if should_abstain:
         ref_block = (
             "La pregunta NO tiene respuesta en los documentos. Lo correcto es que "
@@ -272,10 +272,13 @@ def _judge(
         "- faithfulness: 5 si TODO lo que afirma está en el contexto; 1 si inventa datos.\n"
         "- abstained: true si la respuesta dice que no encontró información."
     )
-
-    raw = _generate(judge_client, prompt)
-    match = re.search(r"\{.*\}", raw, re.DOTALL)
-    return json.loads(match.group(0))
+    try:
+        raw = _generate(judge_client, prompt)
+        match = re.search(r"\{.*\}", raw, re.DOTALL)
+        return json.loads(match.group(0)) if match else None
+    except Exception as e:
+        log.warning("Judge falló en '%s': %s", query[:40], e)
+        return None
 
 
 def _select_best_model(summary: dict[str, dict[str, float]]) -> tuple[str, str]:
