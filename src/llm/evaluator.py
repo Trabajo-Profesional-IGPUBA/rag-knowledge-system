@@ -39,6 +39,7 @@ class ModelEvalResult:
     keyword_hits: int
     keyword_total: int
     keyword_score: float
+    run: int = 1
     error: str | None = None
     is_no_info_response: bool = False
     semantic_similarity: float | None = None
@@ -238,7 +239,7 @@ def _select_best_model(summary: dict[str, dict[str, float]]) -> tuple[str, str]:
     return best_model, rationale
 
 
-def _evaluate_one(pipeline, q, model_name, embedder) -> ModelEvalResult:
+def _evaluate_one(pipeline, q, model_name, run, embedder) -> ModelEvalResult:
     """Ejecuta una query una vez y calcula las métricas."""
     keywords = q.get("expected_keywords", [])
     reference = q.get("reference_answer")
@@ -264,6 +265,7 @@ def _evaluate_one(pipeline, q, model_name, embedder) -> ModelEvalResult:
             keyword_hits=hits,
             keyword_total=total,
             keyword_score=round(kw_score, 4),
+            run=run,
             is_no_info_response=_is_no_info_response(answer),
             semantic_similarity=sem_sim,
             number_score=None if num_score is None else round(num_score, 4),
@@ -280,6 +282,7 @@ def _evaluate_one(pipeline, q, model_name, embedder) -> ModelEvalResult:
             keyword_hits=0,
             keyword_total=0,
             keyword_score=0.0,
+            run=run,
             error=str(e),
             number_score=0.0 if reference else None,
             semantic_similarity=0.0 if reference else None,
@@ -295,6 +298,7 @@ def evaluate_models(
     queries: list[dict[str, Any]] | None = None,
     output_path: Path | None = None,
     embedder: Embedder | None = None,
+    n_runs: int = 3,
 ) -> EvaluationReport:
     """Evalúa cada modelo contra el set de queries, arma el resumen y selecciona el mejor."""
     queries = queries or EVAL_QUERIES
@@ -326,7 +330,10 @@ def evaluate_models(
         )
 
         for q in queries:
-            report.results.append(_evaluate_one(pipeline, q, model_name, embedder))
+            for run in range(1, n_runs + 1):
+                report.results.append(
+                    _evaluate_one(pipeline, q, model_name, run, embedder)
+                )
 
     for model_name in models:
         model_results = [r for r in report.results if r.model == model_name]
