@@ -1288,7 +1288,9 @@ ANSWERS = {
 
 
 class TestJudge:
-    # CA-24.1
+    # CA-24.1: Si se indica un modelo juez, el sistema debe puntuar cada respuesta
+    # en corrección, completitud y fidelidad al contexto,
+    # e indicar si el modelo se abstuvo.
     def test_judge_scores_are_recorded(self, mocks):
         from src.llm.evaluator import evaluate_models
 
@@ -1300,7 +1302,9 @@ class TestJudge:
         assert r.judge_completeness == 4.0
         assert r.judge_faithfulness == 5.0
 
-    # CA-24.1
+    # CA-24.1: Si se indica un modelo juez, el sistema debe puntuar cada respuesta
+    # en corrección, completitud y fidelidad al contexto,
+    # e indicar si el modelo se abstuvo.
     def test_judge_abstention_verdict_is_used(self, mocks):
         from src.llm.evaluator import evaluate_models
 
@@ -1310,7 +1314,8 @@ class TestJudge:
         )
         assert report.results[0].abstained is True
 
-    # CA-24.2
+    # CA-24.2: Si el juez falla o devuelve una evaluación inválida,
+    # la evaluación debe continuar sin esos puntajes.
     def test_invalid_judge_output_does_not_break_evaluation(self, mocks):
         from src.llm.evaluator import evaluate_models
 
@@ -1322,7 +1327,8 @@ class TestJudge:
         assert report.results[0].judge_correctness is None
         assert report.results[1].abstained is True
 
-    # CA-24.2
+    # CA-24.2: Si el juez falla o devuelve una evaluación inválida,
+    # la evaluación debe continuar sin esos puntajes.
     def test_judge_exception_does_not_break_evaluation(self, mocks):
         from src.llm.evaluator import evaluate_models
 
@@ -1333,7 +1339,8 @@ class TestJudge:
         assert report.results[0].ok
         assert report.results[0].judge_correctness is None
 
-    # CA-24.3
+    # CA-24.3: Si no se indica un modelo juez, el sistema debe evaluar igual,
+    # detectando la abstención por el texto de la respuesta.
     def test_without_judge_uses_text_patterns(self, mocks):
         from src.llm.evaluator import evaluate_models
 
