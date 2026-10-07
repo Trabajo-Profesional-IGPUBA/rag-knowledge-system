@@ -19,7 +19,7 @@ Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más 
   - Datos numéricos-> CA-21.1 a CA-21.3
   - Errores durante la evaluación-> CA-22.1 a 22.2
   - Calidad de cada respuesta-> CA-23.1 a CA-23.2
-  - Evaluación por un modelo juez-> CA-24.1 a CA-24.3
+  - Evaluación por un modelo juez-> CA-24.1 a CA-24.4
   - Consultas sin respuesta-> CA-25.2, CA-25.3 y 25.4
   - Tiempos de respuesta-> CA-27.1
   - Robustez de la ejecución-> CA-29.1 a CA-29.3
@@ -283,9 +283,7 @@ class TestEvaluateModels:
         if raise_on_query:
             pipeline.query.side_effect = RuntimeError("fallo de conexión")
         else:
-            rag_resp = MagicMock()
-            rag_resp.answer = answer
-            pipeline.query.return_value = rag_resp
+            pipeline.query.return_value = _rag_resp(answer)
         return pipeline
 
     # CA-12.1: El sistema debe evaluar cada modelo indicado contra el conjunto de preguntas, registrando la respuesta, el tiempo de ejecución y el score de palabras clave obtenidos.
@@ -1350,7 +1348,8 @@ class TestJudge:
         assert report.results[1].abstained is True
         mocks.client.generate.assert_not_called()
 
-    # CA-24.4
+    # CA-24.4: Si el modelo juez es uno de los modelos evaluados,
+    # el sistema debe advertirlo, porque se estaría juzgando a sí mismo.
     def test_warns_when_judge_is_also_an_evaluated_model(self, mocks, caplog):
         from src.llm.evaluator import evaluate_models
 
@@ -1360,7 +1359,8 @@ class TestJudge:
             )
         assert "se juzgaría a sí mismo" in caplog.text
 
-    # CA-24.4
+    # CA-24.4: Si el modelo juez es uno de los modelos evaluados,
+    # el sistema debe advertirlo, porque se estaría juzgando a sí mismo.
     def test_no_warning_when_judge_is_a_different_model(self, mocks, caplog):
         from src.llm.evaluator import evaluate_models
 
