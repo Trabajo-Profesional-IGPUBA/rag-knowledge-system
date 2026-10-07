@@ -19,6 +19,7 @@ Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más 
   - Datos numéricos-> CA-21.1 a CA-21.3
   - Errores durante la evaluación-> CA-22.1 a 22.2
   - Calidad de cada respuesta-> CA-23.1 a CA-23.2
+  - Evaluación por un modelo juez-> CA-24.1
   - Consultas sin respuesta-> CA-25.2, CA-25.3 y 25.4
   - Tiempos de respuesta-> CA-27.1
 """
@@ -987,7 +988,9 @@ class TestNegativeQueries:
 
 
 class TestJudgeGenerate:
-    # CA-24.1
+    # CA-24.1: Si se indica un modelo juez, el sistema debe puntuar cada respuesta
+    # en corrección, completitud y fidelidad al contexto,
+    # e indicar si el modelo se abstuvo.
     def test_generate_reads_text_from_response_object(self):
         from src.llm.evaluator import _generate
 
@@ -995,7 +998,9 @@ class TestJudgeGenerate:
         client.generate.return_value = SimpleNamespace(text="hola")
         assert _generate(client, "prompt") == "hola"
 
-    # CA-24.1
+    # CA-24.1: Si se indica un modelo juez, el sistema debe puntuar cada respuesta
+    # en corrección, completitud y fidelidad al contexto,
+    # e indicar si el modelo se abstuvo.
     def test_generate_accepts_plain_string(self):
         from src.llm.evaluator import _generate
 
