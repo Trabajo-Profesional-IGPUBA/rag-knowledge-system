@@ -24,6 +24,7 @@ Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más 
   - Tiempos de respuesta-> CA-27.1
 """
 
+import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -1181,3 +1182,57 @@ class TestSummaryJudge:
         report.print_summary()
 
         assert "4.0 / 5.0 (de 5)" in capsys.readouterr().out
+
+
+class TestExecutionRobustness:
+    # CA-29.1
+    @pytest.mark.parametrize(
+        "model,available,expected",
+        [
+            ("llama3.1", ["llama3.1:latest"], True),
+            ("llama3.1", ["llama3.1:8b"], False),
+            ("llama3.1:8b", ["llama3.1:latest"], False),
+            ("qwen3:8b", ["qwen3:8b"], True),
+            ("qwen3:8b", [], False),
+        ],
+    )
+    def test_model_available_tolerates_latest_tag(self, model, available, expected):
+        from src.llm.evaluator import _model_available
+
+        assert _model_available(model, available) is expected
+
+    # CA-29.1
+    def test_does_not_pull_when_installed_as_latest(self, mocks):
+        from src.llm.evaluator import evaluate_models
+
+        mocks.client.list_models.return_value = ["m1:latest"]
+        evaluate_models(MagicMock(), ["m1"], queries=QUERIES, n_runs=1)
+        mocks.client.pull_model.assert_not_called()
+
+    # CA-29.2
+    def test_unavailable_model_is_skipped_and_others_continue(self, mocks):
+        from src.llm.evaluator import evaluate_models
+
+        def _factory(config):
+            client = _mock_client(["m1", "m2"])
+            client.is_available.return_value = config.model != "m2"
+            return client
+
+        mocks.client_cls.side_effect = _factory
+        report = evaluate_models(MagicMock(), ["m1", "m2"], queries=QUERIES, n_runs=1)
+
+        assert "m2" not in report.summary
+        assert "m1" in report.summary
+
+    # CA-29.3
+    def test_report_is_saved_as_valid_json(self, mocks, tmp_path):
+        from src.llm.evaluator import evaluate_models
+
+        output = tmp_path / "sub" / "eval.json"
+        report = evaluate_models(
+            MagicMock(), ["m1"], queries=QUERIES, n_runs=1, output_path=output
+        )
+
+        data = json.loads(output.read_text(encoding="utf-8"))
+        assert data["selected_model"] == report.selected_model
+        assert len(data["results"]) == 2
