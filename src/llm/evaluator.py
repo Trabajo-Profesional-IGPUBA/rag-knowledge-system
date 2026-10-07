@@ -436,10 +436,11 @@ def evaluate_models(
     prompt_builder = PromptBuilder()
     judge_client: LLMClient | None = None
     if judge_model:
-        log.warning(
-            "El judge (%s) está entre los evaluados: se juzgaría a sí mismo.",
-            judge_model,
-        )
+        if judge_model in models:
+            log.warning(
+                "El judge (%s) está entre los evaluados: se juzgaría a sí mismo.",
+                judge_model,
+            )
         candidate = LLMClient(
             LLMConfig(
                 model=judge_model,
