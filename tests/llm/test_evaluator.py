@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -844,3 +845,28 @@ class TestErrorPenalty:
         assert summary["error_count"] == 1
         assert summary["total_runs"] == 2
         assert summary["ok_runs"] == 1
+
+
+class TestRepetitions:
+    def test_each_query_runs_n_times(self):
+        from src.llm.evaluator import evaluate_models
+
+        with patch("src.llm.evaluator.RAGPipeline") as pipeline_cls, patch(
+            "src.llm.evaluator.PromptBuilder"
+        ), patch("src.llm.evaluator.LLMClient") as client_cls:
+            client = MagicMock()
+            client.is_available.return_value = True
+            client.list_models.return_value = ["m1"]
+            client_cls.return_value = client
+            pipeline = MagicMock()
+            pipeline.query.return_value = SimpleNamespace(answer="presión")
+            pipeline_cls.return_value = pipeline
+
+            queries = [
+                {"id": "a", "query": "x", "expected_keywords": ["presión"]},
+                {"id": "b", "query": "y", "expected_keywords": ["presión"]},
+            ]
+            report = evaluate_models(MagicMock(), ["m1"], queries=queries, n_runs=3)
+
+        assert {r.run for r in report.results} == {1, 2, 3}
+        assert report.summary["m1"]["total_runs"] == 6
