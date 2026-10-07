@@ -513,6 +513,12 @@ def evaluate_models(
             config=RAGConfig(top_k=5, min_score=0.2),
         )
 
+        try:
+            log.info("Warm-up de %s...", model_name)
+            pipeline.query(queries[0]["query"])
+        except Exception as e:
+            log.warning("Warm-up falló para %s: %s", model_name, e)
+
         for q in queries:
             for run in range(1, n_runs + 1):
                 res = _evaluate_one(pipeline, q, model_name, run, embedder)
