@@ -1241,3 +1241,104 @@ class TestExecutionRobustness:
         data = json.loads(output.read_text(encoding="utf-8"))
         assert data["selected_model"] == report.selected_model
         assert len(data["results"]) == 2
+
+
+def _rag_resp(answer, context="Se usó LCM a 2.450 metros"):
+    return SimpleNamespace(
+        answer=answer,
+        retrieval=SimpleNamespace(chunks=[{"text": context}]),
+        prompt=SimpleNamespace(num_chunks=1),
+    )
+
+
+def _pipeline_by_query(answers):
+    pipeline = MagicMock()
+    pipeline.query.side_effect = lambda text: _rag_resp(answers.get(text, "respuesta"))
+    return pipeline
+
+
+def _mock_client(installed=("m1", "judge")):
+    client = MagicMock()
+    client.is_available.return_value = True
+    client.list_models.return_value = list(installed)
+    client.generate.return_value = (
+        '{"correctness": 5, "completeness": 4, "faithfulness": 5, "abstained": false}'
+    )
+    return client
+
+
+QUERIES = [
+    {
+        "id": "a1",
+        "query": "¿Qué pasó en PM-104?",
+        "expected_keywords": ["LCM"],
+        "reference_answer": "Se usó LCM a 2.450 metros.",
+    },
+    {
+        "id": "n1",
+        "query": "¿Qué pasó en ZZ-999?",
+        "expected_keywords": [],
+        "should_abstain": True,
+    },
+]
+ANSWERS = {
+    "¿Qué pasó en PM-104?": "Se usó LCM a 2450 metros",
+    "¿Qué pasó en ZZ-999?": "No encontré información sobre ZZ-999",
+}
+
+
+class TestJudge:
+    # CA-24.1
+    def test_judge_scores_are_recorded(self, mocks):
+        from src.llm.evaluator import evaluate_models
+
+        report = evaluate_models(
+            MagicMock(), ["m1"], queries=QUERIES, n_runs=1, judge_model="judge"
+        )
+        r = report.results[0]
+        assert r.judge_correctness == 5.0
+        assert r.judge_completeness == 4.0
+        assert r.judge_faithfulness == 5.0
+
+    # CA-24.1
+    def test_judge_abstention_verdict_is_used(self, mocks):
+        from src.llm.evaluator import evaluate_models
+
+        mocks.client.generate.return_value = '{"correctness": 1, "completeness": 1, "faithfulness": 5, "abstained": true}'
+        report = evaluate_models(
+            MagicMock(), ["m1"], queries=QUERIES, n_runs=1, judge_model="judge"
+        )
+        assert report.results[0].abstained is True
+
+    # CA-24.2
+    def test_invalid_judge_output_does_not_break_evaluation(self, mocks):
+        from src.llm.evaluator import evaluate_models
+
+        mocks.client.generate.return_value = "esto no es json"
+        report = evaluate_models(
+            MagicMock(), ["m1"], queries=QUERIES, n_runs=1, judge_model="judge"
+        )
+        assert report.results[0].ok
+        assert report.results[0].judge_correctness is None
+        assert report.results[1].abstained is True
+
+    # CA-24.2
+    def test_judge_exception_does_not_break_evaluation(self, mocks):
+        from src.llm.evaluator import evaluate_models
+
+        mocks.client.generate.side_effect = RuntimeError("juez caído")
+        report = evaluate_models(
+            MagicMock(), ["m1"], queries=QUERIES, n_runs=1, judge_model="judge"
+        )
+        assert report.results[0].ok
+        assert report.results[0].judge_correctness is None
+
+    # CA-24.3
+    def test_without_judge_uses_text_patterns(self, mocks):
+        from src.llm.evaluator import evaluate_models
+
+        report = evaluate_models(MagicMock(), ["m1"], queries=QUERIES, n_runs=1)
+
+        assert report.results[0].judge_correctness is None
+        assert report.results[1].abstained is True
+        mocks.client.generate.assert_not_called()
