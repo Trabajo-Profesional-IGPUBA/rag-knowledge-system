@@ -513,6 +513,7 @@ def evaluate_models(
             config=RAGConfig(top_k=5, min_score=0.2),
         )
 
+        # Warm-up: carga el modelo en memoria para que no contamine la latencia medida
         try:
             log.info("Warm-up de %s...", model_name)
             pipeline.query(queries[0]["query"])

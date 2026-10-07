@@ -1461,7 +1461,9 @@ class TestRetrieverSeparation:
 
 
 class TestLatencyMeasurement:
-    # CA-27.1
+    # CA-27.1: Antes de medir cada modelo, el sistema debe hacer
+    # una consulta de calentamiento que no cuente en los resultados,
+    # para que la carga inicial del modelo no distorsione los tiempos.
     def test_warmup_is_not_counted_in_results(self, mocks):
         from src.llm.evaluator import evaluate_models
 
