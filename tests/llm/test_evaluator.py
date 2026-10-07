@@ -1007,3 +1007,32 @@ class TestJudgeGenerate:
         client = MagicMock()
         client.generate.return_value = "hola"
         assert _generate(client, "prompt") == "hola"
+
+
+class TestJudgeVerdict:
+    # CA-24.1
+    def test_judge_returns_scores(self):
+        from src.llm.evaluator import _judge
+
+        client = MagicMock()
+        client.generate.return_value = '{"correctness": 5, "completeness": 4, "faithfulness": 5, "abstained": false}'
+        verdict = _judge(client, "q", "resp", "ctx", "ref", False)
+        assert verdict["correctness"] == 5
+        assert verdict["abstained"] is False
+
+    # CA-24.1
+    def test_judge_extracts_json_surrounded_by_text(self):
+        from src.llm.evaluator import _judge
+
+        client = MagicMock()
+        client.generate.return_value = 'Acá va: {"correctness": 3} listo'
+        assert _judge(client, "q", "resp", "ctx", "ref", False) == {"correctness": 3}
+
+    # CA-24.1
+    def test_prompt_for_negative_query_expects_abstention(self):
+        from src.llm.evaluator import _judge
+
+        client = MagicMock()
+        client.generate.return_value = "{}"
+        _judge(client, "q", "resp", "ctx", None, True)
+        assert "NO tiene respuesta" in client.generate.call_args.args[0]
