@@ -396,6 +396,7 @@ def _evaluate_one(pipeline, q, model_name, run, embedder) -> ModelEvalResult:
             number_score=None if num_score is None else round(num_score, 4),
             context_recall=None if ctx_recall is None else round(ctx_recall, 4),
             context_ok=ctx_ok,
+            context=context[:4000],
         )
     except Exception as e:
         log.error("Error evaluando %s en %s: %s", model_name, q["id"], e)

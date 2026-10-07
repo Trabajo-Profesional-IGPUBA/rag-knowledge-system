@@ -1369,3 +1369,60 @@ class TestJudge:
                 MagicMock(), ["m1"], queries=QUERIES, n_runs=1, judge_model="judge"
             )
         assert "se juzgaría a sí mismo" not in caplog.text
+
+
+class TestRetrieverSeparation:
+    # CA-26.1
+    def test_result_stores_retrieved_context(self, mocks):
+        from src.llm.evaluator import evaluate_models
+
+        report = evaluate_models(MagicMock(), ["m1"], queries=QUERIES, n_runs=1)
+        assert "LCM" in report.results[0].context
+
+    # CA-26.1
+    @pytest.mark.parametrize(
+        "resp,expected",
+        [
+            (_rag_resp("r", "a"), "a"),
+            (
+                SimpleNamespace(
+                    retrieval=SimpleNamespace(chunks=[{"text": "a"}, {"text": "b"}]),
+                    prompt=SimpleNamespace(num_chunks=1),
+                ),
+                "a",
+            ),
+            (
+                SimpleNamespace(
+                    retrieval=SimpleNamespace(chunks=[{"text": "a"}, {"text": "b"}]),
+                    prompt=SimpleNamespace(num_chunks=2),
+                ),
+                "a\n---\nb",
+            ),
+        ],
+    )
+    def test_extract_context_shapes(self, resp, expected):
+        from src.llm.evaluator import _extract_context
+
+        assert _extract_context(resp) == expected
+
+    # CA-26.2
+    def test_context_recall_and_flag(self, mocks):
+        from src.llm.evaluator import evaluate_models
+
+        report = evaluate_models(MagicMock(), ["m1"], queries=QUERIES, n_runs=1)
+        r = report.results[0]
+        assert r.context_recall == 1.0
+        assert r.context_ok is True
+
+    # CA-26.2
+    def test_context_without_the_answer_is_flagged(self, mocks):
+        from src.llm.evaluator import evaluate_models
+
+        pipeline = MagicMock()
+        pipeline.query.return_value = _rag_resp(
+            "respuesta", context="texto sin relación alguna"
+        )
+        mocks.pipeline_cls.return_value = pipeline
+
+        report = evaluate_models(MagicMock(), ["m1"], queries=QUERIES[:1], n_runs=1)
+        assert report.results[0].context_ok is False
