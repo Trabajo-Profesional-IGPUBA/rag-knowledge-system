@@ -235,6 +235,18 @@ def _semantic_similarity(
     return round(_cosine_similarity(resp_emb, ref_emb), 4)
 
 
+def _generate(client: LLMClient, prompt: str) -> str:
+    """Genera texto con un LLMClient (adaptar al método real del cliente)."""
+    for name in ("generate", "complete", "chat", "ask"):
+        fn = getattr(client, name, None)
+        if callable(fn):
+            out = fn(prompt)
+            for attr in ("text", "content", "response", "answer"):
+                if hasattr(out, attr):
+                    return str(getattr(out, attr))
+            return str(out)
+
+
 def _select_best_model(summary: dict[str, dict[str, float]]) -> tuple[str, str]:
     """Selecciona el mejor modelo por calidad combinada (keywords + similitud
     semántica), desempatando por menor latencia. Devuelve (modelo, justificación)."""
