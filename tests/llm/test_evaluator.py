@@ -1458,3 +1458,17 @@ class TestRetrieverSeparation:
         )
         with pytest.raises(RuntimeError):
             _extract_context(resp)
+
+
+class TestLatencyMeasurement:
+    # CA-27.1
+    def test_warmup_is_not_counted_in_results(self, mocks):
+        from src.llm.evaluator import evaluate_models
+
+        pipeline = _pipeline_by_query(ANSWERS)
+        mocks.pipeline_cls.return_value = pipeline
+
+        report = evaluate_models(MagicMock(), ["m1"], queries=QUERIES, n_runs=2)
+
+        assert len(report.results) == 4
+        assert pipeline.query.call_count == 5  # 4 corridas + 1 calentamiento
