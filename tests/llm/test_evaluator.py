@@ -21,7 +21,7 @@ Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más 
   - Calidad de cada respuesta-> CA-23.1 a CA-23.2
   - Evaluación por un modelo juez-> CA-24.1 a CA-24.4
   - Consultas sin respuesta-> CA-25.2, CA-25.3 y 25.4
-  - Información recuperada por el buscador-> CA-26.1 a 26.3
+  - Información recuperada por el buscador-> CA-26.1 a 26.4
   - Tiempos de respuesta-> CA-27.1
   - Robustez de la ejecución-> CA-29.1 a CA-29.3
 """
@@ -1448,7 +1448,8 @@ class TestRetrieverSeparation:
         assert summary["quality"] == 0.5
         assert summary["retrieval_recall"] == 0.5
 
-    # CA-26.4
+    # CA-26.4: Si no se puede obtener el texto de la información recuperada,
+    # la consulta se registra como error.
     def test_context_without_text_is_an_error(self):
         from src.llm.evaluator import _extract_context
 
