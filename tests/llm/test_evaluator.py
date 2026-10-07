@@ -1,8 +1,3 @@
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
-
-import pytest
-
 """
 Cubre "ÉPICA: Cliente LLM sobre Ollama":
   - Definición de resultados y reportes -> CA-10.1 Y  CA-10.4
@@ -10,9 +5,9 @@ Cubre "ÉPICA: Cliente LLM sobre Ollama":
   - Ejecución de la evaluación -> CA-12.1 a CA-12.4
   - Manejo de errores durante la evaluación -> CA-13.1 a CA-13.2
   - Selección del modelo -> CA-14.1 a CA-14.2
-  - Persistencia de resultados -> CA-15.1 
+  - Persistencia de resultados -> CA-15.1
 
-Cubre "Mejorar precisión del scoring en la evaluación de LLMs: el matching exacto de keywords 
+Cubre "Mejorar precisión del scoring en la evaluación de LLMs: el matching exacto de keywords
 subestimaba la calidad real de las respuestas":
   - Normalización de keywords -> CA-16.1
   - Detección de abstención -> CA-17.1 a 17.2
@@ -23,9 +18,95 @@ Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más 
   - Palabras clave esperadas-> CA-20.1 a CA-20.2
   - Datos numéricos-> CA-21.1 a CA-21.3
   - Errores durante la evaluación-> CA-22.1 a 22.2
-  - Calidad de cada respuesta-> CA-23.1 a CA-23.2 
+  - Calidad de cada respuesta-> CA-23.1 a CA-23.2
   - Tiempos de respuesta-> CA-27.1
 """
+
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+
+def _result(**overrides):
+    from src.llm.evaluator import ModelEvalResult
+
+    base = {
+        "model": "m",
+        "query_id": "q1",
+        "query": "test",
+        "response": "respuesta",
+        "elapsed_sec": 1.0,
+        "response_length": 9,
+        "keyword_hits": 0,
+        "keyword_total": 0,
+        "keyword_score": 0.0,
+    }
+    base.update(overrides)
+    return ModelEvalResult(**base)
+
+
+def _rag_resp(answer, context="Se usó LCM a 2.450 metros"):
+    return SimpleNamespace(
+        answer=answer,
+        retrieval=SimpleNamespace(chunks=[{"text": context}]),
+        prompt=SimpleNamespace(num_chunks=1),
+    )
+
+
+def _pipeline_by_query(answers, failing=()):
+    pipeline = MagicMock()
+
+    def _query(text):
+        if text in failing:
+            raise RuntimeError("fallo de conexión")
+        return _rag_resp(answers.get(text, "respuesta"))
+
+    pipeline.query.side_effect = _query
+    return pipeline
+
+
+def _mock_client(installed=("m1", "judge")):
+    client = MagicMock()
+    client.is_available.return_value = True
+    client.list_models.return_value = list(installed)
+    client.generate.return_value = (
+        '{"correctness": 5, "completeness": 4, "faithfulness": 5, "abstained": false}'
+    )
+    return client
+
+
+QUERIES = [
+    {
+        "id": "a1",
+        "query": "¿Qué pasó en PM-104?",
+        "expected_keywords": ["LCM"],
+        "reference_answer": "Se usó LCM a 2.450 metros.",
+    },
+    {
+        "id": "n1",
+        "query": "¿Qué pasó en ZZ-999?",
+        "expected_keywords": [],
+        "should_abstain": True,
+    },
+]
+ANSWERS = {
+    "¿Qué pasó en PM-104?": "Se usó LCM a 2450 metros",
+    "¿Qué pasó en ZZ-999?": "No encontré información sobre ZZ-999",
+}
+
+
+@pytest.fixture
+def mocks():
+    with patch("src.llm.evaluator.RAGPipeline") as pipeline_cls, patch(
+        "src.llm.evaluator.PromptBuilder"
+    ), patch("src.llm.evaluator.LLMClient") as client_cls:
+        client = _mock_client()
+        client_cls.return_value = client
+        pipeline_cls.return_value = _pipeline_by_query(ANSWERS)
+        yield SimpleNamespace(
+            client=client, client_cls=client_cls, pipeline_cls=pipeline_cls
+        )
 
 
 class TestEvaluator:
@@ -474,50 +555,6 @@ class TestNoInfoDetection:
         )
 
 
-class TestSummaryNoInfoRate:
-    # CA-17.2: El resumen por modelo debe reportar la tasa de abstención, calculada
-    # solo sobre las consultas ejecutadas sin error.
-    def test_summary_includes_no_info_rate(self):
-        from src.llm.evaluator import EvaluationReport, ModelEvalResult
-
-        report = EvaluationReport(models_evaluated=["modelo_x"])
-        report.results = [
-            ModelEvalResult(
-                model="modelo_x",
-                query_id="q1",
-                query="test",
-                response="No encontré información sobre esto.",
-                elapsed_sec=1.0,
-                response_length=30,
-                keyword_hits=0,
-                keyword_total=3,
-                keyword_score=0.0,
-                is_no_info_response=True,
-            ),
-            ModelEvalResult(
-                model="modelo_x",
-                query_id="q2",
-                query="test2",
-                response="Respuesta con contenido real",
-                elapsed_sec=2.0,
-                response_length=30,
-                keyword_hits=2,
-                keyword_total=3,
-                keyword_score=0.67,
-                is_no_info_response=False,
-            ),
-        ]
-        report.summary["modelo_x"] = {
-            "avg_elapsed_sec": 1.5,
-            "avg_keyword_score": 0.335,
-            "no_info_rate": 0.5,
-            "avg_response_length": 30.0,
-            "error_count": 0,
-            "total_queries": 2,
-        }
-        assert report.summary["modelo_x"]["no_info_rate"] == 0.5
-
-
 class TestSemanticSimilarity:
     # CA-18.2: Si no hay respuesta de referencia, el cálculo de similitud semántica
     # debe devolver None sin fallar.
@@ -874,3 +911,64 @@ class TestRepetitions:
 
         assert {r.run for r in report.results} == {1, 2, 3}
         assert report.summary["m1"]["total_runs"] == 6
+
+
+class TestSummaryNoInfoRate:
+    # CA-25.3
+    def test_summary_includes_false_abstention_rate(self):
+        from src.llm.evaluator import _summarize
+
+        results = [
+            _result(abstained=True, keyword_total=3),
+            _result(abstained=False, keyword_total=3),
+            _result(abstained=False, error="timeout"),  # no debe contarse
+        ]
+        assert _summarize(results)["false_abstention_rate"] == 0.5
+
+
+class TestNegativeQueries:
+    # CA-25.2
+    def test_quality_of_negative_query(self):
+        from src.llm.evaluator import _run_quality
+
+        assert _run_quality(_result(should_abstain=True, abstained=True)) == 1.0
+        assert _run_quality(_result(should_abstain=True, abstained=False)) == 0.0
+
+    # CA-25.2
+    def test_summary_reports_hallucination_rate(self):
+        from src.llm.evaluator import _summarize
+
+        summary = _summarize(
+            [
+                _result(should_abstain=True, abstained=True),
+                _result(should_abstain=True, abstained=False),
+            ]
+        )
+        assert summary["hallucination_rate"] == 0.5
+        assert summary["total_negative"] == 2
+
+    # CA-25.2
+    def test_model_that_answers_negative_query_hallucinates(self, mocks):
+        from src.llm.evaluator import evaluate_models
+
+        mocks.pipeline_cls.return_value = _pipeline_by_query(
+            {**ANSWERS, "¿Qué pasó en ZZ-999?": "Falló por fatiga."}
+        )
+        report = evaluate_models(MagicMock(), ["m1"], queries=QUERIES, n_runs=1)
+
+        assert report.summary["m1"]["hallucination_rate"] == 1.0
+
+    # CA-25.3
+    def test_false_abstention_ignores_failed_runs(self):
+        from src.llm.evaluator import _summarize
+
+        results = [_result(abstained=True), _result(abstained=False, error="boom")]
+        assert _summarize(results)["false_abstention_rate"] == 1.0
+
+    # CA-25.4
+    def test_print_summary_without_negatives_shows_nd(self, mocks, capsys):
+        from src.llm.evaluator import evaluate_models
+
+        evaluate_models(MagicMock(), ["m1"], queries=QUERIES[:1], n_runs=1)
+
+        assert "n/d" in capsys.readouterr().out
