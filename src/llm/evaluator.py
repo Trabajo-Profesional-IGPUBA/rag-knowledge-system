@@ -2,7 +2,9 @@
 
 import json
 import logging
+import math
 import re
+import statistics
 import time
 import unicodedata
 from dataclasses import asdict, dataclass, field
@@ -107,8 +109,10 @@ class EvaluationReport:
             print(
                 f"    Judge correct. / fidelidad : {stats['avg_judge_correctness']:.1f} / {stats['avg_judge_faithfulness']:.1f} (de 5)"
             )
-            print(f"    Latencia promedio : {stats['avg_elapsed_sec']:.2f}s")
             print(f"    Resp. promedio    : {stats['avg_response_length']:.0f} chars")
+            print(
+                f"    Latencia p50 / p95         : {stats['p50_elapsed_sec']:.2f}s / {stats['p95_elapsed_sec']:.2f}s"
+            )
             print(
                 f"    Abstención incorrecta      : {stats['false_abstention_rate']:.0%}"
             )
@@ -192,19 +196,28 @@ def _mean(values: list[float]) -> float:
     return round(sum(values) / len(values), 4) if values else 0.0
 
 
+def _percentile(values: list[float], pct: float) -> float:
+    """Percentil por nearest-rank."""
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    idx = max(0, min(len(ordered) - 1, math.ceil(pct * len(ordered)) - 1))
+    return round(ordered[idx], 2)
+
+
 def _summarize(results: list[ModelEvalResult]) -> dict[str, float]:
     answerable = [r for r in results if not r.should_abstain]
     negatives = [r for r in results if r.should_abstain]
     ok = [r for r in results if r.ok]
     ok_ans = [r for r in answerable if r.ok]
     ok_neg = [r for r in negatives if r.ok]
+    latencies = [r.elapsed_sec for r in ok]
 
     return {
         "quality": _mean([r.quality for r in results]),  # errores cuentan como 0
         "quality_ctx_ok": _mean(
             [r.quality for r in answerable if r.context_ok is not False]
         ),
-        "avg_elapsed_sec": _mean([r.elapsed_sec for r in ok]),
         "avg_keyword_score": _mean([r.keyword_score for r in ok]),
         "avg_number_score": _mean(
             [r.number_score for r in ok if r.number_score is not None]
@@ -223,6 +236,9 @@ def _summarize(results: list[ModelEvalResult]) -> dict[str, float]:
         ),
         "false_abstention_rate": _mean([1.0 if r.abstained else 0.0 for r in ok_ans]),
         "hallucination_rate": _mean([0.0 if r.abstained else 1.0 for r in ok_neg]),
+        "avg_elapsed_sec": round(statistics.fmean(latencies), 2) if latencies else 0.0,
+        "p50_elapsed_sec": round(statistics.median(latencies), 2) if latencies else 0.0,
+        "p95_elapsed_sec": _percentile(latencies, 0.95),
         "avg_response_length": _mean([float(r.response_length) for r in ok]),
         "no_info_rate": _mean([1.0 if r.is_no_info_response else 0.0 for r in ok]),
         "error_count": float(len(results) - len(ok)),
