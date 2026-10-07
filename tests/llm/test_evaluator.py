@@ -22,6 +22,7 @@ Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más 
   - Evaluación por un modelo juez-> CA-24.1 a CA-24.3
   - Consultas sin respuesta-> CA-25.2, CA-25.3 y 25.4
   - Tiempos de respuesta-> CA-27.1
+  - Robustez de la ejecución-> CA-29.1 a CA-29.3
 """
 
 import json
@@ -1185,7 +1186,8 @@ class TestSummaryJudge:
 
 
 class TestExecutionRobustness:
-    # CA-29.1
+    # CA-29.1: Si un modelo ya está descargado,
+    # el sistema no debe volver a descargarlo aunque se lo nombre sin indicar la versión.
     @pytest.mark.parametrize(
         "model,available,expected",
         [
@@ -1201,7 +1203,8 @@ class TestExecutionRobustness:
 
         assert _model_available(model, available) is expected
 
-    # CA-29.1
+    # CA-29.1: Si un modelo ya está descargado,
+    # el sistema no debe volver a descargarlo aunque se lo nombre sin indicar la versión.
     def test_does_not_pull_when_installed_as_latest(self, mocks):
         from src.llm.evaluator import evaluate_models
 
@@ -1209,7 +1212,8 @@ class TestExecutionRobustness:
         evaluate_models(MagicMock(), ["m1"], queries=QUERIES, n_runs=1)
         mocks.client.pull_model.assert_not_called()
 
-    # CA-29.2
+    # CA-29.2: Si un modelo no está disponible, el sistema debe omitirlo
+    # y continuar con los demás.
     def test_unavailable_model_is_skipped_and_others_continue(self, mocks):
         from src.llm.evaluator import evaluate_models
 
@@ -1224,7 +1228,8 @@ class TestExecutionRobustness:
         assert "m2" not in report.summary
         assert "m1" in report.summary
 
-    # CA-29.3
+    # CA-29.3: El sistema debe guardar el reporte completo en un archivo,
+    # creando las carpetas necesarias si no existen.
     def test_report_is_saved_as_valid_json(self, mocks, tmp_path):
         from src.llm.evaluator import evaluate_models
 
