@@ -403,6 +403,23 @@ def _evaluate_one(pipeline, q, model_name, run, embedder) -> ModelEvalResult:
     return result
 
 
+def _model_available(model: str, available: list[str]) -> bool:
+    """Sin tag, Ollama lo resuelve como ':latest'."""
+    names = set(available)
+    return model in names or f"{model}:latest" in names
+
+
+def _ensure_model(client: LLMClient, model: str) -> bool:
+    """Verifica Ollama y descarga el modelo si falta. False si no se puede usar."""
+    if not client.is_available():
+        log.error("Ollama no disponible para modelo %s", model)
+        return False
+    if not _model_available(model, client.list_models()):
+        log.info("Modelo %s no encontrado, descargando...", model)
+        client.pull_model(model)
+    return True
+
+
 def evaluate_models(
     retriever: Retriever,
     models: list[str],
@@ -423,15 +440,8 @@ def evaluate_models(
         config = LLMConfig(model=model_name, temperature=0.1)
         client = LLMClient(config)
 
-        if not client.is_available():
-            log.error("Ollama no disponible para modelo %s", model_name)
+        if not _ensure_model(client, model_name):
             continue
-
-        # Verificar que el modelo esté descargado
-        available = client.list_models()
-        if model_name not in available:
-            log.info("Modelo %s no encontrado, descargando...", model_name)
-            client.pull_model(model_name)
 
         pipeline = RAGPipeline(
             retriever=retriever,
