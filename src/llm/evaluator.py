@@ -46,6 +46,8 @@ class ModelEvalResult:
     quality: float = 0.0
     number_score: float | None = None
     judge_correctness: float | None = None
+    judge_completeness: float | None = None  # 1-5
+    judge_faithfulness: float | None = None  # 1-5
     should_abstain: bool = False
     abstained: bool = False
 
@@ -279,6 +281,35 @@ def _judge(
     except Exception as e:
         log.warning("Judge falló en '%s': %s", query[:40], e)
         return None
+
+
+def _apply_judge(
+    r: ModelEvalResult, q: dict[str, Any], judge_client: LLMClient
+) -> None:
+    """Juzga una respuesta ya generada y actualiza sus puntajes, abstención y calidad."""
+    verdict = _judge(
+        judge_client,
+        r.query,
+        r.response,
+        r.context,
+        q.get("reference_answer"),
+        r.should_abstain,
+    )
+    if not verdict:
+        return
+
+    def _f(key: str) -> float | None:
+        try:
+            return float(verdict[key]) if key in verdict else None
+        except (TypeError, ValueError):
+            return None
+
+    r.judge_correctness = _f("correctness")
+    r.judge_completeness = _f("completeness")
+    r.judge_faithfulness = _f("faithfulness")
+    if isinstance(verdict.get("abstained"), bool):
+        r.abstained = verdict["abstained"]
+    r.quality = round(_run_quality(r), 4)
 
 
 def _select_best_model(summary: dict[str, dict[str, float]]) -> tuple[str, str]:
