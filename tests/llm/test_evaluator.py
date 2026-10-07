@@ -379,7 +379,8 @@ class TestEvaluateModels:
 
         assert output_path.exists()
 
-    # CA-22.1
+    # CA-22.1: Una consulta que falla debe contar como calidad cero para el modelo,
+    # en lugar de quedar fuera del promedio.
     def test_successful_run_has_quality(self):
         from src.llm.evaluator import evaluate_models
 
