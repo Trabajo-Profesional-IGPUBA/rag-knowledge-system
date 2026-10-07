@@ -19,6 +19,7 @@ Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más 
   - Datos numéricos-> CA-21.1 a CA-21.3
   - Errores durante la evaluación-> CA-22.1 a 22.2
   - Calidad de cada respuesta-> CA-23.1 a CA-23.2
+  - Consultas sin respuesta-> CA-25.2, CA-25.3 y 25.4
   - Tiempos de respuesta-> CA-27.1
 """
 
@@ -914,7 +915,9 @@ class TestRepetitions:
 
 
 class TestSummaryNoInfoRate:
-    # CA-25.3
+    # CA-25.3: Ante las preguntas que sí tienen respuesta,
+    # el resumen debe reportar la tasa de abstención incorrecta,
+    # calculada solo sobre las consultas ejecutadas sin error.
     def test_summary_includes_false_abstention_rate(self):
         from src.llm.evaluator import _summarize
 
@@ -927,14 +930,18 @@ class TestSummaryNoInfoRate:
 
 
 class TestNegativeQueries:
-    # CA-25.2
+    # CA-25.2: Ante esas preguntas, el sistema debe considerar correcta la abstención
+    # e incorrecta cualquier respuesta inventada, y el resumen debe reportar
+    # la tasa de alucinación.
     def test_quality_of_negative_query(self):
         from src.llm.evaluator import _run_quality
 
         assert _run_quality(_result(should_abstain=True, abstained=True)) == 1.0
         assert _run_quality(_result(should_abstain=True, abstained=False)) == 0.0
 
-    # CA-25.2
+    # CA-25.2: Ante esas preguntas, el sistema debe considerar correcta la abstención
+    # e incorrecta cualquier respuesta inventada, y el resumen debe reportar
+    # la tasa de alucinación.
     def test_summary_reports_hallucination_rate(self):
         from src.llm.evaluator import _summarize
 
@@ -947,7 +954,9 @@ class TestNegativeQueries:
         assert summary["hallucination_rate"] == 0.5
         assert summary["total_negative"] == 2
 
-    # CA-25.2
+    # CA-25.2: Ante esas preguntas, el sistema debe considerar correcta la abstención
+    # e incorrecta cualquier respuesta inventada, y el resumen debe reportar
+    # la tasa de alucinación.
     def test_model_that_answers_negative_query_hallucinates(self, mocks):
         from src.llm.evaluator import evaluate_models
 
@@ -958,14 +967,17 @@ class TestNegativeQueries:
 
         assert report.summary["m1"]["hallucination_rate"] == 1.0
 
-    # CA-25.3
+    # CA-25.3: Ante las preguntas que sí tienen respuesta,
+    # el resumen debe reportar la tasa de abstención incorrecta,
+    # calculada solo sobre las consultas ejecutadas sin error.
     def test_false_abstention_ignores_failed_runs(self):
         from src.llm.evaluator import _summarize
 
         results = [_result(abstained=True), _result(abstained=False, error="boom")]
         assert _summarize(results)["false_abstention_rate"] == 1.0
 
-    # CA-25.4
+    # CA-25.4: Si el conjunto evaluado no incluye preguntas sin respuesta,
+    # el resumen en consola debe indicarlo en lugar de mostrar una tasa.
     def test_print_summary_without_negatives_shows_nd(self, mocks, capsys):
         from src.llm.evaluator import evaluate_models
 
