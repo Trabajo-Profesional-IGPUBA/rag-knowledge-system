@@ -247,6 +247,37 @@ def _generate(client: LLMClient, prompt: str) -> str:
             return str(out)
 
 
+def _judge(
+    judge_client, query, response, context, reference, should_abstain
+) -> dict | None:
+    """Evalúa la respuesta con un modelo juez. Devuelve dict con puntajes."""
+    if should_abstain:
+        ref_block = (
+            "La pregunta NO tiene respuesta en los documentos. Lo correcto es que "
+            "la respuesta se abstenga y diga que no hay información."
+        )
+    else:
+        ref_block = f"Respuesta de referencia: {reference or '(no disponible)'}"
+
+    prompt = (
+        "Sos un evaluador estricto de un sistema RAG de ingeniería de petróleo.\n\n"
+        f"Pregunta: {query}\n\n"
+        f"{ref_block}\n\n"
+        f"Contexto recuperado:\n{context[:4000] or '(vacío)'}\n\n"
+        f"Respuesta a evaluar:\n{response}\n\n"
+        "Devolvé SOLO un JSON, sin texto extra, con esta forma exacta:\n"
+        '{"correctness": 1-5, "completeness": 1-5, "faithfulness": 1-5, "abstained": true/false}\n'
+        "- correctness: ¿coincide con la referencia (o con la abstención esperada)?\n"
+        "- completeness: ¿cubre los hechos clave de la referencia?\n"
+        "- faithfulness: 5 si TODO lo que afirma está en el contexto; 1 si inventa datos.\n"
+        "- abstained: true si la respuesta dice que no encontró información."
+    )
+
+    raw = _generate(judge_client, prompt)
+    match = re.search(r"\{.*\}", raw, re.DOTALL)
+    return json.loads(match.group(0))
+
+
 def _select_best_model(summary: dict[str, dict[str, float]]) -> tuple[str, str]:
     """Selecciona el mejor modelo por calidad combinada (keywords + similitud
     semántica), desempatando por menor latencia. Devuelve (modelo, justificación)."""
