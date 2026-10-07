@@ -1042,3 +1042,27 @@ class TestJudgeVerdict:
         client.generate.return_value = "{}"
         _judge(client, "q", "resp", "ctx", None, True)
         assert "NO tiene respuesta" in client.generate.call_args.args[0]
+
+    # CA-24.2
+    def test_invalid_output_returns_none(self):
+        from src.llm.evaluator import _judge
+
+        client = MagicMock()
+        client.generate.return_value = "esto no es json"
+        assert _judge(client, "q", "resp", "ctx", "ref", False) is None
+
+    # CA-24.2
+    def test_broken_json_returns_none(self):
+        from src.llm.evaluator import _judge
+
+        client = MagicMock()
+        client.generate.return_value = "{correctness: cinco}"
+        assert _judge(client, "q", "resp", "ctx", "ref", False) is None
+
+    # CA-24.2
+    def test_exception_returns_none(self):
+        from src.llm.evaluator import _judge
+
+        client = MagicMock()
+        client.generate.side_effect = RuntimeError("juez caído")
+        assert _judge(client, "q", "resp", "ctx", "ref", False) is None
