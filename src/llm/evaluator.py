@@ -376,6 +376,7 @@ def _evaluate_one(pipeline, q, model_name, run, embedder) -> ModelEvalResult:
             keyword_score=round(kw_score, 4),
             run=run,
             should_abstain=should_abstain,
+            abstained=pattern_abstain,
             is_no_info_response=pattern_abstain,
             semantic_similarity=sem_sim,
             number_score=None if num_score is None else round(num_score, 4),
@@ -426,12 +427,26 @@ def evaluate_models(
     queries: list[dict[str, Any]] | None = None,
     output_path: Path | None = None,
     embedder: Embedder | None = None,
+    judge_model: str | None = None,
     n_runs: int = 3,
 ) -> EvaluationReport:
     """Evalúa cada modelo contra el set de queries, arma el resumen y selecciona el mejor."""
     queries = queries or EVAL_QUERIES
     report = EvaluationReport(models_evaluated=models)
     prompt_builder = PromptBuilder()
+    judge_client: LLMClient | None = None
+    if judge_model:
+        candidate = LLMClient(
+            LLMConfig(
+                model=judge_model,
+                temperature=0.0,
+                think=False if judge_model.startswith("qwen3") else None,
+            )
+        )
+        if _ensure_model(candidate, judge_model):
+            judge_client = candidate
+    else:
+        log.info("Sin judge_model: se omite LLM-as-judge (abstención por patrones).")
 
     for model_name in models:
         log.info("Evaluando modelo: %s", model_name)
@@ -452,9 +467,10 @@ def evaluate_models(
 
         for q in queries:
             for run in range(1, n_runs + 1):
-                report.results.append(
-                    _evaluate_one(pipeline, q, model_name, run, embedder)
-                )
+                res = _evaluate_one(pipeline, q, model_name, run, embedder)
+                if judge_client is not None and res.ok:
+                    _apply_judge(res, q, judge_client)
+                report.results.append(res)
 
     for model_name in models:
         model_results = [r for r in report.results if r.model == model_name]
