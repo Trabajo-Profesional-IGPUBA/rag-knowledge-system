@@ -47,6 +47,7 @@ class ModelEvalResult:
     number_score: float | None = None
     judge_correctness: float | None = None
     should_abstain: bool = False
+    abstained: bool = False
 
     @property
     def ok(self) -> bool:
@@ -87,12 +88,21 @@ class EvaluationReport:
         print("EVALUACIÓN COMPARATIVA DE MODELOS LLM")
         print("═" * 60)
         for model, stats in self.summary.items():
+            halluc = (
+                f"{stats['hallucination_rate']:.0%}"
+                if stats["total_negative"]
+                else "n/d"
+            )
             print(f"\n  Modelo: {model}")
             print(f"    Latencia promedio : {stats['avg_elapsed_sec']:.2f}s")
             print(f"    Score keywords    : {stats['avg_keyword_score']:.0%}")
             print(f"    Resp. promedio    : {stats['avg_response_length']:.0f} chars")
             print(f"    Calidad global (errores=0) : {stats['quality']:.0%}")
             print(f"    Números                    : {stats['avg_number_score']:.0%}")
+            print(
+                f"    Abstención incorrecta      : {stats['false_abstention_rate']:.0%}"
+            )
+            print(f"    Alucinación (sin respuesta): {halluc}")
             print(
                 f"    Errores                    : {stats['error_count']:.0f} de {stats['total_runs']:.0f}"
             )
@@ -172,7 +182,12 @@ def _mean(values: list[float]) -> float:
 
 
 def _summarize(results: list[ModelEvalResult]) -> dict[str, float]:
+    answerable = [r for r in results if not r.should_abstain]
+    negatives = [r for r in results if r.should_abstain]
     ok = [r for r in results if r.ok]
+    ok_ans = [r for r in answerable if r.ok]
+    ok_neg = [r for r in negatives if r.ok]
+
     return {
         "quality": _mean([r.quality for r in results]),  # errores cuentan como 0
         "avg_elapsed_sec": _mean([r.elapsed_sec for r in ok]),
@@ -183,11 +198,14 @@ def _summarize(results: list[ModelEvalResult]) -> dict[str, float]:
         "avg_semantic_similarity": _mean(
             [r.semantic_similarity for r in ok if r.semantic_similarity is not None]
         ),
+        "false_abstention_rate": _mean([1.0 if r.abstained else 0.0 for r in ok_ans]),
+        "hallucination_rate": _mean([0.0 if r.abstained else 1.0 for r in ok_neg]),
         "avg_response_length": _mean([float(r.response_length) for r in ok]),
         "no_info_rate": _mean([1.0 if r.is_no_info_response else 0.0 for r in ok]),
         "error_count": float(len(results) - len(ok)),
         "ok_runs": float(len(ok)),
         "total_runs": float(len(results)),
+        "total_negative": float(len(negatives)),
     }
 
 
@@ -243,6 +261,7 @@ def _evaluate_one(pipeline, q, model_name, run, embedder) -> ModelEvalResult:
     """Ejecuta una query una vez y calcula las métricas."""
     keywords = q.get("expected_keywords", [])
     reference = q.get("reference_answer")
+    should_abstain = bool(q.get("should_abstain", False))
     query = q["query"]
 
     try:
@@ -255,6 +274,7 @@ def _evaluate_one(pipeline, q, model_name, run, embedder) -> ModelEvalResult:
         num_score = _score_numbers(answer, reference, query)
         sem_sim = _semantic_similarity(answer, reference, embedder)
 
+        pattern_abstain = _is_no_info_response(answer)
         result = ModelEvalResult(
             model=model_name,
             query_id=q["id"],
@@ -266,7 +286,8 @@ def _evaluate_one(pipeline, q, model_name, run, embedder) -> ModelEvalResult:
             keyword_total=total,
             keyword_score=round(kw_score, 4),
             run=run,
-            is_no_info_response=_is_no_info_response(answer),
+            should_abstain=should_abstain,
+            is_no_info_response=pattern_abstain,
             semantic_similarity=sem_sim,
             number_score=None if num_score is None else round(num_score, 4),
         )
@@ -284,6 +305,7 @@ def _evaluate_one(pipeline, q, model_name, run, embedder) -> ModelEvalResult:
             keyword_score=0.0,
             run=run,
             error=str(e),
+            should_abstain=should_abstain,
             number_score=0.0 if reference else None,
             semantic_similarity=0.0 if reference else None,
         )
