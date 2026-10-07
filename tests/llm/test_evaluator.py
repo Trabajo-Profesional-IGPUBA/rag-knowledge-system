@@ -1431,3 +1431,17 @@ class TestRetrieverSeparation:
 
         report = evaluate_models(MagicMock(), ["m1"], queries=QUERIES[:1], n_runs=1)
         assert report.results[0].context_ok is False
+
+    # CA-26.3
+    def test_summary_separates_quality_by_context(self):
+        from src.llm.evaluator import _summarize
+
+        summary = _summarize(
+            [
+                _result(quality=1.0, context_ok=True, context_recall=1.0),
+                _result(quality=0.0, context_ok=False, context_recall=0.0),
+            ]
+        )
+        assert summary["quality_ctx_ok"] == 1.0
+        assert summary["quality"] == 0.5
+        assert summary["retrieval_recall"] == 0.5
