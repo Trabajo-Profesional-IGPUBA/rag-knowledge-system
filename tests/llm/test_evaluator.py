@@ -1441,7 +1441,8 @@ class TestLatencyMeasurement:
         assert len(report.results) == 4
         assert pipeline.query.call_count == 5  # 4 corridas + 1 calentamiento
 
-    # CA-27.2
+    # CA-27.2: El resumen debe reportar el tiempo típico, el promedio y el tiempo
+    # en los casos más lentos, calculados solo sobre las consultas ejecutadas sin error.
     def test_latency_stats_only_use_successful_runs(self):
         from src.llm.evaluator import _summarize
 
@@ -1455,7 +1456,8 @@ class TestLatencyMeasurement:
         assert summary["p50_elapsed_sec"] == 2.0
         assert summary["avg_elapsed_sec"] == 2.0
 
-    # CA-27.2
+    # CA-27.2: El resumen debe reportar el tiempo típico, el promedio y el tiempo
+    # en los casos más lentos, calculados solo sobre las consultas ejecutadas sin error.
     def test_slowest_cases_latency(self):
         from src.llm.evaluator import _summarize
 
