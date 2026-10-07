@@ -230,7 +230,10 @@ class TestEvaluateModels:
         ]
 
         report = evaluate_models(
-            retriever=retriever, models=["llama3:8b"], queries=queries
+            retriever=retriever,
+            models=["llama3:8b"],
+            queries=queries,
+            n_runs=1,
         )
 
         assert report.selected_model == "llama3:8b"
@@ -252,7 +255,12 @@ class TestEvaluateModels:
         mock_llm_client_cls.return_value = mock_client
 
         retriever = MagicMock()
-        report = evaluate_models(retriever=retriever, models=["llama3:8b"], queries=[])
+        report = evaluate_models(
+            retriever=retriever,
+            models=["llama3:8b"],
+            queries=[],
+            n_runs=1,
+        )
 
         assert report.results == []
         assert report.summary == {}
@@ -276,7 +284,12 @@ class TestEvaluateModels:
         mock_rag_pipeline_cls.return_value = self._make_mock_pipeline()
 
         retriever = MagicMock()
-        evaluate_models(retriever=retriever, models=["llama3:8b"], queries=[])
+        evaluate_models(
+            retriever=retriever,
+            models=["llama3:8b"],
+            queries=[],
+            n_runs=1,
+        )
 
         mock_client.pull_model.assert_called_once_with("llama3:8b")
 
@@ -303,7 +316,10 @@ class TestEvaluateModels:
         queries = [{"id": "q1", "query": "test", "expected_keywords": ["x"]}]
 
         report = evaluate_models(
-            retriever=retriever, models=["llama3:8b"], queries=queries
+            retriever=retriever,
+            models=["llama3:8b"],
+            queries=queries,
+            n_runs=1,
         )
 
         assert report.results[0].quality == 0.0
@@ -341,7 +357,10 @@ class TestEvaluateModels:
         ]
 
         report = evaluate_models(
-            retriever=retriever, models=["modelo_bueno", "modelo_malo"], queries=queries
+            retriever=retriever,
+            models=["modelo_bueno", "modelo_malo"],
+            queries=queries,
+            n_runs=1,
         )
 
         assert report.selected_model == "modelo_bueno"
@@ -375,6 +394,7 @@ class TestEvaluateModels:
             models=["llama3:8b"],
             queries=[],
             output_path=output_path,
+            n_runs=1,
         )
 
         assert output_path.exists()
@@ -401,6 +421,7 @@ class TestEvaluateModels:
                         "id": "q1",
                         "query": "test",
                         "expected_keywords": ["presión", "psi"],
+                        "n_runs": 1,
                     }
                 ],
             )
