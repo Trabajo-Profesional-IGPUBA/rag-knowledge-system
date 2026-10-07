@@ -99,20 +99,21 @@ class EvaluationReport:
                 else "n/d"
             )
             print(f"\n  Modelo: {model}")
-            print(f"    Latencia promedio : {stats['avg_elapsed_sec']:.2f}s")
-            print(f"    Score keywords    : {stats['avg_keyword_score']:.0%}")
-            print(f"    Resp. promedio    : {stats['avg_response_length']:.0f} chars")
             print(f"    Calidad global (errores=0) : {stats['quality']:.0%}")
+            print(f"    Calidad (contexto con resp.): {stats['quality_ctx_ok']:.0%}")
             print(
                 f"    Keywords / Números         : {stats['avg_keyword_score']:.0%} / {stats['avg_number_score']:.0%}"
             )
             print(
                 f"    Judge correct. / fidelidad : {stats['avg_judge_correctness']:.1f} / {stats['avg_judge_faithfulness']:.1f} (de 5)"
             )
+            print(f"    Latencia promedio : {stats['avg_elapsed_sec']:.2f}s")
+            print(f"    Resp. promedio    : {stats['avg_response_length']:.0f} chars")
             print(
                 f"    Abstención incorrecta      : {stats['false_abstention_rate']:.0%}"
             )
             print(f"    Alucinación (sin respuesta): {halluc}")
+            print(f"    Recall del retriever       : {stats['retrieval_recall']:.0%}")
             print(
                 f"    Errores                    : {stats['error_count']:.0f} de {stats['total_runs']:.0f}"
             )
@@ -200,6 +201,9 @@ def _summarize(results: list[ModelEvalResult]) -> dict[str, float]:
 
     return {
         "quality": _mean([r.quality for r in results]),  # errores cuentan como 0
+        "quality_ctx_ok": _mean(
+            [r.quality for r in answerable if r.context_ok is not False]
+        ),
         "avg_elapsed_sec": _mean([r.elapsed_sec for r in ok]),
         "avg_keyword_score": _mean([r.keyword_score for r in ok]),
         "avg_number_score": _mean(
@@ -213,6 +217,9 @@ def _summarize(results: list[ModelEvalResult]) -> dict[str, float]:
         ),
         "avg_judge_faithfulness": _mean(
             [r.judge_faithfulness for r in ok if r.judge_faithfulness is not None]
+        ),
+        "retrieval_recall": _mean(
+            [r.context_recall for r in answerable if r.context_recall is not None]
         ),
         "false_abstention_rate": _mean([1.0 if r.abstained else 0.0 for r in ok_ans]),
         "hallucination_rate": _mean([0.0 if r.abstained else 1.0 for r in ok_neg]),
