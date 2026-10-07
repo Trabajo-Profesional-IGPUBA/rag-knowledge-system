@@ -306,7 +306,7 @@ class TestEvaluateModels:
             retriever=retriever, models=["llama3:8b"], queries=queries
         )
 
-        assert report.results[0].ok is False
+        assert report.results[0].quality == 0.0
         assert "fallo de conexión" in report.results[0].error
         assert report.summary["llama3:8b"]["error_count"] == 1
 
@@ -378,6 +378,33 @@ class TestEvaluateModels:
         )
 
         assert output_path.exists()
+
+    # CA-22.1
+    def test_successful_run_has_quality(self):
+        from src.llm.evaluator import evaluate_models
+
+        with patch("src.llm.evaluator.RAGPipeline") as pipeline_cls, patch(
+            "src.llm.evaluator.PromptBuilder"
+        ), patch("src.llm.evaluator.LLMClient") as client_cls:
+            client = MagicMock()
+            client.is_available.return_value = True
+            client.list_models.return_value = ["m1"]
+            client_cls.return_value = client
+            pipeline_cls.return_value = self._make_mock_pipeline(answer="presión psi")
+
+            report = evaluate_models(
+                MagicMock(),
+                ["m1"],
+                queries=[
+                    {
+                        "id": "q1",
+                        "query": "test",
+                        "expected_keywords": ["presión", "psi"],
+                    }
+                ],
+            )
+
+        assert report.results[0].quality == 1.0
 
 
 class TestNormalization:
