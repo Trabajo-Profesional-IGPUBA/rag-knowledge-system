@@ -1349,3 +1349,23 @@ class TestJudge:
         assert report.results[0].judge_correctness is None
         assert report.results[1].abstained is True
         mocks.client.generate.assert_not_called()
+
+    # CA-24.4
+    def test_warns_when_judge_is_also_an_evaluated_model(self, mocks, caplog):
+        from src.llm.evaluator import evaluate_models
+
+        with caplog.at_level("WARNING"):
+            evaluate_models(
+                MagicMock(), ["m1"], queries=QUERIES, n_runs=1, judge_model="m1"
+            )
+        assert "se juzgaría a sí mismo" in caplog.text
+
+    # CA-24.4
+    def test_no_warning_when_judge_is_a_different_model(self, mocks, caplog):
+        from src.llm.evaluator import evaluate_models
+
+        with caplog.at_level("WARNING"):
+            evaluate_models(
+                MagicMock(), ["m1"], queries=QUERIES, n_runs=1, judge_model="judge"
+            )
+        assert "se juzgaría a sí mismo" not in caplog.text
