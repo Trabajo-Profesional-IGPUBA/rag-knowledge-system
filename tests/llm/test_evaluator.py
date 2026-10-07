@@ -21,6 +21,7 @@ Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más 
   - Calidad de cada respuesta-> CA-23.1 a CA-23.2
   - Evaluación por un modelo juez-> CA-24.1 a CA-24.4
   - Consultas sin respuesta-> CA-25.2, CA-25.3 y 25.4
+  - Información recuperada por el buscador-> CA-26.1 a 26.2
   - Tiempos de respuesta-> CA-27.1
   - Robustez de la ejecución-> CA-29.1 a CA-29.3
 """
@@ -1372,14 +1373,16 @@ class TestJudge:
 
 
 class TestRetrieverSeparation:
-    # CA-26.1
+    # CA-26.1: El sistema debe guardar, para cada consulta,
+    # la información que el buscador entregó al modelo.
     def test_result_stores_retrieved_context(self, mocks):
         from src.llm.evaluator import evaluate_models
 
         report = evaluate_models(MagicMock(), ["m1"], queries=QUERIES, n_runs=1)
         assert "LCM" in report.results[0].context
 
-    # CA-26.1
+    # CA-26.1: El sistema debe guardar, para cada consulta,
+    # la información que el buscador entregó al modelo.
     @pytest.mark.parametrize(
         "resp,expected",
         [
@@ -1405,7 +1408,8 @@ class TestRetrieverSeparation:
 
         assert _extract_context(resp) == expected
 
-    # CA-26.2
+    # CA-26.2: El sistema debe indicar si esa información
+    # contenía los datos necesarios para responder.
     def test_context_recall_and_flag(self, mocks):
         from src.llm.evaluator import evaluate_models
 
@@ -1414,7 +1418,8 @@ class TestRetrieverSeparation:
         assert r.context_recall == 1.0
         assert r.context_ok is True
 
-    # CA-26.2
+    # CA-26.2: El sistema debe indicar si esa información
+    # contenía los datos necesarios para responder.
     def test_context_without_the_answer_is_flagged(self, mocks):
         from src.llm.evaluator import evaluate_models
 
