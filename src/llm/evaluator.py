@@ -349,6 +349,20 @@ def _apply_judge(
     r.quality = round(_run_quality(r), 4)
 
 
+def _judge_all(
+    results: list[ModelEvalResult],
+    queries: list[dict[str, Any]],
+    judge_client: LLMClient,
+) -> None:
+    """Fase 2: el juez evalúa todas las respuestas juntas (se carga una sola vez)."""
+    by_id = {q["id"]: q for q in queries}
+    pending = [r for r in results if r.ok]
+    log.info("Juzgando %d respuestas con el modelo juez...", len(pending))
+    for i, r in enumerate(pending, start=1):
+        log.info("  juez %d/%d: %s %s", i, len(pending), r.model, r.query_id)
+        _apply_judge(r, by_id[r.query_id], judge_client)
+
+
 def _select_best_model(summary: dict[str, dict[str, float]]) -> tuple[str, str]:
     """Selecciona el mejor modelo por calidad combinada (keywords + similitud
     semántica), desempatando por menor latencia. Devuelve (modelo, justificación)."""
@@ -538,10 +552,12 @@ def evaluate_models(
 
         for q in queries:
             for run in range(1, n_runs + 1):
-                res = _evaluate_one(pipeline, q, model_name, run, embedder)
-                if judge_client is not None and res.ok:
-                    _apply_judge(res, q, judge_client)
-                report.results.append(res)
+                report.results.append(
+                    _evaluate_one(pipeline, q, model_name, run, embedder)
+                )
+
+    if judge_client is not None and report.results:
+        _judge_all(report.results, queries, judge_client)
 
     for model_name in models:
         model_results = [r for r in report.results if r.model == model_name]
