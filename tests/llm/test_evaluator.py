@@ -1069,3 +1069,102 @@ class TestJudgeVerdict:
         client = MagicMock()
         client.generate.side_effect = RuntimeError("juez caído")
         assert _judge(client, "q", "resp", "ctx", "ref", False) is None
+
+
+def _judge_client(verdict):
+    client = MagicMock()
+    client.generate.return_value = verdict
+    return client
+
+
+class TestApplyJudge:
+    # CA-24.1
+    def test_scores_are_recorded(self):
+        from src.llm.evaluator import _apply_judge
+
+        r = _result()
+        client = _judge_client(
+            '{"correctness": 5, "completeness": 4, "faithfulness": 5, "abstained": false}'
+        )
+        _apply_judge(r, {"reference_answer": "ref"}, client)
+
+        assert r.judge_correctness == 5.0
+        assert r.judge_completeness == 4.0
+        assert r.judge_faithfulness == 5.0
+
+    # CA-24.1
+    def test_abstention_verdict_overrides_pattern_detection(self):
+        from src.llm.evaluator import _apply_judge
+
+        r = _result(abstained=False)
+        client = _judge_client(
+            '{"correctness": 1, "completeness": 1, "faithfulness": 5, "abstained": true}'
+        )
+        _apply_judge(r, {}, client)
+
+        assert r.abstained is True
+
+    # CA-23.1
+    def test_quality_is_recomputed_with_judge_score(self):
+        from src.llm.evaluator import _apply_judge
+
+        r = _result()
+        _apply_judge(r, {}, _judge_client('{"correctness": 5}'))
+
+        assert r.quality == pytest.approx(1.0)
+
+    # CA-24.2
+    def test_invalid_verdict_leaves_result_untouched(self):
+        from src.llm.evaluator import _apply_judge
+
+        r = _result(abstained=True, quality=0.3)
+        _apply_judge(r, {}, _judge_client("esto no es json"))
+
+        assert r.judge_correctness is None
+        assert r.abstained is True
+        assert r.quality == 0.3
+
+    # CA-24.2
+    def test_non_numeric_score_is_ignored(self):
+        from src.llm.evaluator import _apply_judge
+
+        r = _result()
+        _apply_judge(r, {}, _judge_client('{"correctness": "alto"}'))
+
+        assert r.judge_correctness is None
+
+
+class TestSummaryJudge:
+    # CA-24.1
+    def test_summary_averages_only_judged_runs(self):
+        from src.llm.evaluator import _summarize
+
+        summary = _summarize(
+            [
+                _result(judge_correctness=5.0, judge_faithfulness=4.0),
+                _result(judge_correctness=3.0, judge_faithfulness=2.0),
+                _result(),  # sin juez: no cuenta
+            ]
+        )
+        assert summary["avg_judge_correctness"] == 4.0
+        assert summary["avg_judge_faithfulness"] == 3.0
+
+    # CA-24.3
+    def test_summary_without_judge_is_zero(self):
+        from src.llm.evaluator import _summarize
+
+        summary = _summarize([_result()])
+        assert summary["avg_judge_correctness"] == 0.0
+        assert summary["avg_judge_faithfulness"] == 0.0
+
+    # CA-24.1
+    def test_print_summary_shows_judge_scores(self, capsys):
+        from src.llm.evaluator import EvaluationReport, _summarize
+
+        report = EvaluationReport(models_evaluated=["m"])
+        report.summary["m"] = _summarize(
+            [_result(judge_correctness=4.0, judge_faithfulness=5.0)]
+        )
+        report.print_summary()
+
+        assert "4.0 / 5.0 (de 5)" in capsys.readouterr().out
