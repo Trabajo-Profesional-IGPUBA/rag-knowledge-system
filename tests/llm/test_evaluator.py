@@ -19,7 +19,7 @@ Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más 
   - Datos numéricos-> CA-21.1 a CA-21.3
   - Errores durante la evaluación-> CA-22.1 a 22.2
   - Calidad de cada respuesta-> CA-23.1 a CA-23.2
-  - Evaluación por un modelo juez-> CA-24.1 a CA-24.2
+  - Evaluación por un modelo juez-> CA-24.1 a CA-24.3
   - Consultas sin respuesta-> CA-25.2, CA-25.3 y 25.4
   - Tiempos de respuesta-> CA-27.1
 """
@@ -1078,7 +1078,9 @@ def _judge_client(verdict):
 
 
 class TestApplyJudge:
-    # CA-24.1
+    # CA-24.1: Si se indica un modelo juez, el sistema debe puntuar cada respuesta
+    # en corrección, completitud y fidelidad al contexto,
+    # e indicar si el modelo se abstuvo.
     def test_scores_are_recorded(self):
         from src.llm.evaluator import _apply_judge
 
@@ -1092,7 +1094,9 @@ class TestApplyJudge:
         assert r.judge_completeness == 4.0
         assert r.judge_faithfulness == 5.0
 
-    # CA-24.1
+    # CA-24.1: Si se indica un modelo juez, el sistema debe puntuar cada respuesta
+    # en corrección, completitud y fidelidad al contexto,
+    # e indicar si el modelo se abstuvo.
     def test_abstention_verdict_overrides_pattern_detection(self):
         from src.llm.evaluator import _apply_judge
 
@@ -1104,7 +1108,9 @@ class TestApplyJudge:
 
         assert r.abstained is True
 
-    # CA-23.1
+    # CA-23.1: El sistema debe calcular la calidad de cada respuesta combinando
+    # las medidas disponibles (evaluación del juez, palabras clave, cifras
+    # y similitud semántica), usando solo las que se pudieron obtener.
     def test_quality_is_recomputed_with_judge_score(self):
         from src.llm.evaluator import _apply_judge
 
@@ -1113,7 +1119,8 @@ class TestApplyJudge:
 
         assert r.quality == pytest.approx(1.0)
 
-    # CA-24.2
+    # CA-24.2: Si el juez falla o devuelve una evaluación inválida,
+    # la evaluación debe continuar sin esos puntajes.
     def test_invalid_verdict_leaves_result_untouched(self):
         from src.llm.evaluator import _apply_judge
 
@@ -1124,7 +1131,8 @@ class TestApplyJudge:
         assert r.abstained is True
         assert r.quality == 0.3
 
-    # CA-24.2
+    # CA-24.2: Si el juez falla o devuelve una evaluación inválida,
+    # la evaluación debe continuar sin esos puntajes.
     def test_non_numeric_score_is_ignored(self):
         from src.llm.evaluator import _apply_judge
 
@@ -1135,7 +1143,9 @@ class TestApplyJudge:
 
 
 class TestSummaryJudge:
-    # CA-24.1
+    # CA-24.1: Si se indica un modelo juez, el sistema debe puntuar cada respuesta
+    # en corrección, completitud y fidelidad al contexto,
+    # e indicar si el modelo se abstuvo.
     def test_summary_averages_only_judged_runs(self):
         from src.llm.evaluator import _summarize
 
@@ -1149,7 +1159,8 @@ class TestSummaryJudge:
         assert summary["avg_judge_correctness"] == 4.0
         assert summary["avg_judge_faithfulness"] == 3.0
 
-    # CA-24.3
+    # CA-24.3: Si no se indica un modelo juez, el sistema debe evaluar igual,
+    # detectando la abstención por el texto de la respuesta.
     def test_summary_without_judge_is_zero(self):
         from src.llm.evaluator import _summarize
 
@@ -1157,7 +1168,9 @@ class TestSummaryJudge:
         assert summary["avg_judge_correctness"] == 0.0
         assert summary["avg_judge_faithfulness"] == 0.0
 
-    # CA-24.1
+    # CA-24.1: Si se indica un modelo juez, el sistema debe puntuar cada respuesta
+    # en corrección, completitud y fidelidad al contexto,
+    # e indicar si el modelo se abstuvo.
     def test_print_summary_shows_judge_scores(self, capsys):
         from src.llm.evaluator import EvaluationReport, _summarize
 
