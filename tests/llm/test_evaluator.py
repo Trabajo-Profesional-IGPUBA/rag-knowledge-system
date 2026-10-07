@@ -19,7 +19,7 @@ Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más 
   - Datos numéricos-> CA-21.1 a CA-21.3
   - Errores durante la evaluación-> CA-22.1 a 22.2
   - Calidad de cada respuesta-> CA-23.1 a CA-23.2
-  - Evaluación por un modelo juez-> CA-24.1
+  - Evaluación por un modelo juez-> CA-24.1 a CA-24.2
   - Consultas sin respuesta-> CA-25.2, CA-25.3 y 25.4
   - Tiempos de respuesta-> CA-27.1
 """
@@ -1043,7 +1043,8 @@ class TestJudgeVerdict:
         _judge(client, "q", "resp", "ctx", None, True)
         assert "NO tiene respuesta" in client.generate.call_args.args[0]
 
-    # CA-24.2
+    # CA-24.2: Si el juez falla o devuelve una evaluación inválida,
+    # la evaluación debe continuar sin esos puntajes.
     def test_invalid_output_returns_none(self):
         from src.llm.evaluator import _judge
 
@@ -1051,7 +1052,8 @@ class TestJudgeVerdict:
         client.generate.return_value = "esto no es json"
         assert _judge(client, "q", "resp", "ctx", "ref", False) is None
 
-    # CA-24.2
+    # CA-24.2: Si el juez falla o devuelve una evaluación inválida,
+    # la evaluación debe continuar sin esos puntajes.
     def test_broken_json_returns_none(self):
         from src.llm.evaluator import _judge
 
@@ -1059,7 +1061,8 @@ class TestJudgeVerdict:
         client.generate.return_value = "{correctness: cinco}"
         assert _judge(client, "q", "resp", "ctx", "ref", False) is None
 
-    # CA-24.2
+    # CA-24.2: Si el juez falla o devuelve una evaluación inválida,
+    # la evaluación debe continuar sin esos puntajes.
     def test_exception_returns_none(self):
         from src.llm.evaluator import _judge
 
