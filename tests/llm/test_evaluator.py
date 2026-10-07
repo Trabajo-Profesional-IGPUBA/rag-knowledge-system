@@ -1447,3 +1447,13 @@ class TestRetrieverSeparation:
         assert summary["quality_ctx_ok"] == 1.0
         assert summary["quality"] == 0.5
         assert summary["retrieval_recall"] == 0.5
+
+    # CA-26.4
+    def test_context_without_text_is_an_error(self):
+        from src.llm.evaluator import _extract_context
+
+        resp = SimpleNamespace(
+            retrieval=SimpleNamespace(chunks=[]), prompt=SimpleNamespace(num_chunks=0)
+        )
+        with pytest.raises(RuntimeError):
+            _extract_context(resp)
