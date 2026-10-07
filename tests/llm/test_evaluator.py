@@ -21,7 +21,7 @@ Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más 
   - Calidad de cada respuesta-> CA-23.1 a CA-23.2
   - Evaluación por un modelo juez-> CA-24.1 a CA-24.4
   - Consultas sin respuesta-> CA-25.2, CA-25.3 y 25.4
-  - Información recuperada por el buscador-> CA-26.1 a 26.2
+  - Información recuperada por el buscador-> CA-26.1 a 26.3
   - Tiempos de respuesta-> CA-27.1
   - Robustez de la ejecución-> CA-29.1 a CA-29.3
 """
@@ -1432,7 +1432,9 @@ class TestRetrieverSeparation:
         report = evaluate_models(MagicMock(), ["m1"], queries=QUERIES[:1], n_runs=1)
         assert report.results[0].context_ok is False
 
-    # CA-26.3
+    # CA-26.3: El resumen debe reportar la calidad del modelo
+    # excluyendo las consultas donde se comprobó que la información no contenía los datos,
+    # y la efectividad del buscador por separado.
     def test_summary_separates_quality_by_context(self):
         from src.llm.evaluator import _summarize
 
