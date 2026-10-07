@@ -984,3 +984,21 @@ class TestNegativeQueries:
         evaluate_models(MagicMock(), ["m1"], queries=QUERIES[:1], n_runs=1)
 
         assert "n/d" in capsys.readouterr().out
+
+
+class TestJudgeGenerate:
+    # CA-24.1
+    def test_generate_reads_text_from_response_object(self):
+        from src.llm.evaluator import _generate
+
+        client = MagicMock()
+        client.generate.return_value = SimpleNamespace(text="hola")
+        assert _generate(client, "prompt") == "hola"
+
+    # CA-24.1
+    def test_generate_accepts_plain_string(self):
+        from src.llm.evaluator import _generate
+
+        client = MagicMock()
+        client.generate.return_value = "hola"
+        assert _generate(client, "prompt") == "hola"
