@@ -50,6 +50,7 @@ class ModelEvalResult:
     judge_faithfulness: float | None = None  # 1-5
     should_abstain: bool = False
     abstained: bool = False
+    context: str = ""
 
     @property
     def ok(self) -> bool:
@@ -100,7 +101,12 @@ class EvaluationReport:
             print(f"    Score keywords    : {stats['avg_keyword_score']:.0%}")
             print(f"    Resp. promedio    : {stats['avg_response_length']:.0f} chars")
             print(f"    Calidad global (errores=0) : {stats['quality']:.0%}")
-            print(f"    Números                    : {stats['avg_number_score']:.0%}")
+            print(
+                f"    Keywords / Números         : {stats['avg_keyword_score']:.0%} / {stats['avg_number_score']:.0%}"
+            )
+            print(
+                f"    Judge correct. / fidelidad : {stats['avg_judge_correctness']:.1f} / {stats['avg_judge_faithfulness']:.1f} (de 5)"
+            )
             print(
                 f"    Abstención incorrecta      : {stats['false_abstention_rate']:.0%}"
             )
@@ -199,6 +205,12 @@ def _summarize(results: list[ModelEvalResult]) -> dict[str, float]:
         ),
         "avg_semantic_similarity": _mean(
             [r.semantic_similarity for r in ok if r.semantic_similarity is not None]
+        ),
+        "avg_judge_correctness": _mean(
+            [r.judge_correctness for r in ok if r.judge_correctness is not None]
+        ),
+        "avg_judge_faithfulness": _mean(
+            [r.judge_faithfulness for r in ok if r.judge_faithfulness is not None]
         ),
         "false_abstention_rate": _mean([1.0 if r.abstained else 0.0 for r in ok_ans]),
         "hallucination_rate": _mean([0.0 if r.abstained else 1.0 for r in ok_neg]),
