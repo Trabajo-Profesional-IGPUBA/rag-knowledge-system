@@ -1010,7 +1010,9 @@ class TestJudgeGenerate:
 
 
 class TestJudgeVerdict:
-    # CA-24.1
+    # CA-24.1: Si se indica un modelo juez, el sistema debe puntuar cada respuesta
+    # en corrección, completitud y fidelidad al contexto,
+    # e indicar si el modelo se abstuvo.
     def test_judge_returns_scores(self):
         from src.llm.evaluator import _judge
 
@@ -1020,7 +1022,9 @@ class TestJudgeVerdict:
         assert verdict["correctness"] == 5
         assert verdict["abstained"] is False
 
-    # CA-24.1
+    # CA-24.1: Si se indica un modelo juez, el sistema debe puntuar cada respuesta
+    # en corrección, completitud y fidelidad al contexto,
+    # e indicar si el modelo se abstuvo.
     def test_judge_extracts_json_surrounded_by_text(self):
         from src.llm.evaluator import _judge
 
@@ -1028,7 +1032,9 @@ class TestJudgeVerdict:
         client.generate.return_value = 'Acá va: {"correctness": 3} listo'
         assert _judge(client, "q", "resp", "ctx", "ref", False) == {"correctness": 3}
 
-    # CA-24.1
+    # CA-24.1: Si se indica un modelo juez, el sistema debe puntuar cada respuesta
+    # en corrección, completitud y fidelidad al contexto,
+    # e indicar si el modelo se abstuvo.
     def test_prompt_for_negative_query_expects_abstention(self):
         from src.llm.evaluator import _judge
 
