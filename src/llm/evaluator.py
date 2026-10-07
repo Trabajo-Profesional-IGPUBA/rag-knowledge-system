@@ -50,6 +50,8 @@ class ModelEvalResult:
     judge_faithfulness: float | None = None  # 1-5
     should_abstain: bool = False
     abstained: bool = False
+    context_recall: float | None = None
+    context_ok: bool | None = None
     context: str = ""
 
     @property
@@ -358,10 +360,22 @@ def _evaluate_one(pipeline, q, model_name, run, embedder) -> ModelEvalResult:
         rag_resp = pipeline.query(query)
         elapsed = time.perf_counter() - t0
         answer = rag_resp.answer
+        context = _extract_context(rag_resp)
 
         hits, total, kw_score = _score_keywords(answer, keywords, query)
         num_score = _score_numbers(answer, reference, query)
         sem_sim = _semantic_similarity(answer, reference, embedder)
+
+        # Contexto: ¿tenía los hechos esperados? (separa falla del retriever vs del LLM)
+        recall_parts = []
+        if context and total > 0:
+            recall_parts.append(_score_keywords(context, keywords, query)[2])
+        if context:
+            ctx_num = _score_numbers(context, reference, query)
+            if ctx_num is not None:
+                recall_parts.append(ctx_num)
+        ctx_recall = sum(recall_parts) / len(recall_parts) if recall_parts else None
+        ctx_ok = None if ctx_recall is None else ctx_recall >= CONTEXT_OK_THRESHOLD
 
         pattern_abstain = _is_no_info_response(answer)
         result = ModelEvalResult(
@@ -380,6 +394,8 @@ def _evaluate_one(pipeline, q, model_name, run, embedder) -> ModelEvalResult:
             is_no_info_response=pattern_abstain,
             semantic_similarity=sem_sim,
             number_score=None if num_score is None else round(num_score, 4),
+            context_recall=None if ctx_recall is None else round(ctx_recall, 4),
+            context_ok=ctx_ok,
         )
     except Exception as e:
         log.error("Error evaluando %s en %s: %s", model_name, q["id"], e)
@@ -419,6 +435,21 @@ def _ensure_model(client: LLMClient, model: str) -> bool:
         log.info("Modelo %s no encontrado, descargando...", model)
         client.pull_model(model)
     return True
+
+
+CONTEXT_OK_THRESHOLD = 0.5
+_CHUNK_TEXT_KEYS = ("text", "content", "document", "chunk_text", "page_content")
+
+
+def _extract_context(rag_resp: Any) -> str:
+    """Texto de los chunks que realmente entraron al prompt del LLM."""
+    chunks = rag_resp.retrieval.chunks[: rag_resp.prompt.num_chunks]
+    parts = []
+    for c in chunks:
+        text = next((c[k] for k in _CHUNK_TEXT_KEYS if c.get(k)), None)
+        if text:
+            parts.append(str(text))
+    return "\n---\n".join(parts)
 
 
 def evaluate_models(
