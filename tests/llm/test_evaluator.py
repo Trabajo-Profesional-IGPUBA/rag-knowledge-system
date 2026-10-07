@@ -24,6 +24,7 @@ Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más 
   - Datos numéricos-> CA-21.1 a CA-21.3
   - Errores durante la evaluación-> CA-22.1 a 22.2
   - Calidad de cada respuesta-> CA-23.1 a CA-23.2 
+  - Tiempos de respuesta-> CA-27.1
 """
 
 
@@ -848,6 +849,9 @@ class TestErrorPenalty:
 
 
 class TestRepetitions:
+    # CA-27.3: El sistema debe poder repetir cada consulta varias veces por modelo,
+    # y todas las repeticiones deben contarse en los resultados.
+
     def test_each_query_runs_n_times(self):
         from src.llm.evaluator import evaluate_models
 
