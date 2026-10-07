@@ -1,4 +1,13 @@
-"""Dataset de consultas de referencia para evaluar el pipeline RAG con distintos modelos LLM."""
+"""Dataset de consultas de referencia para evaluar el pipeline RAG con distintos modelos LLM.
+
+Formato de `expected_keywords`: lista de grupos. Cada grupo es un str o una lista
+de alternativas/sinónimos; cuenta como acierto si aparece CUALQUIERA del grupo.
+Los grupos que ya aparecen en la pregunta se ignoran automáticamente al puntuar.
+
+Las queries con `should_abstain: True` NO tienen respuesta en el corpus: lo correcto
+es que el modelo se abstenga. VERIFICÁ que esos pozos/eventos realmente no existan
+en tus documentos.
+"""
 
 from typing import Any
 
@@ -8,13 +17,18 @@ NO_INFO_PATTERNS = [
     "no se proporcionan detalles",
     "no encontré datos",
     "no dispongo de información",
+    "no hay información",
+    "no se encontró",
+    "no se menciona",
+    "no figura",
+    "no cuento con información",
 ]
 
 EVAL_QUERIES: list[dict[str, Any]] = [
     {
         "id": "q1",
         "query": "¿Tuvimos problemas de pérdida de circulación en la formación Quintuco?",
-        "expected_keywords": ["pérdida de circulación", "Quintuco", "LCM", "PM-104"],
+        "expected_keywords": [["LCM", "cascarilla de nuez"], "PM-104"],
         "reference_answer": (
             "Sí, en 2012 el pozo PM-104 tuvo una pérdida de circulación severa "
             "de aproximadamente 15 m³/h en la formación Quintuco, a los 2.450 "
@@ -27,7 +41,11 @@ EVAL_QUERIES: list[dict[str, Any]] = [
     {
         "id": "q2",
         "query": "¿Qué pasó con la sarta de varillas en el pozo LL-205?",
-        "expected_keywords": ["varillas", "pesca", "overshot", "LL-205", "fatiga"],
+        "expected_keywords": [
+            ["pesca", "herramienta de pesca"],
+            "overshot",
+            ["fatiga", "rotura por fatiga"],
+        ],
         "reference_answer": (
             "En el pozo LL-205 (2019) se produjo un desprendimiento de varillas "
             "a los 1.820 metros por rotura de fatiga en el cuello de una varilla "
@@ -42,11 +60,10 @@ EVAL_QUERIES: list[dict[str, Any]] = [
         "id": "q3",
         "query": "¿Qué causó el screen-out durante la fractura hidráulica en CH-45?",
         "expected_keywords": [
-            "screen-out",
             "arenamiento",
-            "presión",
-            "CH-45",
-            "estimulación",
+            ["presión", "psi"],
+            ["estimulación", "estimulacion"],
+            ["bomba", "unidad fracturadora"],
         ],
         "reference_answer": (
             "En el pozo CH-45 (2021), durante la etapa 4 de estimulación "
@@ -61,11 +78,9 @@ EVAL_QUERIES: list[dict[str, Any]] = [
         "id": "q4",
         "query": "¿Qué mecanismo de corrosión afectó al tubing del pozo YPF-X2?",
         "expected_keywords": [
-            "corrosión",
-            "CO2",
-            "bacterias sulfato-reductoras",
-            "tubing",
-            "Water Cut",
+            ["CO2", "dióxido de carbono"],
+            ["bacterias sulfato-reductoras", "BSR", "sulfato reductoras"],
+            ["Water Cut", "corte de agua"],
         ],
         "reference_answer": (
             "El tubing del pozo YPF-X2 (2017) sufrió corrosión por flujo "
@@ -79,7 +94,11 @@ EVAL_QUERIES: list[dict[str, Any]] = [
     {
         "id": "q5",
         "query": "¿Hubo canalización preferencial entre el inyector PI-08 y algún pozo productor?",
-        "expected_keywords": ["trazador", "canalización", "PI-08", "PM-102", "barrido"],
+        "expected_keywords": [
+            ["trazador", "trazadores"],
+            "PM-102",
+            ["geles", "tapón de geles"],
+        ],
         "reference_answer": (
             "Sí, un ensayo de trazador en el pozo inyector PI-08 (2024) mostró "
             "llegada al pozo productor PM-102 en solo 12 días (vs. 45 días "
@@ -93,11 +112,10 @@ EVAL_QUERIES: list[dict[str, Any]] = [
         "id": "q6",
         "query": "¿Tuvimos problemas con el cable de la BES?",
         "expected_keywords": [
-            "VSD",
-            "aislamiento",
-            "caja de venteo",
-            "BES",
+            ["VSD", "variador"],
+            ["aislamiento", "aislación"],
             "cable de potencia",
+            "centralizadores",
         ],
         "reference_answer": (
             "Sí, en el pozo VM-210 (2023) el sistema BES se detuvo por baja "
@@ -111,7 +129,12 @@ EVAL_QUERIES: list[dict[str, Any]] = [
     {
         "id": "q7",
         "query": "¿A qué profundidad falló la tubería en el pozo LP-15?",
-        "expected_keywords": ["tubing", "junta", "metros", "erosión", "LP-15"],
+        "expected_keywords": [
+            "tubing",
+            ["junta", "junta #54"],
+            "metros",
+            ["erosión", "erosion"],
+        ],
         "reference_answer": (
             'En el pozo LP-15 (2025) el tubing de 2 7/8" falló en la junta #54, '
             "a aproximadamente 1.620 metros de profundidad, con un orificio de "
@@ -125,10 +148,9 @@ EVAL_QUERIES: list[dict[str, Any]] = [
         "query": "¿Qué problemas tuvimos con las BES en este yacimiento por baja tasa de flujo?",
         "expected_keywords": [
             "downthrust",
-            "Run Life",
+            ["Run Life", "vida útil"],
             "sobrecalentamiento",
-            "declinación",
-            "BES",
+            ["declinación", "declinacion"],
         ],
         "reference_answer": (
             "En el pozo PM-104 (2021), el equipo BES falló tras solo 45 días de "
@@ -145,7 +167,6 @@ EVAL_QUERIES: list[dict[str, Any]] = [
         "expected_keywords": [
             "presión de burbuja",
             "gas disuelto",
-            "PM-104",
             "GOR",
             "PVT",
         ],
@@ -166,8 +187,7 @@ EVAL_QUERIES: list[dict[str, Any]] = [
             "facies",
             "arcillosa",
             "canales fluviales",
-            "PM-108",
-            "conectividad",
+            ["limolitas", "aislado"],
         ],
         "reference_answer": (
             "La baja productividad crónica del pozo PM-108 no se debe a daño "
@@ -183,11 +203,9 @@ EVAL_QUERIES: list[dict[str, Any]] = [
         "id": "q11",
         "query": "¿Qué falla mecánica ocurrió en el packer del pozo inyector PI-44?",
         "expected_keywords": [
-            "packer",
-            "incrustaciones",
+            ["incrustaciones", "incrustación"],
             "sulfato de bario",
-            "PI-44",
-            "tracción",
+            ["tracción", "traccion"],
         ],
         "reference_answer": (
             "En el pozo inyector PI-44 (2026) se detectó una falla en el "
@@ -199,5 +217,34 @@ EVAL_QUERIES: list[dict[str, Any]] = [
             "destruido por extrusión química y térmica."
         ),
         "category": "workover",
+    },
+    # ── Queries negativas: no hay respuesta en el corpus → el modelo debe abstenerse ──
+    {
+        "id": "n1",
+        "query": "¿Qué pasó con la bomba de cavidad progresiva en el pozo ZZ-999?",
+        "expected_keywords": [],
+        "should_abstain": True,
+        "category": "sin_respuesta",
+    },
+    {
+        "id": "n2",
+        "query": "¿Hubo un blowout durante la perforación del pozo XQ-777?",
+        "expected_keywords": [],
+        "should_abstain": True,
+        "category": "sin_respuesta",
+    },
+    {
+        "id": "n3",
+        "query": "¿Qué resultado tuvo la inyección de polímeros en el inyector PI-99?",
+        "expected_keywords": [],
+        "should_abstain": True,
+        "category": "sin_respuesta",
+    },
+    {
+        "id": "n4",
+        "query": "¿Por qué falló el compresor del pozo GL-310 en 2022?",
+        "expected_keywords": [],
+        "should_abstain": True,
+        "category": "sin_respuesta",
     },
 ]
