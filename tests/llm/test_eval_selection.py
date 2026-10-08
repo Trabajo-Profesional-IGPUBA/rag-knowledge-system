@@ -103,6 +103,26 @@ class TestModelSelection:
         }
         assert _select_best_model(summary)[0] == "modelo_estable"
 
+    # CA-28.3
+    def test_min_faithfulness_only_applies_when_judged(self):
+        from src.llm.evaluator import _select_best_model
+
+        summary = {
+            "A": _stats(quality=0.9, avg_judge_faithfulness=3.0),
+            "B": _stats(quality=0.8, avg_judge_faithfulness=0.0),  # sin juez
+        }
+        assert _select_best_model(summary, min_faithfulness=4.0)[0] == "B"
+
+    # CA-28.3
+    def test_model_meeting_min_faithfulness_is_kept(self):
+        from src.llm.evaluator import _select_best_model
+
+        summary = {
+            "A": _stats(quality=0.9, avg_judge_faithfulness=4.5),
+            "B": _stats(quality=0.8, avg_judge_faithfulness=5.0),
+        }
+        assert _select_best_model(summary, min_faithfulness=4.0)[0] == "A"
+
     # CA-28.4: El sistema debe descartar los modelos que no lograron ejecutar
     # ninguna consulta con éxito.
     def test_excludes_models_without_successful_runs(self):
