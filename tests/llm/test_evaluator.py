@@ -1522,3 +1522,17 @@ class TestModelSelection:
             "rapido": _stats(quality=0.76, p50_elapsed_sec=10.0, p95_elapsed_sec=10.0),
         }
         assert _select_best_model(summary)[0] == "lento_mucho_mejor"
+
+    # CA-28.2
+    def test_prioritizes_latency_in_slowest_cases(self):
+        from src.llm.evaluator import _select_best_model
+
+        summary = {
+            "modelo_picos": _stats(
+                quality=0.80, p50_elapsed_sec=2.0, p95_elapsed_sec=60.0
+            ),
+            "modelo_estable": _stats(
+                quality=0.80, p50_elapsed_sec=5.0, p95_elapsed_sec=10.0
+            ),
+        }
+        assert _select_best_model(summary)[0] == "modelo_estable"
