@@ -1463,3 +1463,31 @@ class TestLatencyMeasurement:
 
         results = [_result(elapsed_sec=float(i)) for i in range(1, 21)]
         assert _summarize(results)["p95_elapsed_sec"] == 19.0
+
+    # CA-27.4
+    def test_judge_runs_after_all_models_finish(self, mocks):
+        from src.llm.evaluator import evaluate_models
+
+        calls = []
+
+        def _query(text):
+            calls.append("query")
+            return _rag_resp("respuesta")
+
+        def _judge(prompt):
+            calls.append("judge")
+            return '{"correctness": 5, "completeness": 5, "faithfulness": 5, "abstained": false}'
+
+        pipeline = MagicMock()
+        pipeline.query.side_effect = _query
+        mocks.pipeline_cls.return_value = pipeline
+        mocks.client.list_models.return_value = ["m1", "m2", "judge"]
+        mocks.client.generate.side_effect = _judge
+
+        evaluate_models(
+            MagicMock(), ["m1", "m2"], queries=QUERIES, n_runs=1, judge_model="judge"
+        )
+
+        first_judge = calls.index("judge")
+        assert "query" not in calls[first_judge:]
+        assert calls.count("judge") == 4  # 2 modelos x 2 consultas
