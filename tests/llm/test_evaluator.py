@@ -114,6 +114,23 @@ def mocks():
         )
 
 
+def _stats(**overrides):
+    base = {
+        "quality": 0.8,
+        "avg_keyword_score": 0.7,
+        "avg_semantic_similarity": 0.8,
+        "p50_elapsed_sec": 5.0,
+        "p95_elapsed_sec": 8.0,
+        "avg_judge_faithfulness": 0.0,
+        "ok_runs": 10.0,
+        "hallucination_rate": 0.0,
+        "false_abstention_rate": 0.0,
+        "total_negative": 4.0,
+    }
+    base.update(overrides)
+    return base
+
+
 class TestEvaluator:
     # CA-11.1: El sistema debe calcular qué proporción de palabras clave esperadas aparece en una respuesta generada.
     def test_keyword_scoring(self):
@@ -450,7 +467,8 @@ class TestEvaluateModels:
         )
 
         assert report.selected_model == "modelo_bueno"
-        assert "Mayor calidad combinada" in report.selection_rationale
+        assert "Calidad 100%" in report.selection_rationale
+        assert "p50" in report.selection_rationale
 
     # CA-15.1: Si se indica una ruta de salida, el sistema debe guardar el reporte generado en esa ubicación.
     @patch("src.llm.evaluator.RAGPipeline")
@@ -606,70 +624,32 @@ class TestSummarySemanticSimilarity:
 
 
 class TestSelectionCriteria:
-    # CA-19.1: El sistema debe seleccionar el mejor modelo combinando el score de
-    # keywords y la similitud semántica como medida de calidad, usando la latencia
-    # como criterio de desempate.
-    # CA-19.2: La justificación de selección debe reportar por separado el score
-    # de keywords, la similitud semántica y la tasa de abstención del modelo elegido.
-    def test_selects_model_with_best_combined_quality(self):
+    # CA-28.1
+    def test_selects_model_with_best_quality(self):
         from src.llm.evaluator import _select_best_model
 
         summary = {
-            "modelo_a": {
-                "avg_elapsed_sec": 10.0,
-                "avg_keyword_score": 0.3,
-                "avg_semantic_similarity": 0.3,
-                "no_info_rate": 0.5,
-            },
-            "modelo_b": {
-                "avg_elapsed_sec": 20.0,
-                "avg_keyword_score": 0.8,
-                "avg_semantic_similarity": 0.8,
-                "no_info_rate": 0.0,
-            },
+            "modelo_a": _stats(quality=0.3, p50_elapsed_sec=10.0),
+            "modelo_b": _stats(quality=0.8, p50_elapsed_sec=20.0),
         }
+        assert _select_best_model(summary)[0] == "modelo_b"
 
-        selected, rationale = _select_best_model(summary)
-
-        assert selected == "modelo_b"
-        assert "80%" in rationale
-        assert "Tasa de abstención: 0%" in rationale
-
-    # CA-19.1: El sistema debe seleccionar el mejor modelo combinando el score de
-    # keywords y la similitud semántica como medida de calidad, usando la latencia
-    # como criterio de desempate.
-    def test_selects_lower_latency_on_quality_tie(self):
+    # CA-28.8
+    def test_same_quality_picks_the_fastest(self):
         from src.llm.evaluator import _select_best_model
 
         summary = {
-            "modelo_rapido": {
-                "avg_elapsed_sec": 5.0,
-                "avg_keyword_score": 0.5,
-                "avg_semantic_similarity": 0.5,
-                "no_info_rate": 0.0,
-            },
-            "modelo_lento": {
-                "avg_elapsed_sec": 50.0,
-                "avg_keyword_score": 0.5,
-                "avg_semantic_similarity": 0.5,
-                "no_info_rate": 0.0,
-            },
+            "A": _stats(quality=0.80, p50_elapsed_sec=20.0, p95_elapsed_sec=30.0),
+            "B": _stats(quality=0.80, p50_elapsed_sec=5.0, p95_elapsed_sec=10.0),
         }
-
-        selected, _ = _select_best_model(summary)
-
-        assert selected == "modelo_rapido"
+        assert _select_best_model(summary)[0] == "B"
 
     # CA-19.3: Si no hay ningún modelo evaluado (resumen vacío), el sistema no debe fallar al intentar seleccionar el mejor modelo,
     # y debe devolver un modelo seleccionado y una justificación vacíos.
-
     def test_empty_summary_returns_empty_selection(self):
         from src.llm.evaluator import _select_best_model
 
-        selected, rationale = _select_best_model({})
-
-        assert selected == ""
-        assert rationale == ""
+        assert _select_best_model({}) == ("", "")
 
 
 class TestKeywordGroups:
