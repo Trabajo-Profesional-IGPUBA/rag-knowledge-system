@@ -5,7 +5,7 @@ Cubre "ÉPICA: Cliente LLM sobre Ollama":
 
 
 def _result(**overrides):
-    from src.llm.evaluator import ModelEvalResult
+    from src.llm.eval_models import ModelEvalResult
 
     base = {
         "model": "m",
@@ -22,10 +22,10 @@ def _result(**overrides):
     return ModelEvalResult(**base)
 
 
-class TestEvaluator:
+class Testeval_models:
     # CA-10.1: El sistema debe registrar si una evaluación puntual fue exitosa o no, según si tiene un error asociado.
     def test_evaluation_report_summary(self):
-        from src.llm.evaluator import EvaluationReport, ModelEvalResult
+        from src.llm.eval_models import EvaluationReport, ModelEvalResult
 
         report = EvaluationReport(models_evaluated=["llama3:8b"])
         report.results = [
@@ -53,7 +53,7 @@ class TestEvaluator:
 
     # CA-10.1: El sistema debe registrar si una evaluación puntual fue exitosa o no, según si tiene un error asociado.
     def test_model_eval_result_ok_true_without_error(self):
-        from src.llm.evaluator import ModelEvalResult
+        from src.llm.eval_models import ModelEvalResult
 
         result = ModelEvalResult(
             model="llama3:8b",
@@ -70,7 +70,7 @@ class TestEvaluator:
 
     # CA-10.1: El sistema debe registrar si una evaluación puntual fue exitosa o no, según si tiene un error asociado.
     def test_model_eval_result_ok_false_with_error(self):
-        from src.llm.evaluator import ModelEvalResult
+        from src.llm.eval_models import ModelEvalResult
 
         result = ModelEvalResult(
             model="llama3:8b",
@@ -88,7 +88,7 @@ class TestEvaluator:
 
     # CA-10.2: El sistema debe poder convertir el reporte completo (resultados, resumen, modelo seleccionado) a un formato exportable.
     def test_evaluation_report_to_dict(self):
-        from src.llm.evaluator import EvaluationReport, ModelEvalResult
+        from src.llm.eval_models import EvaluationReport, ModelEvalResult
 
         report = EvaluationReport(models_evaluated=["llama3:8b"])
         report.results = [
@@ -111,7 +111,7 @@ class TestEvaluator:
 
     # CA-10.3: El sistema debe poder guardar el reporte en un archivo, creando las carpetas necesarias si no existen.
     def test_evaluation_report_save(self, tmp_path):
-        from src.llm.evaluator import EvaluationReport
+        from src.llm.eval_models import EvaluationReport
 
         report = EvaluationReport(models_evaluated=["llama3:8b"])
         report.selected_model = "llama3:8b"
@@ -125,7 +125,7 @@ class TestEvaluator:
 
     # CA-10.4: El sistema debe poder mostrar en consola un resumen legible por modelo, incluyendo latencia, score de calidad, longitud de respuesta, errores y el modelo seleccionado con su justificación.
     def test_evaluation_report_print_summary(self, capsys):
-        from src.llm.evaluator import EvaluationReport, _summarize
+        from src.llm.eval_models import EvaluationReport, _summarize
 
         report = EvaluationReport(models_evaluated=["llama3:8b"])
         report.summary["llama3:8b"] = _summarize(

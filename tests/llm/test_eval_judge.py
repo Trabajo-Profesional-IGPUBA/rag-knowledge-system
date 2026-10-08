@@ -20,7 +20,7 @@ class TestJudgeGenerate:
     # en corrección, completitud y fidelidad al contexto,
     # e indicar si el modelo se abstuvo.
     def test_generate_reads_text_from_response_object(self):
-        from src.llm.evaluator import _generate
+        from src.llm.eval_judge import _generate
 
         client = MagicMock()
         client.generate.return_value = SimpleNamespace(text="hola")
@@ -30,7 +30,7 @@ class TestJudgeGenerate:
     # en corrección, completitud y fidelidad al contexto,
     # e indicar si el modelo se abstuvo.
     def test_generate_accepts_plain_string(self):
-        from src.llm.evaluator import _generate
+        from src.llm.eval_judge import _generate
 
         client = MagicMock()
         client.generate.return_value = "hola"
@@ -42,7 +42,7 @@ class TestJudgeVerdict:
     # en corrección, completitud y fidelidad al contexto,
     # e indicar si el modelo se abstuvo.
     def test_judge_returns_scores(self):
-        from src.llm.evaluator import _judge
+        from src.llm.eval_judge import _judge
 
         client = MagicMock()
         client.generate.return_value = '{"correctness": 5, "completeness": 4, "faithfulness": 5, "abstained": false}'
@@ -54,7 +54,7 @@ class TestJudgeVerdict:
     # en corrección, completitud y fidelidad al contexto,
     # e indicar si el modelo se abstuvo.
     def test_judge_extracts_json_surrounded_by_text(self):
-        from src.llm.evaluator import _judge
+        from src.llm.eval_judge import _judge
 
         client = MagicMock()
         client.generate.return_value = 'Acá va: {"correctness": 3} listo'
@@ -64,7 +64,7 @@ class TestJudgeVerdict:
     # en corrección, completitud y fidelidad al contexto,
     # e indicar si el modelo se abstuvo.
     def test_prompt_for_negative_query_expects_abstention(self):
-        from src.llm.evaluator import _judge
+        from src.llm.eval_judge import _judge
 
         client = MagicMock()
         client.generate.return_value = "{}"
@@ -74,7 +74,7 @@ class TestJudgeVerdict:
     # CA-24.2: Si el juez falla o devuelve una evaluación inválida,
     # la evaluación debe continuar sin esos puntajes.
     def test_invalid_output_returns_none(self):
-        from src.llm.evaluator import _judge
+        from src.llm.eval_judge import _judge
 
         client = MagicMock()
         client.generate.return_value = "esto no es json"
@@ -83,7 +83,7 @@ class TestJudgeVerdict:
     # CA-24.2: Si el juez falla o devuelve una evaluación inválida,
     # la evaluación debe continuar sin esos puntajes.
     def test_broken_json_returns_none(self):
-        from src.llm.evaluator import _judge
+        from src.llm.eval_judge import _judge
 
         client = MagicMock()
         client.generate.return_value = "{correctness: cinco}"
@@ -92,7 +92,7 @@ class TestJudgeVerdict:
     # CA-24.2: Si el juez falla o devuelve una evaluación inválida,
     # la evaluación debe continuar sin esos puntajes.
     def test_exception_returns_none(self):
-        from src.llm.evaluator import _judge
+        from src.llm.eval_judge import _judge
 
         client = MagicMock()
         client.generate.side_effect = RuntimeError("juez caído")
@@ -104,7 +104,7 @@ class TestApplyJudge:
     # en corrección, completitud y fidelidad al contexto,
     # e indicar si el modelo se abstuvo.
     def test_scores_are_recorded(self):
-        from src.llm.evaluator import _apply_judge
+        from src.llm.eval_judge import _apply_judge
 
         r = _result()
         client = _judge_client(
@@ -120,7 +120,7 @@ class TestApplyJudge:
     # en corrección, completitud y fidelidad al contexto,
     # e indicar si el modelo se abstuvo.
     def test_abstention_verdict_overrides_pattern_detection(self):
-        from src.llm.evaluator import _apply_judge
+        from src.llm.eval_judge import _apply_judge
 
         r = _result(abstained=False)
         client = _judge_client(
@@ -134,7 +134,7 @@ class TestApplyJudge:
     # las medidas disponibles (evaluación del juez, palabras clave, cifras
     # y similitud semántica), usando solo las que se pudieron obtener.
     def test_quality_is_recomputed_with_judge_score(self):
-        from src.llm.evaluator import _apply_judge
+        from src.llm.eval_judge import _apply_judge
 
         r = _result()
         _apply_judge(r, {}, _judge_client('{"correctness": 5}'))
@@ -144,7 +144,7 @@ class TestApplyJudge:
     # CA-24.2: Si el juez falla o devuelve una evaluación inválida,
     # la evaluación debe continuar sin esos puntajes.
     def test_invalid_verdict_leaves_result_untouched(self):
-        from src.llm.evaluator import _apply_judge
+        from src.llm.eval_judge import _apply_judge
 
         r = _result(abstained=True, quality=0.3)
         _apply_judge(r, {}, _judge_client("esto no es json"))
@@ -156,7 +156,7 @@ class TestApplyJudge:
     # CA-24.2: Si el juez falla o devuelve una evaluación inválida,
     # la evaluación debe continuar sin esos puntajes.
     def test_non_numeric_score_is_ignored(self):
-        from src.llm.evaluator import _apply_judge
+        from src.llm.eval_judge import _apply_judge
 
         r = _result()
         _apply_judge(r, {}, _judge_client('{"correctness": "alto"}'))
