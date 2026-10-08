@@ -1,7 +1,6 @@
 """Evaluación comparativa de modelos LLM sobre el pipeline RAG (latencia, cobertura de keywords)."""
 
 import logging
-import math
 import time
 from pathlib import Path
 from typing import Any
@@ -16,6 +15,7 @@ from src.llm.eval_judge import _judge_all
 from src.llm.eval_models import EvaluationReport, ModelEvalResult
 from src.llm.eval_quality import _run_quality
 from src.llm.eval_queries import EVAL_QUERIES
+from src.llm.eval_selection import _select_best_model
 from src.llm.eval_summary import _summarize
 from src.llm.eval_text import (
     _is_no_info_response,
@@ -28,44 +28,6 @@ from src.llm.rag_pipeline import RAGConfig, RAGPipeline
 from src.retrieval.retriever import Retriever
 
 log = logging.getLogger(__name__)
-
-LATENCY_PENALTY_PER_DOUBLING = 0.05
-
-
-def _select_best_model(
-    summary: dict[str, dict[str, float]],
-    latency_penalty: float = LATENCY_PENALTY_PER_DOUBLING,
-) -> tuple[str, str]:
-    """Elige el modelo que mejor responde sin aceptar una latencia desproporcionada."""
-    if not summary:
-        return "", ""
-
-    def _latency(m: str) -> float:
-        return max(summary[m]["p95_elapsed_sec"], 0.01)
-
-    fastest = min(_latency(m) for m in summary)
-
-    def _adjusted(m: str) -> float:
-        return summary[m]["quality"] - latency_penalty * math.log2(
-            _latency(m) / fastest
-        )
-
-    best = max(
-        summary,
-        key=lambda m: (
-            round(_adjusted(m), 6),
-            -_latency(m),
-            -summary[m]["p50_elapsed_sec"],
-        ),
-    )
-
-    s = summary[best]
-    rationale = (
-        f"Calidad {s['quality']:.0%} con latencia máxima (p95) de "
-        f"{s['p95_elapsed_sec']:.1f}s (típica p50 {s['p50_elapsed_sec']:.1f}s): "
-        "es el mejor equilibrio entre calidad y tiempo de respuesta."
-    )
-    return best, rationale
 
 
 def _evaluate_one(pipeline, q, model_name, run, embedder) -> ModelEvalResult:
