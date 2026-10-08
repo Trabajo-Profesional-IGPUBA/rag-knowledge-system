@@ -125,7 +125,8 @@ class Testeval_models:
 
     # CA-10.4: El sistema debe poder mostrar en consola un resumen legible por modelo, incluyendo latencia, score de calidad, longitud de respuesta, errores y el modelo seleccionado con su justificación.
     def test_evaluation_report_print_summary(self, capsys):
-        from src.llm.eval_models import EvaluationReport, _summarize
+        from src.llm.eval_models import EvaluationReport
+        from src.llm.eval_summary import _summarize
 
         report = EvaluationReport(models_evaluated=["llama3:8b"])
         report.summary["llama3:8b"] = _summarize(
