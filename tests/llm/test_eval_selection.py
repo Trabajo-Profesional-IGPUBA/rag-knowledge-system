@@ -4,7 +4,7 @@ subestimaba la calidad real de las respuestas":
   - Selección del modelo con criterio combinado -> CA-19.3
 
 Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más robusto, medición de latencia confiable y elección que combina calidad y tiempo de respuesta"
-  - Selección del modelo -> CA-28.1, CA-28.2, CA-28.3, CA-28.4, 28.6 y 28.8
+  - Selección del modelo -> CA-28.1, CA-28.2, CA-28.3, CA-28.4, 28.6, 28.7 y 28.8
 """
 
 from tests.llm.helpers import (
@@ -172,3 +172,48 @@ class TestModelSelection:
         best, rationale = _select_best_model({"A": _stats(ok_runs=0.0)})
         assert best == ""
         assert "Ningún modelo" in rationale
+
+    # CA-28.7: La justificación debe reportar la calidad, los tiempos de respuesta,
+    # la abstención incorrecta y la alucinación del modelo elegido,
+    # y mencionar los modelos descartados.
+    def test_rationale_reports_quality_latency_and_abstention(self):
+        from src.llm.evaluator import _select_best_model
+
+        summary = {
+            "modelo_a": _stats(),
+            "modelo_b": _stats(avg_judge_faithfulness=2.0),
+        }
+        _, rationale = _select_best_model(summary, min_faithfulness=4.0)
+
+        for text in (
+            "Calidad",
+            "p50",
+            "Abstención incorrecta",
+            "Alucinación",
+            "Descartados",
+            "modelo_b",
+        ):
+            assert text in rationale
+
+    # CA-28.7
+    def test_rationale_omits_hallucination_without_negatives(self):
+        from src.llm.evaluator import _select_best_model
+
+        _, rationale = _select_best_model({"A": _stats(total_negative=0.0)})
+        assert "Alucinación" not in rationale
+
+    # CA-28.7
+    def test_rationale_reports_quality_and_abstention_values(self):
+        from src.llm.evaluator import _select_best_model
+
+        _, rationale = _select_best_model(
+            {
+                "A": _stats(
+                    quality=0.8, avg_keyword_score=0.7, avg_semantic_similarity=0.9
+                )
+            }
+        )
+        assert "80%" in rationale
+        assert "Abstención incorrecta: 0%" in rationale
+        assert "Keywords 70%" in rationale
+        assert "similitud semántica 90%" in rationale
