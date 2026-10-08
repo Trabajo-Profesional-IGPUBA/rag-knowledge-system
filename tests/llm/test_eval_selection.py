@@ -195,14 +195,18 @@ class TestModelSelection:
         ):
             assert text in rationale
 
-    # CA-28.7
+    # CA-28.7 La justificación debe reportar la calidad, los tiempos de respuesta,
+    # la abstención incorrecta, el score de keywords, la similitud semántica
+    # y la alucinación del modelo elegido, y mencionar los modelos descartados.
     def test_rationale_omits_hallucination_without_negatives(self):
         from src.llm.evaluator import _select_best_model
 
         _, rationale = _select_best_model({"A": _stats(total_negative=0.0)})
         assert "Alucinación" not in rationale
 
-    # CA-28.7
+    # CA-28.7 La justificación debe reportar la calidad, los tiempos de respuesta,
+    # la abstención incorrecta, el score de keywords, la similitud semántica
+    # y la alucinación del modelo elegido, y mencionar los modelos descartados.
     def test_rationale_reports_quality_and_abstention_values(self):
         from src.llm.evaluator import _select_best_model
 
