@@ -26,7 +26,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--models",
         nargs="+",
-        default=["llama3.1:8b", "mistral:7b", "qwen3:8b", "qwen3:4b", "llama3.2:3b"],
+        default=["llama3.1:8b", "mistral:7b", "qwen3:8b", "llama3.2:3b", "gemma2:9b"],
         help="Nombres de modelos de Ollama a comparar.",
     )
     parser.add_argument(
@@ -47,9 +47,23 @@ def parse_args() -> argparse.Namespace:
         default=3,
         help="Repeticiones por consulta (promedia la variación). Usá 1 para probar rápido.",
     )
-
+    parser.add_argument(
+        "--latency-penalty",
+        type=float,
+        default=0.05,
+        help="Puntos de calidad (0-1) que se exigen por cada vez que un modelo tarda el doble "
+        "que el más rápido. Más alto = se castiga más a los modelos lentos.",
+    )
+    parser.add_argument(
+        "--min-faithfulness",
+        type=float,
+        default=None,
+        help="Fidelidad mínima (1-5) exigida; requiere --judge-model.",
+    )
     args = parser.parse_args()
 
+    if args.min_faithfulness is not None and not args.judge_model:
+        parser.error("--min-faithfulness requiere --judge-model")
     if args.judge_model and args.judge_model in args.models:
         parser.error("--judge-model no puede ser uno de los modelos evaluados")
     return args
@@ -78,6 +92,8 @@ def main() -> None:
             embedder=embedder,
             judge_model=args.judge_model,
             n_runs=args.n_runs,
+            latency_penalty=args.latency_penalty,
+            min_faithfulness=args.min_faithfulness,
         )
     finally:
         vectorstore.close()
