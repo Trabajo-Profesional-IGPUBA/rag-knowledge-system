@@ -23,6 +23,7 @@ Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más 
   - Consultas sin respuesta-> CA-25.2, CA-25.3 y 25.4
   - Información recuperada por el buscador-> CA-26.1 a 26.4
   - Tiempos de respuesta-> CA-27.1 a 27.4
+  - Selección del modelo -> CA-28.1, 28.6 y 28.8
   - Robustez de la ejecución-> CA-29.1 a CA-29.3
 """
 
@@ -624,7 +625,9 @@ class TestSummarySemanticSimilarity:
 
 
 class TestSelectionCriteria:
-    # CA-28.1
+    # CA-28.1: El sistema debe elegir el modelo que mejor responde,
+    # pero sin aceptar una latencia poco razonable: un modelo notablemente más lento
+    # que los demás solo debe ser elegido si su ventaja en calidad lo compensa.
     def test_selects_model_with_best_quality(self):
         from src.llm.evaluator import _select_best_model
 
@@ -634,7 +637,8 @@ class TestSelectionCriteria:
         }
         assert _select_best_model(summary)[0] == "modelo_b"
 
-    # CA-28.8
+    # CA-28.8: Si dos modelos tienen la misma calidad,
+    # el sistema debe elegir el más rápido.
     def test_same_quality_picks_the_fastest(self):
         from src.llm.evaluator import _select_best_model
 
@@ -646,6 +650,8 @@ class TestSelectionCriteria:
 
     # CA-19.3: Si no hay ningún modelo evaluado (resumen vacío), el sistema no debe fallar al intentar seleccionar el mejor modelo,
     # y debe devolver un modelo seleccionado y una justificación vacíos.
+    # CA-28.6: Si no hay ningún modelo evaluado, el sistema no debe fallar
+    # y debe devolver un modelo seleccionado y una justificación vacíos (mantiene CA-19.3).
     def test_empty_summary_returns_empty_selection(self):
         from src.llm.evaluator import _select_best_model
 
