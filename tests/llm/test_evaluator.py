@@ -614,3 +614,20 @@ class TestLatencyMeasurement:
             )
 
         assert report.selected_model == expected
+
+    # CA-28.3
+    def test_min_faithfulness_discards_model_in_full_evaluation(self, mocks):
+        from src.llm.evaluator import evaluate_models
+
+        mocks.client.generate.return_value = '{"correctness": 5, "completeness": 5, "faithfulness": 1, "abstained": false}'
+        report = evaluate_models(
+            MagicMock(),
+            ["m1"],
+            queries=QUERIES,
+            n_runs=1,
+            judge_model="judge",
+            min_faithfulness=4.0,
+        )
+
+        assert report.selected_model == ""
+        assert "m1" in report.selection_rationale
