@@ -364,25 +364,25 @@ def _judge_all(
 
 
 def _select_best_model(summary: dict[str, dict[str, float]]) -> tuple[str, str]:
-    """Selecciona el mejor modelo por calidad combinada (keywords + similitud
-    semántica), desempatando por menor latencia. Devuelve (modelo, justificación)."""
+    """Elige el modelo de mayor calidad; a igualdad, el más rápido."""
     if not summary:
         return "", ""
 
-    def _quality(stats: dict[str, float]) -> float:
-        return (stats["avg_keyword_score"] + stats["avg_semantic_similarity"]) / 2
-
-    best_model, stats = max(
-        summary.items(),
-        key=lambda x: (_quality(x[1]), -x[1]["avg_elapsed_sec"]),
+    best = max(
+        summary,
+        key=lambda m: (
+            summary[m]["quality"],
+            -summary[m]["p95_elapsed_sec"],
+            -summary[m]["p50_elapsed_sec"],
+        ),
     )
+    s = summary[best]
     rationale = (
-        f"Mayor calidad combinada (keywords {stats['avg_keyword_score']:.0%} "
-        f"+ similitud semántica {stats['avg_semantic_similarity']:.0%}) "
-        f"con latencia de {stats['avg_elapsed_sec']:.1f}s promedio. "
-        f"Tasa de abstención: {stats['no_info_rate']:.0%}."
+        f"Calidad {s['quality']:.0%} con latencia máxima (p95) de "
+        f"{s['p95_elapsed_sec']:.1f}s (típica p50 {s['p50_elapsed_sec']:.1f}s): "
+        "es el mejor equilibrio entre calidad y tiempo de respuesta."
     )
-    return best_model, rationale
+    return best, rationale
 
 
 def _evaluate_one(pipeline, q, model_name, run, embedder) -> ModelEvalResult:
