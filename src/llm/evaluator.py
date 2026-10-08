@@ -129,6 +129,7 @@ def evaluate_models(
     judge_model: str | None = None,
     n_runs: int = 3,
     latency_penalty: float = LATENCY_PENALTY_PER_DOUBLING,
+    min_faithfulness: float | None = None,
 ) -> EvaluationReport:
     """Evalúa cada modelo contra el set de queries, arma el resumen y selecciona el mejor."""
     queries = queries or EVAL_QUERIES
@@ -197,6 +198,7 @@ def evaluate_models(
         report.selected_model, report.selection_rationale = _select_best_model(
             report.summary,
             latency_penalty=latency_penalty,
+            min_faithfulness=min_faithfulness,
         )
 
     if output_path:
