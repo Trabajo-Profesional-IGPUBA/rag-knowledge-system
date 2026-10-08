@@ -1483,7 +1483,9 @@ class TestLatencyMeasurement:
 
 
 class TestModelSelection:
-    # CA-28.1
+    # CA-28.1 El sistema debe elegir el modelo que mejor responde,
+    # pero sin aceptar una latencia poco razonable: un modelo notablemente más lento
+    # que los demás solo debe ser elegido si su ventaja en calidad lo compensa.
     def test_best_quality_wins_when_latency_is_comparable(self):
         from src.llm.evaluator import _select_best_model
 
@@ -1493,7 +1495,9 @@ class TestModelSelection:
         }
         assert _select_best_model(summary)[0] == "A"
 
-    # CA-28.1
+    # CA-28.1 El sistema debe elegir el modelo que mejor responde,
+    # pero sin aceptar una latencia poco razonable: un modelo notablemente más lento
+    # que los demás solo debe ser elegido si su ventaja en calidad lo compensa.
     def test_much_slower_model_needs_a_bigger_quality_advantage(self):
         from src.llm.evaluator import _select_best_model
 
@@ -1505,7 +1509,9 @@ class TestModelSelection:
         }
         assert _select_best_model(summary)[0] == "rapido"
 
-    # CA-28.1
+    # CA-28.1 El sistema debe elegir el modelo que mejor responde,
+    # pero sin aceptar una latencia poco razonable: un modelo notablemente más lento
+    # que los demás solo debe ser elegido si su ventaja en calidad lo compensa.
     def test_slower_model_wins_when_quality_advantage_compensates(self):
         from src.llm.evaluator import _select_best_model
 
