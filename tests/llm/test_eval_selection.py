@@ -102,3 +102,23 @@ class TestModelSelection:
             ),
         }
         assert _select_best_model(summary)[0] == "modelo_estable"
+
+    # CA-28.4
+    def test_excludes_models_without_successful_runs(self):
+        from src.llm.evaluator import _select_best_model
+
+        summary = {
+            "A": _stats(
+                quality=0.0, p50_elapsed_sec=0.0, p95_elapsed_sec=0.0, ok_runs=0.0
+            ),
+            "B": _stats(quality=0.0, p50_elapsed_sec=9.0, p95_elapsed_sec=9.0),
+        }
+        assert _select_best_model(summary)[0] == "B"
+
+    # CA-28.4
+    def test_no_model_selected_when_none_has_successful_runs(self):
+        from src.llm.evaluator import _select_best_model
+
+        best, rationale = _select_best_model({"A": _stats(ok_runs=0.0)})
+        assert best == ""
+        assert "Ningún modelo" in rationale
