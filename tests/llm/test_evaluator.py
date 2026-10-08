@@ -585,7 +585,9 @@ class TestLatencyMeasurement:
         assert "query" not in calls[first_judge:]
         assert calls.count("judge") == 4  # 2 modelos x 2 consultas
 
-    # CA-28.1
+    # CA-28.1: El sistema debe elegir el modelo que mejor responde,
+    # pero sin aceptar una latencia poco razonable: un modelo notablemente más lento
+    # que los demás solo debe ser elegido si su ventaja en calidad lo compensa.
     @pytest.mark.parametrize("penalty,expected", [(0.05, "rapido"), (0.0, "lento")])
     def test_latency_penalty_changes_selected_model(self, mocks, penalty, expected):
         from src.llm.evaluator import evaluate_models
