@@ -97,6 +97,30 @@ class TestSummaryJudge:
 
         assert "4.0 / 5.0 (de 5)" in capsys.readouterr().out
 
+    # CA-25.5
+    def test_avg_keyword_score_ignores_runs_without_answer(self):
+        from src.llm.evaluator import _summarize
+
+        summary = _summarize(
+            [
+                _result(keyword_total=2, keyword_hits=2, keyword_score=1.0),
+                _result(should_abstain=True),  # negativa: no debe bajar el promedio
+            ]
+        )
+        assert summary["avg_keyword_score"] == 1.0
+
+    # CA-22.3
+    def test_avg_keyword_score_counts_failed_runs_as_zero(self):
+        from src.llm.evaluator import _summarize
+
+        summary = _summarize(
+            [
+                _result(keyword_total=2, keyword_hits=2, keyword_score=1.0),
+                _result(error="boom"),
+            ]
+        )
+        assert summary["avg_keyword_score"] == 0.5
+
 
 class TestLatencyMeasurement:
     # CA-27.2: El resumen debe reportar el tiempo típico, el promedio y el tiempo
