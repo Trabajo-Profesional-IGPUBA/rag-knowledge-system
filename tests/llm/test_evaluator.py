@@ -33,6 +33,7 @@ from tests.llm.helpers import (
     _pipeline_by_query,
     _rag_resp,
     _result,
+    _stats,
 )
 
 
@@ -220,7 +221,6 @@ class TestEvaluateModels:
     def test_evaluate_models_saves_report_when_output_path_given(
         self,
         mock_llm_client_cls,
-        mock_prompt_builder_cls,
         mock_rag_pipeline_cls,
         tmp_path,
     ):
@@ -584,3 +584,28 @@ class TestLatencyMeasurement:
         first_judge = calls.index("judge")
         assert "query" not in calls[first_judge:]
         assert calls.count("judge") == 4  # 2 modelos x 2 consultas
+
+    # CA-28.1
+    @pytest.mark.parametrize("penalty,expected", [(0.05, "rapido"), (0.0, "lento")])
+    def test_latency_penalty_changes_selected_model(self, mocks, penalty, expected):
+        from src.llm.evaluator import evaluate_models
+
+        summaries = {
+            "lento": _stats(quality=0.80, p95_elapsed_sec=40.0),
+            "rapido": _stats(quality=0.76, p95_elapsed_sec=10.0),
+        }
+        mocks.client.list_models.return_value = ["lento", "rapido"]
+
+        with patch(
+            "src.llm.evaluator._summarize",
+            side_effect=lambda results: summaries[results[0].model],
+        ):
+            report = evaluate_models(
+                MagicMock(),
+                ["lento", "rapido"],
+                queries=QUERIES,
+                n_runs=1,
+                latency_penalty=penalty,
+            )
+
+        assert report.selected_model == expected
