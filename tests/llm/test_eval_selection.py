@@ -103,6 +103,26 @@ class TestModelSelection:
         }
         assert _select_best_model(summary)[0] == "modelo_estable"
 
+    # CA-28.2
+    def test_rationale_compares_latency_between_models(self):
+        from src.llm.evaluator import _select_best_model
+
+        summary = {
+            "modelo_lento": _stats(quality=0.80, p95_elapsed_sec=60.0),
+            "modelo_rapido": _stats(quality=0.80, p95_elapsed_sec=10.0),
+        }
+        _, rationale = _select_best_model(summary)
+
+        assert "modelo_lento (calidad 80%, p95 60.0s)" in rationale
+        assert "modelo_rapido (calidad 80%, p95 10.0s)" in rationale
+
+    # CA-28.2
+    def test_single_model_has_no_comparison(self):
+        from src.llm.evaluator import _select_best_model
+
+        _, rationale = _select_best_model({"A": _stats()})
+        assert "Comparación entre modelos" not in rationale
+
     # CA-28.3: Si se define una fidelidad mínima,
     # el sistema debe descartar los modelos que no la alcancen,
     # siempre que haya evaluación del juez.
