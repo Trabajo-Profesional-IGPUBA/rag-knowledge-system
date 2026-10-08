@@ -20,6 +20,7 @@ def _percentile(values: list[float], pct: float) -> float:
 
 
 def _summarize(results: list[ModelEvalResult]) -> dict[str, float]:
+    """Resumen agregado de todas las corridas de un modelo."""
     answerable = [r for r in results if not r.should_abstain]
     negatives = [r for r in results if r.should_abstain]
     ok = [r for r in results if r.ok]
@@ -32,12 +33,15 @@ def _summarize(results: list[ModelEvalResult]) -> dict[str, float]:
         "quality_ctx_ok": _mean(
             [r.quality for r in answerable if r.context_ok is not False]
         ),
-        "avg_keyword_score": _mean([r.keyword_score for r in ok]),
+        "avg_keyword_score": _mean(
+            [r.keyword_score for r in answerable if r.ok and r.keyword_total > 0]
+            + [0.0 for r in answerable if not r.ok]
+        ),
         "avg_number_score": _mean(
-            [r.number_score for r in ok if r.number_score is not None]
+            [r.number_score for r in answerable if r.number_score is not None]
         ),
         "avg_semantic_similarity": _mean(
-            [r.semantic_similarity for r in ok if r.semantic_similarity is not None]
+            [r.semantic_similarity for r in ok_ans if r.semantic_similarity is not None]
         ),
         "avg_judge_correctness": _mean(
             [r.judge_correctness for r in ok if r.judge_correctness is not None]
@@ -54,8 +58,7 @@ def _summarize(results: list[ModelEvalResult]) -> dict[str, float]:
         "p50_elapsed_sec": round(statistics.median(latencies), 2) if latencies else 0.0,
         "p95_elapsed_sec": _percentile(latencies, 0.95),
         "avg_response_length": _mean([float(r.response_length) for r in ok]),
-        "no_info_rate": _mean([1.0 if r.is_no_info_response else 0.0 for r in ok]),
-        "error_count": float(len(results) - len(ok)),
+        "error_count": float(len([r for r in results if not r.ok])),
         "ok_runs": float(len(ok)),
         "total_runs": float(len(results)),
         "total_negative": float(len(negatives)),
