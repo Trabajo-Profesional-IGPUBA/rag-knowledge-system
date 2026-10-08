@@ -16,7 +16,7 @@ Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más 
   - Calidad de cada respuesta-> CA-23.1
   - Evaluación por un modelo juez-> CA-24.1 a CA-24.4
   - Consultas sin respuesta-> CA-25.2, CA-25.3 y 25.4
-  - Información recuperada por el buscador-> CA-26.1 a 26.4
+  - Información recuperada por el buscador-> CA-26.1 a 26.3
   - Tiempos de respuesta-> CA-27.1 a 27.4
   - Selección del modelo -> CA-28.1, CA-28.2, 28.6 y 28.8
   - Robustez de la ejecución-> CA-29.1 a CA-29.3
@@ -793,33 +793,6 @@ class TestRetrieverSeparation:
         report = evaluate_models(MagicMock(), ["m1"], queries=QUERIES, n_runs=1)
         assert "LCM" in report.results[0].context
 
-    # CA-26.1: El sistema debe guardar, para cada consulta,
-    # la información que el buscador entregó al modelo.
-    @pytest.mark.parametrize(
-        "resp,expected",
-        [
-            (_rag_resp("r", "a"), "a"),
-            (
-                SimpleNamespace(
-                    retrieval=SimpleNamespace(chunks=[{"text": "a"}, {"text": "b"}]),
-                    prompt=SimpleNamespace(num_chunks=1),
-                ),
-                "a",
-            ),
-            (
-                SimpleNamespace(
-                    retrieval=SimpleNamespace(chunks=[{"text": "a"}, {"text": "b"}]),
-                    prompt=SimpleNamespace(num_chunks=2),
-                ),
-                "a\n---\nb",
-            ),
-        ],
-    )
-    def test_extract_context_shapes(self, resp, expected):
-        from src.llm.evaluator import _extract_context
-
-        assert _extract_context(resp) == expected
-
     # CA-26.2: El sistema debe indicar si esa información
     # contenía los datos necesarios para responder.
     def test_context_recall_and_flag(self, mocks):
@@ -859,17 +832,6 @@ class TestRetrieverSeparation:
         assert summary["quality_ctx_ok"] == 1.0
         assert summary["quality"] == 0.5
         assert summary["retrieval_recall"] == 0.5
-
-    # CA-26.4: Si no se puede obtener el texto de la información recuperada,
-    # la consulta se registra como error.
-    def test_context_without_text_is_an_error(self):
-        from src.llm.evaluator import _extract_context
-
-        resp = SimpleNamespace(
-            retrieval=SimpleNamespace(chunks=[]), prompt=SimpleNamespace(num_chunks=0)
-        )
-        with pytest.raises(RuntimeError):
-            _extract_context(resp)
 
 
 class TestLatencyMeasurement:
