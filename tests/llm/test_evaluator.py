@@ -23,7 +23,7 @@ Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más 
   - Consultas sin respuesta-> CA-25.2, CA-25.3 y 25.4
   - Información recuperada por el buscador-> CA-26.1 a 26.4
   - Tiempos de respuesta-> CA-27.1 a 27.4
-  - Selección del modelo -> CA-28.1, 28.6 y 28.8
+  - Selección del modelo -> CA-28.1, CA-28.2, 28.6 y 28.8
   - Robustez de la ejecución-> CA-29.1 a CA-29.3
 """
 
@@ -1523,7 +1523,9 @@ class TestModelSelection:
         }
         assert _select_best_model(summary)[0] == "lento_mucho_mejor"
 
-    # CA-28.2
+    # CA-28.2: El sistema debe comparar automáticamente los tiempos de respuesta
+    # entre los modelos evaluados, dando prioridad al tiempo en los casos más lentos,
+    # sin que haya que definir un límite de tiempo.
     def test_prioritizes_latency_in_slowest_cases(self):
         from src.llm.evaluator import _select_best_model
 
