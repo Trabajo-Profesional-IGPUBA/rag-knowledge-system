@@ -8,6 +8,7 @@ LATENCY_PENALTY_PER_DOUBLING = 0.05
 def _select_best_model(
     summary: dict[str, dict[str, float]],
     latency_penalty: float = LATENCY_PENALTY_PER_DOUBLING,
+    min_faithfulness: float | None = None,
 ) -> tuple[str, str]:
     """Elige el modelo que mejor responde sin aceptar una latencia desproporcionada."""
     if not summary:
@@ -18,6 +19,13 @@ def _select_best_model(
     for model, s in summary.items():
         if s["ok_runs"] == 0:
             discarded.append(f"{model} (sin corridas exitosas)")
+        elif (
+            min_faithfulness is not None
+            and 0 < s["avg_judge_faithfulness"] < min_faithfulness
+        ):
+            discarded.append(
+                f"{model} (fidelidad {s['avg_judge_faithfulness']:.1f} < {min_faithfulness})"
+            )
         else:
             candidates[model] = s
 
