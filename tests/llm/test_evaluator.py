@@ -1480,3 +1480,39 @@ class TestLatencyMeasurement:
         first_judge = calls.index("judge")
         assert "query" not in calls[first_judge:]
         assert calls.count("judge") == 4  # 2 modelos x 2 consultas
+
+
+class TestModelSelection:
+    # CA-28.1
+    def test_best_quality_wins_when_latency_is_comparable(self):
+        from src.llm.evaluator import _select_best_model
+
+        summary = {
+            "A": _stats(quality=0.80, p50_elapsed_sec=10.0, p95_elapsed_sec=10.0),
+            "B": _stats(quality=0.75, p50_elapsed_sec=9.0, p95_elapsed_sec=9.0),
+        }
+        assert _select_best_model(summary)[0] == "A"
+
+    # CA-28.1
+    def test_much_slower_model_needs_a_bigger_quality_advantage(self):
+        from src.llm.evaluator import _select_best_model
+
+        summary = {
+            "lento_algo_mejor": _stats(
+                quality=0.80, p50_elapsed_sec=40.0, p95_elapsed_sec=40.0
+            ),
+            "rapido": _stats(quality=0.76, p50_elapsed_sec=10.0, p95_elapsed_sec=10.0),
+        }
+        assert _select_best_model(summary)[0] == "rapido"
+
+    # CA-28.1
+    def test_slower_model_wins_when_quality_advantage_compensates(self):
+        from src.llm.evaluator import _select_best_model
+
+        summary = {
+            "lento_mucho_mejor": _stats(
+                quality=0.90, p50_elapsed_sec=40.0, p95_elapsed_sec=40.0
+            ),
+            "rapido": _stats(quality=0.76, p50_elapsed_sec=10.0, p95_elapsed_sec=10.0),
+        }
+        assert _select_best_model(summary)[0] == "lento_mucho_mejor"
