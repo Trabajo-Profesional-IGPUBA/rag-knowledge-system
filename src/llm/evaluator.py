@@ -556,6 +556,8 @@ def evaluate_models(
                     _evaluate_one(pipeline, q, model_name, run, embedder)
                 )
 
+    # Fase 2: el juez corre al final, una sola vez, para no mezclar su carga con los
+    # tiempos de los modelos evaluados ni forzar recargas de modelos en cada consulta.
     if judge_client is not None and report.results:
         _judge_all(report.results, queries, judge_client)
 

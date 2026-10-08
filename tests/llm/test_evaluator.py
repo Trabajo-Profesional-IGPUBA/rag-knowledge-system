@@ -22,7 +22,7 @@ Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más 
   - Evaluación por un modelo juez-> CA-24.1 a CA-24.4
   - Consultas sin respuesta-> CA-25.2, CA-25.3 y 25.4
   - Información recuperada por el buscador-> CA-26.1 a 26.4
-  - Tiempos de respuesta-> CA-27.1
+  - Tiempos de respuesta-> CA-27.1 a 27.4
   - Robustez de la ejecución-> CA-29.1 a CA-29.3
 """
 
@@ -1464,7 +1464,10 @@ class TestLatencyMeasurement:
         results = [_result(elapsed_sec=float(i)) for i in range(1, 21)]
         assert _summarize(results)["p95_elapsed_sec"] == 19.0
 
-    # CA-27.4
+    # CA-27.4: La evaluación del modelo juez debe realizarse una vez terminadas
+    # las consultas a todos los modelos, para que no distorsione
+    # los tiempos de respuesta medidos ni obligue a cargar
+    # y descargar modelos de forma repetida.
     def test_judge_runs_after_all_models_finish(self, mocks):
         from src.llm.evaluator import evaluate_models
 
