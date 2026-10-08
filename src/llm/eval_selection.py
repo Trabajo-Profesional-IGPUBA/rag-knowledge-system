@@ -72,4 +72,16 @@ def _select_best_model(
             )
             + f". Cada vez que un modelo tarda el doble, se le exigen {latency_penalty * 100:.0f} puntos más de calidad."
         )
+
+    parts.append(
+        f"Keywords {s['avg_keyword_score']:.0%}, "
+        f"similitud semántica {s['avg_semantic_similarity']:.0%}."
+    )
+    if s["total_negative"]:
+        parts.append(
+            f"Alucinación en preguntas sin respuesta: {s['hallucination_rate']:.0%}."
+        )
+    parts.append(f"Abstención incorrecta: {s['false_abstention_rate']:.0%}.")
+    if discarded:
+        parts.append("Descartados: " + "; ".join(discarded) + ".")
     return best, " ".join(parts)
