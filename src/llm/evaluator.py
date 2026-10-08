@@ -374,7 +374,7 @@ def _select_best_model(
         return "", ""
 
     def _latency(m: str) -> float:
-        return max(summary[m]["p50_elapsed_sec"], 0.01)
+        return max(summary[m]["p95_elapsed_sec"], 0.01)
 
     fastest = min(_latency(m) for m in summary)
 
@@ -383,7 +383,15 @@ def _select_best_model(
             _latency(m) / fastest
         )
 
-    best = max(summary, key=lambda m: (round(_adjusted(m), 6), -_latency(m)))
+    best = max(
+        summary,
+        key=lambda m: (
+            round(_adjusted(m), 6),
+            -_latency(m),
+            -summary[m]["p50_elapsed_sec"],
+        ),
+    )
+
     s = summary[best]
     rationale = (
         f"Calidad {s['quality']:.0%} con latencia máxima (p95) de "
