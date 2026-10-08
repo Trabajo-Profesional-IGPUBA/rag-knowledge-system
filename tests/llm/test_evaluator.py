@@ -17,6 +17,7 @@ Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más 
   - Consultas sin respuesta-> CA-25.2, CA-25.3 y 25.4
   - Información recuperada por el buscador-> CA-26.1 a 26.2
   - Tiempos de respuesta-> CA-27.1, 27.3 y 27.4
+  - Selección del modelo-> CA-28.3
   - Robustez de la ejecución-> CA-29.1 a CA-29.3
 """
 
@@ -615,7 +616,8 @@ class TestLatencyMeasurement:
 
         assert report.selected_model == expected
 
-    # CA-28.3
+    # CA-28.3: Si se define una fidelidad mínima, el sistema debe descartar
+    # los modelos que no la alcancen, siempre que haya evaluación del juez.
     def test_min_faithfulness_discards_model_in_full_evaluation(self, mocks):
         from src.llm.evaluator import evaluate_models
 
