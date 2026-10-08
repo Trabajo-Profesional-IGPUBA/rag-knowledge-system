@@ -596,9 +596,12 @@ class TestLatencyMeasurement:
         }
         mocks.client.list_models.return_value = ["lento", "rapido"]
 
-        with patch(
-            "src.llm.evaluator._summarize",
-            side_effect=lambda results: summaries[results[0].model],
+        with (
+            patch(
+                "src.llm.evaluator._summarize",
+                side_effect=lambda results: summaries[results[0].model],
+            ),
+            patch("src.llm.evaluator.EvaluationReport.print_summary"),
         ):
             report = evaluate_models(
                 MagicMock(),
