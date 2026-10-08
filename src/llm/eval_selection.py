@@ -56,9 +56,20 @@ def _select_best_model(
     )
 
     s = candidates[best]
-    rationale = (
-        f"Calidad {s['quality']:.0%} con latencia máxima (p95) de "
-        f"{s['p95_elapsed_sec']:.1f}s (típica p50 {s['p50_elapsed_sec']:.1f}s): "
-        "es el mejor equilibrio entre calidad y tiempo de respuesta."
-    )
-    return best, rationale
+    parts = [
+        (
+            f"Calidad {s['quality']:.0%} con latencia máxima (p95) de {s['p95_elapsed_sec']:.1f}s "
+            f"(típica p50 {s['p50_elapsed_sec']:.1f}s): es el mejor equilibrio entre calidad y tiempo de respuesta."
+        )
+    ]
+    if len(candidates) > 1:
+        ranking = sorted(candidates, key=_adjusted, reverse=True)
+        parts.append(
+            "Comparación entre modelos: "
+            + ", ".join(
+                f"{m} (calidad {candidates[m]['quality']:.0%}, p95 {candidates[m]['p95_elapsed_sec']:.1f}s)"
+                for m in ranking
+            )
+            + f". Cada vez que un modelo tarda el doble, se le exigen {latency_penalty * 100:.0f} puntos más de calidad."
+        )
+    return best, " ".join(parts)
