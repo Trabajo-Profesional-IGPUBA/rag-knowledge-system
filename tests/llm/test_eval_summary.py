@@ -97,7 +97,9 @@ class TestSummaryJudge:
 
         assert "4.0 / 5.0 (de 5)" in capsys.readouterr().out
 
-    # CA-25.5
+    # CA-25.5: El promedio de palabras clave del resumen debe calcularse solo
+    # sobre las consultas que tienen respuesta, para que las preguntas
+    # sin respuesta no lo reduzcan.
     def test_avg_keyword_score_ignores_runs_without_answer(self):
         from src.llm.evaluator import _summarize
 
@@ -109,7 +111,9 @@ class TestSummaryJudge:
         )
         assert summary["avg_keyword_score"] == 1.0
 
-    # CA-22.3
+    # CA-22.3: El promedio de palabras clave del resumen debe contar como
+    # cero las consultas con respuesta esperada que fallaron,
+    # en lugar de dejarlas fuera.
     def test_avg_keyword_score_counts_failed_runs_as_zero(self):
         from src.llm.evaluator import _summarize
 
