@@ -4,7 +4,7 @@ subestimaba la calidad real de las respuestas":
   - Selección del modelo con criterio combinado -> CA-19.3
 
 Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más robusto, medición de latencia confiable y elección que combina calidad y tiempo de respuesta"
-  - Selección del modelo -> CA-28.1, CA-28.2, 28.6 y 28.8
+  - Selección del modelo -> CA-28.1, CA-28.2, CA-28.4, 28.6 y 28.8
 """
 
 from tests.llm.helpers import (
@@ -103,7 +103,8 @@ class TestModelSelection:
         }
         assert _select_best_model(summary)[0] == "modelo_estable"
 
-    # CA-28.4
+    # CA-28.4: El sistema debe descartar los modelos que no lograron ejecutar
+    # ninguna consulta con éxito.
     def test_excludes_models_without_successful_runs(self):
         from src.llm.evaluator import _select_best_model
 
@@ -115,7 +116,8 @@ class TestModelSelection:
         }
         assert _select_best_model(summary)[0] == "B"
 
-    # CA-28.4
+    # CA-28.4: El sistema debe descartar los modelos que no lograron ejecutar
+    # ninguna consulta con éxito.
     def test_no_model_selected_when_none_has_successful_runs(self):
         from src.llm.evaluator import _select_best_model
 
