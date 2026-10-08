@@ -27,6 +27,8 @@ log = logging.getLogger(__name__)
 # si algún componente no está disponible, p. ej. sin judge).
 QUALITY_WEIGHTS = {"judge": 0.40, "keywords": 0.25, "numbers": 0.25, "semantic": 0.10}
 
+LATENCY_PENALTY_PER_DOUBLING = 0.05
+
 
 @dataclass
 class ModelEvalResult:
@@ -363,19 +365,25 @@ def _judge_all(
         _apply_judge(r, by_id[r.query_id], judge_client)
 
 
-def _select_best_model(summary: dict[str, dict[str, float]]) -> tuple[str, str]:
-    """Elige el modelo de mayor calidad; a igualdad, el más rápido."""
+def _select_best_model(
+    summary: dict[str, dict[str, float]],
+    latency_penalty: float = LATENCY_PENALTY_PER_DOUBLING,
+) -> tuple[str, str]:
+    """Elige el modelo que mejor responde sin aceptar una latencia desproporcionada."""
     if not summary:
         return "", ""
 
-    best = max(
-        summary,
-        key=lambda m: (
-            summary[m]["quality"],
-            -summary[m]["p95_elapsed_sec"],
-            -summary[m]["p50_elapsed_sec"],
-        ),
-    )
+    def _latency(m: str) -> float:
+        return max(summary[m]["p50_elapsed_sec"], 0.01)
+
+    fastest = min(_latency(m) for m in summary)
+
+    def _adjusted(m: str) -> float:
+        return summary[m]["quality"] - latency_penalty * math.log2(
+            _latency(m) / fastest
+        )
+
+    best = max(summary, key=lambda m: (round(_adjusted(m), 6), -_latency(m)))
     s = summary[best]
     rationale = (
         f"Calidad {s['quality']:.0%} con latencia máxima (p95) de "
