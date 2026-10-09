@@ -51,10 +51,19 @@ def _select_best_model(
             candidates[model] = s
 
     if not candidates:
-        return "", (
-            "Ningún modelo cumplió los requisitos. Descartados: "
-            + "; ".join(discarded)
-            + "."
+
+        def _fails(m: str) -> tuple:
+            s = summary[m]
+            return (s["hallucination_rate"] + s["false_abstention_rate"], -s["quality"])
+
+        viable = [m for m in summary if summary[m]["ok_runs"] > 0]
+        if not viable:
+            return "", "Ningún modelo tuvo corridas exitosas."
+        best = min(viable, key=_fails)
+        return best, (
+            "Ningún modelo cumplió los límites de abstención/alucinación; "
+            f"se eligió {best} por tener la menor suma de fallos. "
+            "Descartados: " + "; ".join(discarded) + "."
         )
 
     def _latency(m: str) -> float:
