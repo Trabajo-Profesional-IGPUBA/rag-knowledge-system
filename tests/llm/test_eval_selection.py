@@ -243,3 +243,30 @@ class TestSelectionLimits:
             "B": _stats(quality=0.7),
         }
         assert _select_best_model(summary, max_false_abstention=None)[0] == "A"
+
+    # CA-28.10
+    def test_discards_high_hallucination(self):
+        from src.llm.evaluator import _select_best_model
+
+        summary = {
+            "A": _stats(quality=0.9, hallucination_rate=0.5),
+            "B": _stats(quality=0.7),
+        }
+        assert _select_best_model(summary)[0] == "B"
+
+    # CA-28.10
+    def test_hallucination_limit_ignored_without_negatives(self):
+        from src.llm.evaluator import _select_best_model
+
+        summary = {"A": _stats(hallucination_rate=1.0, total_negative=0.0)}
+        assert _select_best_model(summary)[0] == "A"
+
+    # CA-28.10
+    def test_hallucination_limit_can_be_disabled(self):
+        from src.llm.evaluator import _select_best_model
+
+        summary = {
+            "A": _stats(quality=0.9, hallucination_rate=0.5),
+            "B": _stats(quality=0.7),
+        }
+        assert _select_best_model(summary, max_hallucination=None)[0] == "A"
