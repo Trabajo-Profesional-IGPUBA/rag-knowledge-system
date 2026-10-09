@@ -4,11 +4,14 @@ import math
 
 LATENCY_PENALTY_PER_DOUBLING = 0.05
 
+MAX_FALSE_ABSTENTION = 0.05
+
 
 def _select_best_model(
     summary: dict[str, dict[str, float]],
     latency_penalty: float = LATENCY_PENALTY_PER_DOUBLING,
     min_faithfulness: float | None = None,
+    max_false_abstention: float | None = MAX_FALSE_ABSTENTION,
 ) -> tuple[str, str]:
     """Elige el modelo que mejor responde sin aceptar una latencia desproporcionada."""
     if not summary:
@@ -25,6 +28,13 @@ def _select_best_model(
         ):
             discarded.append(
                 f"{model} (fidelidad {s['avg_judge_faithfulness']:.1f} < {min_faithfulness})"
+            )
+        elif (
+            max_false_abstention is not None
+            and s["false_abstention_rate"] > max_false_abstention
+        ):
+            discarded.append(
+                f"{model} (abstención incorrecta {s['false_abstention_rate']:.0%} > {max_false_abstention:.0%})"
             )
         else:
             candidates[model] = s
