@@ -11,6 +11,15 @@ from src.llm.eval_quality import _run_quality
 
 log = logging.getLogger(__name__)
 
+# Cantidad de decimales con que se redondea la calidad (0-1) de cada respuesta.
+QUALITY_DECIMALS = 4
+
+# Máximo de caracteres del contexto recuperado que se le pasa al juez.
+JUDGE_MAX_CONTEXT_CHARS = 4000
+
+# Máximo de caracteres de la consulta que se muestran en los logs.
+LOG_QUERY_PREVIEW_CHARS = 40
+
 
 def _generate(client: LLMClient, prompt: str) -> str:
     """Genera texto con un LLMClient (adaptar al método real del cliente)."""
@@ -40,7 +49,7 @@ def _judge(
         "Sos un evaluador estricto de un sistema RAG de ingeniería de petróleo.\n\n"
         f"Pregunta: {query}\n\n"
         f"{ref_block}\n\n"
-        f"Contexto recuperado:\n{context[:4000] or '(vacío)'}\n\n"
+        f"Contexto recuperado:\n{context[:JUDGE_MAX_CONTEXT_CHARS] or '(vacío)'}\n\n"
         f"Respuesta a evaluar:\n{response}\n\n"
         "Devolvé SOLO un JSON, sin texto extra, con esta forma exacta:\n"
         '{"correctness": 1-5, "completeness": 1-5, "faithfulness": 1-5, "abstained": true/false}\n'
@@ -54,7 +63,7 @@ def _judge(
         match = re.search(r"\{.*\}", raw, re.DOTALL)
         return json.loads(match.group(0)) if match else None
     except Exception as e:
-        log.warning("Judge falló en '%s': %s", query[:40], e)
+        log.warning("Judge falló en '%s': %s", query[:LOG_QUERY_PREVIEW_CHARS], e)
         return None
 
 
@@ -84,7 +93,7 @@ def _apply_judge(
     r.judge_faithfulness = _f("faithfulness")
     if isinstance(verdict.get("abstained"), bool):
         r.abstained = verdict["abstained"]
-    r.quality = round(_run_quality(r), 4)
+    r.quality = round(_run_quality(r), QUALITY_DECIMALS)
 
 
 def _judge_all(

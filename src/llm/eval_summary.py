@@ -5,9 +5,18 @@ import statistics
 
 from src.llm.eval_models import ModelEvalResult
 
+# Decimales con que se redondean las métricas de calidad y tasas (0-1).
+METRIC_DECIMALS = 4
+
+# Decimales con que se redondean los tiempos (segundos).
+LATENCY_DECIMALS = 2
+
+# Percentil que se reporta como latencia de cola (p95).
+TAIL_LATENCY_PERCENTILE = 0.95
+
 
 def _mean(values: list[float]) -> float:
-    return round(sum(values) / len(values), 4) if values else 0.0
+    return round(sum(values) / len(values), METRIC_DECIMALS) if values else 0.0
 
 
 def _percentile(values: list[float], pct: float) -> float:
@@ -16,7 +25,7 @@ def _percentile(values: list[float], pct: float) -> float:
         return 0.0
     ordered = sorted(values)
     idx = max(0, min(len(ordered) - 1, math.ceil(pct * len(ordered)) - 1))
-    return round(ordered[idx], 2)
+    return round(ordered[idx], LATENCY_DECIMALS)
 
 
 def _summarize(results: list[ModelEvalResult]) -> dict[str, float]:
@@ -54,9 +63,13 @@ def _summarize(results: list[ModelEvalResult]) -> dict[str, float]:
         ),
         "false_abstention_rate": _mean([1.0 if r.abstained else 0.0 for r in ok_ans]),
         "hallucination_rate": _mean([0.0 if r.abstained else 1.0 for r in ok_neg]),
-        "avg_elapsed_sec": round(statistics.fmean(latencies), 2) if latencies else 0.0,
-        "p50_elapsed_sec": round(statistics.median(latencies), 2) if latencies else 0.0,
-        "p95_elapsed_sec": _percentile(latencies, 0.95),
+        "avg_elapsed_sec": (
+            round(statistics.fmean(latencies), LATENCY_DECIMALS) if latencies else 0.0
+        ),
+        "p50_elapsed_sec": (
+            round(statistics.median(latencies), LATENCY_DECIMALS) if latencies else 0.0
+        ),
+        "p95_elapsed_sec": _percentile(latencies, TAIL_LATENCY_PERCENTILE),
         "avg_response_length": _mean([float(r.response_length) for r in ok]),
         "error_count": float(len([r for r in results if not r.ok])),
         "ok_runs": float(len(ok)),

@@ -34,6 +34,29 @@ from src.retrieval.retriever import Retriever
 
 log = logging.getLogger(__name__)
 
+# Máximo de caracteres del contexto que se guarda en el reporte.
+# Conviene unificarlo con JUDGE_MAX_CONTEXT_CHARS (mismo 4000 que se le pasa al juez).
+STORED_CONTEXT_MAX_CHARS = 4000
+
+# Decimales con que se redondean las métricas (0-1); mismo valor que METRIC_DECIMALS.
+METRIC_DECIMALS = 4
+
+# Decimales con que se redondean los tiempos (segundos); mismo valor que LATENCY_DECIMALS.
+LATENCY_DECIMALS = 2
+
+# Temperatura de los modelos evaluados (baja, para respuestas casi deterministas).
+EVAL_MODEL_TEMPERATURE = 0.1
+
+# Temperatura del juez (0.0 = determinista, para veredictos reproducibles).
+JUDGE_TEMPERATURE = 0.0
+
+# Cantidad de fragmentos que recupera el retriever y score mínimo para aceptarlos.
+RETRIEVAL_TOP_K = 5
+RETRIEVAL_MIN_SCORE = 0.2
+
+# Repeticiones por consulta por defecto (promedia la variación entre corridas).
+DEFAULT_N_RUNS = 3
+
 
 def _evaluate_one(pipeline, q, model_name, run, embedder) -> ModelEvalResult:
     """Ejecuta una query una vez y calcula las métricas."""
@@ -70,20 +93,24 @@ def _evaluate_one(pipeline, q, model_name, run, embedder) -> ModelEvalResult:
             query_id=q["id"],
             query=query,
             response=answer,
-            elapsed_sec=round(elapsed, 2),
+            elapsed_sec=round(elapsed, LATENCY_DECIMALS),
             response_length=len(answer),
             keyword_hits=hits,
             keyword_total=total,
-            keyword_score=round(kw_score, 4),
+            keyword_score=round(kw_score, METRIC_DECIMALS),
             run=run,
             should_abstain=should_abstain,
             abstained=pattern_abstain,
             is_no_info_response=pattern_abstain,
             semantic_similarity=sem_sim,
-            number_score=None if num_score is None else round(num_score, 4),
-            context_recall=None if ctx_recall is None else round(ctx_recall, 4),
+            number_score=(
+                None if num_score is None else round(num_score, METRIC_DECIMALS)
+            ),
+            context_recall=(
+                None if ctx_recall is None else round(ctx_recall, METRIC_DECIMALS)
+            ),
             context_ok=ctx_ok,
-            context=context[:4000],
+            context=context[:STORED_CONTEXT_MAX_CHARS],
         )
     except Exception as e:
         log.error("Error evaluando %s en %s: %s", model_name, q["id"], e)
@@ -104,7 +131,7 @@ def _evaluate_one(pipeline, q, model_name, run, embedder) -> ModelEvalResult:
             semantic_similarity=0.0 if reference else None,
         )
 
-    result.quality = round(_run_quality(result), 4)
+    result.quality = round(_run_quality(result), METRIC_DECIMALS)
     return result
 
 
@@ -132,7 +159,7 @@ def evaluate_models(
     output_path: Path | None = None,
     embedder: Embedder | None = None,
     judge_model: str | None = None,
-    n_runs: int = 3,
+    n_runs: int = DEFAULT_N_RUNS,
     latency_penalty: float = LATENCY_PENALTY_PER_DOUBLING,
     min_faithfulness: float | None = None,
     max_false_abstention: float | None = MAX_FALSE_ABSTENTION,
@@ -152,7 +179,7 @@ def evaluate_models(
         candidate = LLMClient(
             LLMConfig(
                 model=judge_model,
-                temperature=0.0,
+                temperature=JUDGE_TEMPERATURE,
                 think=False if judge_model.startswith("qwen3") else None,
             )
         )
@@ -165,7 +192,7 @@ def evaluate_models(
         log.info("Evaluando modelo: %s", model_name)
         print(f"\n[Evaluando {model_name}...]")
 
-        config = LLMConfig(model=model_name, temperature=0.1)
+        config = LLMConfig(model=model_name, temperature=EVAL_MODEL_TEMPERATURE)
         client = LLMClient(config)
 
         if not _ensure_model(client, model_name):
@@ -175,7 +202,7 @@ def evaluate_models(
             retriever=retriever,
             llm_client=client,
             prompt_builder=prompt_builder,
-            config=RAGConfig(top_k=5, min_score=0.2),
+            config=RAGConfig(top_k=RETRIEVAL_TOP_K, min_score=RETRIEVAL_MIN_SCORE),
         )
 
         # Warm-up: carga el modelo en memoria para que no contamine la latencia medida

@@ -8,6 +8,14 @@ import numpy as np
 from src.embeddings.embedder import Embedder
 from src.llm.eval_queries import NO_INFO_PATTERNS
 
+# Largo mínimo (en dígitos) para que un número cuente en el scoring.
+# Ignora los de 1 dígito, que son demasiado comunes y generan falsos aciertos.
+MIN_NUMBER_DIGITS = 2
+
+# Decimales con que se redondea la similitud semántica.
+# Conviene unificarla con METRIC_DECIMALS (mismo 4 que en las otras métricas).
+SIMILARITY_DECIMALS = 4
+
 
 def _normalize(text: str) -> str:
     """Normaliza texto: minúsculas y sin acentos, para matching más tolerante."""
@@ -38,7 +46,7 @@ def _nums(text: str) -> set[str]:
     """Números sin separadores ('2.450' == '2450'); ignora los de 1 dígito."""
     found = re.findall(r"\d+(?:[.,]\d+)*", text)
     cleaned = {n.replace(".", "").replace(",", "") for n in found}
-    return {n for n in cleaned if len(n) >= 2}
+    return {n for n in cleaned if len(n) >= MIN_NUMBER_DIGITS}
 
 
 def _score_numbers(text: str, reference: str | None, query: str = "") -> float | None:
@@ -74,4 +82,4 @@ def _semantic_similarity(
         return None
     resp_emb = embedder.embed(response)
     ref_emb = embedder.embed(reference)
-    return round(_cosine_similarity(resp_emb, ref_emb), 4)
+    return round(_cosine_similarity(resp_emb, ref_emb), SIMILARITY_DECIMALS)
