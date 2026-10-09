@@ -6,6 +6,7 @@ LATENCY_PENALTY_PER_DOUBLING = 0.05
 
 # máx. % de veces que puede negarse a responder cuando sí había info
 MAX_FALSE_ABSTENTION = 0.05
+MAX_HALLUCINATION = 0.10
 
 
 def _select_best_model(
@@ -13,6 +14,7 @@ def _select_best_model(
     latency_penalty: float = LATENCY_PENALTY_PER_DOUBLING,
     min_faithfulness: float | None = None,
     max_false_abstention: float | None = MAX_FALSE_ABSTENTION,
+    max_hallucination: float | None = MAX_HALLUCINATION,
 ) -> tuple[str, str]:
     """Elige el modelo que mejor responde sin aceptar una latencia desproporcionada."""
     if not summary:
@@ -36,6 +38,14 @@ def _select_best_model(
         ):
             discarded.append(
                 f"{model} (abstención incorrecta {s['false_abstention_rate']:.0%} > {max_false_abstention:.0%})"
+            )
+        elif (
+            max_hallucination is not None
+            and s["total_negative"]
+            and s["hallucination_rate"] > max_hallucination
+        ):
+            discarded.append(
+                f"{model} (alucinación {s['hallucination_rate']:.0%} > {max_hallucination:.0%})"
             )
         else:
             candidates[model] = s
