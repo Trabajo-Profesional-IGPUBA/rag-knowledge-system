@@ -631,5 +631,5 @@ class TestLatencyMeasurement:
             min_faithfulness=4.0,
         )
 
-        assert report.selected_model == ""
-        assert "m1" in report.selection_rationale
+        assert report.selected_model == "m1"
+        assert "Descartados" in report.selection_rationale

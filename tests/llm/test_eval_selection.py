@@ -7,7 +7,14 @@ Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más 
   - Selección del modelo -> CA-28.1 a 28.10
 """
 
+from unittest.mock import MagicMock
+
+import pytest
+
 from tests.llm.helpers import (
+    ANSWERS,
+    QUERIES,
+    _pipeline_by_query,
     _stats,
 )
 
@@ -292,3 +299,20 @@ class TestSelectionLimits:
             "B": _stats(quality=0.7),
         }
         assert _select_best_model(summary, max_hallucination=None)[0] == "A"
+
+    # CA-28.10
+    @pytest.mark.parametrize("limit,fallback", [(0.10, True), (None, False)])
+    def test_hallucination_limit_applies_in_full_evaluation(
+        self, mocks, limit, fallback
+    ):
+        from src.llm.evaluator import evaluate_models
+
+        mocks.pipeline_cls.return_value = _pipeline_by_query(
+            {**ANSWERS, "¿Qué pasó en ZZ-999?": "Falló por fatiga."}
+        )
+        report = evaluate_models(
+            MagicMock(), ["m1"], queries=QUERIES, n_runs=1, max_hallucination=limit
+        )
+
+        assert report.selected_model == "m1"
+        assert ("Ningún modelo cumplió" in report.selection_rationale) is fallback
