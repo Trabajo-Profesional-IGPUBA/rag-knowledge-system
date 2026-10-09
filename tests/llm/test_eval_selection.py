@@ -4,7 +4,7 @@ subestimaba la calidad real de las respuestas":
   - Selección del modelo con criterio combinado -> CA-19.3
 
 Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más robusto, medición de latencia confiable y elección que combina calidad y tiempo de respuesta"
-  - Selección del modelo -> CA-28.1, CA-28.2, CA-28.3, CA-28.4, 28.6, 28.7, 28.8, 28.9 y 28.10
+  - Selección del modelo -> CA-28.1 a 28.10
 """
 
 from tests.llm.helpers import (
@@ -173,7 +173,11 @@ class TestModelSelection:
         assert best == ""
         assert "Ningún modelo" in rationale
 
-    # CA-28.5
+    # CA-28.5: Si ningún modelo cumple los requisitos definidos (fidelidad mínima,
+    # abstención incorrecta máxima, alucinación máxima), se elige el de menor suma
+    # de fallos (abstención incorrecta + alucinación) y la justificación explica
+    # por qué los demás fueron descartados. Si ningún modelo ejecutó
+    # una consulta con éxito, no se elige ninguno.
     def test_no_model_meets_requirements_falls_back_to_fewest_failures(self):
         from src.llm.evaluator import _select_best_model
 
