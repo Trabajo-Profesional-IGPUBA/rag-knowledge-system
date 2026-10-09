@@ -173,6 +173,21 @@ class TestModelSelection:
         assert best == ""
         assert "Ningún modelo" in rationale
 
+    # CA-28.5
+    def test_no_model_meets_requirements_falls_back_to_fewest_failures(self):
+        from src.llm.evaluator import _select_best_model
+
+        summary = {
+            "modelo_a": _stats(avg_judge_faithfulness=2.0, false_abstention_rate=0.2),
+            "modelo_b": _stats(avg_judge_faithfulness=2.0, false_abstention_rate=0.1),
+        }
+        best, rationale = _select_best_model(summary, min_faithfulness=4.0)
+
+        assert best == "modelo_b"
+        assert "Ningún modelo" in rationale
+        assert "Descartados" in rationale
+        assert "modelo_a" in rationale
+
     # CA-28.7: La justificación debe reportar la calidad, los tiempos de respuesta,
     # la abstención incorrecta y la alucinación del modelo elegido,
     # y mencionar los modelos descartados.
