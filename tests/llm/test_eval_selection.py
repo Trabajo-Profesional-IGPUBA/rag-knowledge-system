@@ -221,3 +221,25 @@ class TestModelSelection:
         assert "Abstención incorrecta: 0%" in rationale
         assert "Keywords 70%" in rationale
         assert "similitud semántica 90%" in rationale
+
+
+class TestSelectionLimits:
+    # CA-28.9
+    def test_discards_high_false_abstention(self):
+        from src.llm.evaluator import _select_best_model
+
+        summary = {
+            "A": _stats(quality=0.9, false_abstention_rate=0.2),
+            "B": _stats(quality=0.7),
+        }
+        assert _select_best_model(summary)[0] == "B"
+
+    # CA-28.9
+    def test_false_abstention_limit_can_be_disabled(self):
+        from src.llm.evaluator import _select_best_model
+
+        summary = {
+            "A": _stats(quality=0.9, false_abstention_rate=0.2),
+            "B": _stats(quality=0.7),
+        }
+        assert _select_best_model(summary, max_false_abstention=None)[0] == "A"
