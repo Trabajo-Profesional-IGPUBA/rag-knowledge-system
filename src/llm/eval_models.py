@@ -3,7 +3,7 @@
 import json
 import logging
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 log = logging.getLogger(__name__)
@@ -47,9 +47,7 @@ class ModelEvalResult:
 class EvaluationReport:
     """Reporte consolidado de la evaluación: resultados por query, resumen por modelo y selección final."""
 
-    evaluated_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    evaluated_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     models_evaluated: list[str] = field(default_factory=list)
     results: list[ModelEvalResult] = field(default_factory=list)
     summary: dict[str, dict[str, float]] = field(default_factory=dict)
