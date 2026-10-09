@@ -2,7 +2,10 @@
 
 from typing import Any
 
+# recall mínimo del contexto para considerar que "tenía la respuesta"
 CONTEXT_OK_THRESHOLD = 0.5
+
+# Claves posibles donde el chunk guarda su texto
 _CHUNK_TEXT_KEYS = ("text", "content", "document", "chunk_text", "page_content")
 
 

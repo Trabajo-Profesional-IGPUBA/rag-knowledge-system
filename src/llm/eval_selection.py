@@ -2,10 +2,13 @@
 
 import math
 
+# Cada vez que un modelo tarda el doble que el más rápido, se le exige esta ventaja
+# (en puntos de calidad, 0-1) para ser elegido. Es una comparación relativa entre modelos.
 LATENCY_PENALTY_PER_DOUBLING = 0.05
 
 # máx. % de veces que puede negarse a responder cuando sí había info
 MAX_FALSE_ABSTENTION = 0.05
+# máx. % de veces que puede inventar cuando NO había info
 MAX_HALLUCINATION = 0.10
 
 
