@@ -4,7 +4,7 @@ subestimaba la calidad real de las respuestas":
   - Selección del modelo con criterio combinado -> CA-19.3
 
 Cubre "Mejorar la selección de modelos LLM en la evaluación RAG: scoring más robusto, medición de latencia confiable y elección que combina calidad y tiempo de respuesta"
-  - Selección del modelo -> CA-28.1, CA-28.2, CA-28.3, CA-28.4, 28.6, 28.7 y 28.8
+  - Selección del modelo -> CA-28.1, CA-28.2, CA-28.3, CA-28.4, 28.6, 28.7, 28.8, 28.9 y 28.10
 """
 
 from tests.llm.helpers import (
@@ -244,7 +244,8 @@ class TestSelectionLimits:
         }
         assert _select_best_model(summary, max_false_abstention=None)[0] == "A"
 
-    # CA-28.10
+    # CA-28.10: Se descarta el modelo cuya tasa de alucinación supere el máximo,
+    # solo si hay preguntas sin respuesta.
     def test_discards_high_hallucination(self):
         from src.llm.evaluator import _select_best_model
 
@@ -254,14 +255,16 @@ class TestSelectionLimits:
         }
         assert _select_best_model(summary)[0] == "B"
 
-    # CA-28.10
+    # CA-28.10: Se descarta el modelo cuya tasa de alucinación supere el máximo,
+    # solo si hay preguntas sin respuesta.
     def test_hallucination_limit_ignored_without_negatives(self):
         from src.llm.evaluator import _select_best_model
 
         summary = {"A": _stats(hallucination_rate=1.0, total_negative=0.0)}
         assert _select_best_model(summary)[0] == "A"
 
-    # CA-28.10
+    # CA-28.10: Se descarta el modelo cuya tasa de alucinación supere el máximo,
+    # solo si hay preguntas sin respuesta.
     def test_hallucination_limit_can_be_disabled(self):
         from src.llm.evaluator import _select_best_model
 
