@@ -300,7 +300,8 @@ class TestSelectionLimits:
         }
         assert _select_best_model(summary, max_hallucination=None)[0] == "A"
 
-    # CA-28.10
+    # CA-28.10: Se descarta el modelo cuya tasa de alucinación supere el máximo,
+    # solo si hay preguntas sin respuesta.
     @pytest.mark.parametrize("limit,fallback", [(0.10, True), (None, False)])
     def test_hallucination_limit_applies_in_full_evaluation(
         self, mocks, limit, fallback

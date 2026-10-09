@@ -16,7 +16,14 @@ def _select_best_model(
     max_false_abstention: float | None = MAX_FALSE_ABSTENTION,
     max_hallucination: float | None = MAX_HALLUCINATION,
 ) -> tuple[str, str]:
-    """Elige el modelo que mejor responde sin aceptar una latencia desproporcionada."""
+    """Elige el modelo que mejor responde sin aceptar una latencia desproporcionada.
+
+    1. Descarta modelos sin corridas exitosas o con fidelidad (judge, 1-5) < `min_faithfulness`.
+    2. Compara la latencia entre los modelos restantes (p95, casos más lentos): cada vez que
+       un modelo tarda el doble que el más rápido, se le restan `latency_penalty` puntos de calidad.
+    3. Gana el mayor puntaje ajustado; a igualdad, el más rápido. No requiere ningún límite externo.
+    """
+
     if not summary:
         return "", ""
 
