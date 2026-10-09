@@ -15,7 +15,12 @@ from src.llm.eval_judge import _judge_all
 from src.llm.eval_models import EvaluationReport, ModelEvalResult
 from src.llm.eval_quality import _run_quality
 from src.llm.eval_queries import EVAL_QUERIES
-from src.llm.eval_selection import LATENCY_PENALTY_PER_DOUBLING, _select_best_model
+from src.llm.eval_selection import (
+    LATENCY_PENALTY_PER_DOUBLING,
+    MAX_FALSE_ABSTENTION,
+    MAX_HALLUCINATION,
+    _select_best_model,
+)
 from src.llm.eval_summary import _summarize
 from src.llm.eval_text import (
     _is_no_info_response,
@@ -130,6 +135,8 @@ def evaluate_models(
     n_runs: int = 3,
     latency_penalty: float = LATENCY_PENALTY_PER_DOUBLING,
     min_faithfulness: float | None = None,
+    max_false_abstention: float | None = MAX_FALSE_ABSTENTION,
+    max_hallucination: float | None = MAX_HALLUCINATION,
 ) -> EvaluationReport:
     """Evalúa cada modelo contra el set de queries, arma el resumen y selecciona el mejor."""
     queries = queries or EVAL_QUERIES
@@ -199,6 +206,8 @@ def evaluate_models(
             report.summary,
             latency_penalty=latency_penalty,
             min_faithfulness=min_faithfulness,
+            max_false_abstention=max_false_abstention,
+            max_hallucination=max_hallucination,
         )
 
     if output_path:
