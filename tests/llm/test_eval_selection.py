@@ -224,7 +224,7 @@ class TestModelSelection:
 
 
 class TestSelectionLimits:
-    # CA-28.9
+    # CA-28.9: Se descarta el modelo cuya tasa de abstención incorrecta supere el máximo.
     def test_discards_high_false_abstention(self):
         from src.llm.evaluator import _select_best_model
 
@@ -234,7 +234,7 @@ class TestSelectionLimits:
         }
         assert _select_best_model(summary)[0] == "B"
 
-    # CA-28.9
+    # CA-28.9: Se descarta el modelo cuya tasa de abstención incorrecta supere el máximo.
     def test_false_abstention_limit_can_be_disabled(self):
         from src.llm.evaluator import _select_best_model
 

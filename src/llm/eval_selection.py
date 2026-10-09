@@ -4,6 +4,7 @@ import math
 
 LATENCY_PENALTY_PER_DOUBLING = 0.05
 
+# máx. % de veces que puede negarse a responder cuando sí había info
 MAX_FALSE_ABSTENTION = 0.05
 
 
