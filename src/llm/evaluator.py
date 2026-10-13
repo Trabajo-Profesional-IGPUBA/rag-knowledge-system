@@ -1,153 +1,155 @@
 """Evaluación comparativa de modelos LLM sobre el pipeline RAG (latencia, cobertura de keywords)."""
 
-import json
 import logging
 import time
-import unicodedata
-from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-
 from src.embeddings.embedder import Embedder
 from src.llm.client import LLMClient, LLMConfig
-from src.llm.eval_queries import EVAL_QUERIES, NO_INFO_PATTERNS
+from src.llm.eval_context import (
+    CONTEXT_OK_THRESHOLD,
+    _extract_context,
+)
+from src.llm.eval_judge import _judge_all
+from src.llm.eval_models import EvaluationReport, ModelEvalResult
+from src.llm.eval_quality import _run_quality
+from src.llm.eval_queries import EVAL_QUERIES
+from src.llm.eval_selection import (
+    LATENCY_PENALTY_PER_DOUBLING,
+    MAX_FALSE_ABSTENTION,
+    MAX_HALLUCINATION,
+    _select_best_model,
+)
+from src.llm.eval_summary import _summarize
+from src.llm.eval_text import (
+    _is_no_info_response,
+    _score_keywords,
+    _score_numbers,
+    _semantic_similarity,
+)
 from src.llm.prompt_builder import PromptBuilder
 from src.llm.rag_pipeline import RAGConfig, RAGPipeline
 from src.retrieval.retriever import Retriever
 
 log = logging.getLogger(__name__)
 
+# Máximo de caracteres del contexto que se guarda en el reporte.
+# Conviene unificarlo con JUDGE_MAX_CONTEXT_CHARS (mismo 4000 que se le pasa al juez).
+STORED_CONTEXT_MAX_CHARS = 4000
 
-@dataclass
-class ModelEvalResult:
-    """Resultado de evaluar un modelo sobre una consulta puntual."""
+# Decimales con que se redondean las métricas (0-1); mismo valor que METRIC_DECIMALS.
+METRIC_DECIMALS = 4
 
-    model: str
-    query_id: str
-    query: str
-    response: str
-    elapsed_sec: float
-    response_length: int
-    keyword_hits: int
-    keyword_total: int
-    keyword_score: float
-    error: str | None = None
-    is_no_info_response: bool = False
-    semantic_similarity: float | None = None
+# Decimales con que se redondean los tiempos (segundos); mismo valor que LATENCY_DECIMALS.
+LATENCY_DECIMALS = 2
 
-    @property
-    def ok(self) -> bool:
-        """True si la consulta se ejecutó sin error."""
-        return self.error is None
+# Temperatura de los modelos evaluados (baja, para respuestas casi deterministas).
+EVAL_MODEL_TEMPERATURE = 0.1
+
+# Temperatura del juez (0.0 = determinista, para veredictos reproducibles).
+JUDGE_TEMPERATURE = 0.0
+
+# Cantidad de fragmentos que recupera el retriever y score mínimo para aceptarlos.
+RETRIEVAL_TOP_K = 5
+RETRIEVAL_MIN_SCORE = 0.2
+
+# Repeticiones por consulta por defecto (promedia la variación entre corridas).
+DEFAULT_N_RUNS = 3
 
 
-@dataclass
-class EvaluationReport:
-    """Reporte consolidado de la evaluación: resultados por query, resumen por modelo y selección final."""
+def _evaluate_one(pipeline, q, model_name, run, embedder) -> ModelEvalResult:
+    """Ejecuta una query una vez y calcula las métricas."""
+    keywords = q.get("expected_keywords", [])
+    reference = q.get("reference_answer")
+    should_abstain = bool(q.get("should_abstain", False))
+    query = q["query"]
 
-    evaluated_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
-    models_evaluated: list[str] = field(default_factory=list)
-    results: list[ModelEvalResult] = field(default_factory=list)
-    summary: dict[str, dict[str, float]] = field(default_factory=dict)
-    selected_model: str = ""
-    selection_rationale: str = ""
+    try:
+        t0 = time.perf_counter()
+        rag_resp = pipeline.query(query)
+        elapsed = time.perf_counter() - t0
+        answer = rag_resp.answer
+        context = _extract_context(rag_resp)
 
-    def to_dict(self) -> dict:
-        """Convierte el reporte a diccionario serializable."""
-        d = asdict(self)
-        return d
+        hits, total, kw_score = _score_keywords(answer, keywords, query)
+        num_score = _score_numbers(answer, reference, query)
+        sem_sim = _semantic_similarity(answer, reference, embedder)
 
-    def save(self, path: Path) -> None:
-        """Guarda el reporte como JSON en el path indicado, creando carpetas si hace falta."""
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            json.dumps(self.to_dict(), indent=2, ensure_ascii=False),
-            encoding="utf-8",
+        # Contexto: ¿tenía los hechos esperados? (separa falla del retriever vs del LLM)
+        recall_parts = []
+        if context and total > 0:
+            recall_parts.append(_score_keywords(context, keywords, query)[2])
+        if context:
+            ctx_num = _score_numbers(context, reference, query)
+            if ctx_num is not None:
+                recall_parts.append(ctx_num)
+        ctx_recall = sum(recall_parts) / len(recall_parts) if recall_parts else None
+        ctx_ok = None if ctx_recall is None else ctx_recall >= CONTEXT_OK_THRESHOLD
+
+        pattern_abstain = _is_no_info_response(answer)
+        result = ModelEvalResult(
+            model=model_name,
+            query_id=q["id"],
+            query=query,
+            response=answer,
+            elapsed_sec=round(elapsed, LATENCY_DECIMALS),
+            response_length=len(answer),
+            keyword_hits=hits,
+            keyword_total=total,
+            keyword_score=round(kw_score, METRIC_DECIMALS),
+            run=run,
+            should_abstain=should_abstain,
+            abstained=pattern_abstain,
+            is_no_info_response=pattern_abstain,
+            semantic_similarity=sem_sim,
+            number_score=(
+                None if num_score is None else round(num_score, METRIC_DECIMALS)
+            ),
+            context_recall=(
+                None if ctx_recall is None else round(ctx_recall, METRIC_DECIMALS)
+            ),
+            context_ok=ctx_ok,
+            context=context[:STORED_CONTEXT_MAX_CHARS],
         )
-        log.info("Reporte de evaluación guardado en %s", path)
+    except Exception as e:
+        log.error("Error evaluando %s en %s: %s", model_name, q["id"], e)
+        result = ModelEvalResult(
+            model=model_name,
+            query_id=q["id"],
+            query=query,
+            response="",
+            elapsed_sec=0.0,
+            response_length=0,
+            keyword_hits=0,
+            keyword_total=0,
+            keyword_score=0.0,
+            run=run,
+            error=str(e),
+            should_abstain=should_abstain,
+            number_score=0.0 if reference else None,
+            semantic_similarity=0.0 if reference else None,
+        )
 
-    def print_summary(self) -> None:
-        """Imprime en consola un resumen legible del reporte por modelo."""
-        print("\n" + "═" * 60)
-        print("EVALUACIÓN COMPARATIVA DE MODELOS LLM")
-        print("═" * 60)
-        for model, stats in self.summary.items():
-            print(f"\n  Modelo: {model}")
-            print(f"    Latencia promedio : {stats['avg_elapsed_sec']:.2f}s")
-            print(f"    Score keywords    : {stats['avg_keyword_score']:.0%}")
-            print(f"    Resp. promedio    : {stats['avg_response_length']:.0f} chars")
-            print(f"    Errores           : {stats['error_count']:.0f}")
-        print(f"\n  → Modelo seleccionado: {self.selected_model}")
-        print(f"  → Justificación: {self.selection_rationale}")
-        print("═" * 60)
-
-
-def _normalize(text: str) -> str:
-    """Normaliza texto: minúsculas y sin acentos, para matching más tolerante."""
-    text = text.lower()
-    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
-    return text
+    result.quality = round(_run_quality(result), METRIC_DECIMALS)
+    return result
 
 
-def _score_keywords(response: str, keywords: list[str]) -> tuple[int, float]:
-    """Cuenta keywords esperadas presentes en la respuesta (case/acentos-insensitive)."""
-    response_norm = _normalize(response)
-    hits = sum(1 for kw in keywords if _normalize(kw) in response_norm)
-    score = hits / len(keywords) if keywords else 0.0
-    return hits, score
+def _model_available(model: str, available: list[str]) -> bool:
+    """Sin tag, Ollama lo resuelve como ':latest'."""
+    names = set(available)
+    return model in names or f"{model}:latest" in names
 
 
-def _is_no_info_response(response: str) -> bool:
-    """Detecta si la respuesta es una abstención ('no encontré información...')."""
-    response_norm = _normalize(response)
-    return any(_normalize(p) in response_norm for p in NO_INFO_PATTERNS)
-
-
-def _cosine_similarity(a: list[float], b: list[float]) -> float:
-    """Similitud coseno entre dos vectores."""
-    a_arr, b_arr = np.array(a), np.array(b)
-    denom = np.linalg.norm(a_arr) * np.linalg.norm(b_arr)
-    if denom == 0:
-        return 0.0
-    return float(np.dot(a_arr, b_arr) / denom)
-
-
-def _semantic_similarity(
-    response: str, reference: str | None, embedder: Embedder | None
-) -> float | None:
-    """Similitud semántica (coseno) entre la respuesta generada y la referencia."""
-    if not reference or embedder is None:
-        return None
-    resp_emb = embedder.embed(response)
-    ref_emb = embedder.embed(reference)
-    return round(_cosine_similarity(resp_emb, ref_emb), 4)
-
-
-def _select_best_model(summary: dict[str, dict[str, float]]) -> tuple[str, str]:
-    """Selecciona el mejor modelo por calidad combinada (keywords + similitud
-    semántica), desempatando por menor latencia. Devuelve (modelo, justificación)."""
-    if not summary:
-        return "", ""
-
-    def _quality(stats: dict[str, float]) -> float:
-        return (stats["avg_keyword_score"] + stats["avg_semantic_similarity"]) / 2
-
-    best_model, stats = max(
-        summary.items(),
-        key=lambda x: (_quality(x[1]), -x[1]["avg_elapsed_sec"]),
-    )
-    rationale = (
-        f"Mayor calidad combinada (keywords {stats['avg_keyword_score']:.0%} "
-        f"+ similitud semántica {stats['avg_semantic_similarity']:.0%}) "
-        f"con latencia de {stats['avg_elapsed_sec']:.1f}s promedio. "
-        f"Tasa de abstención: {stats['no_info_rate']:.0%}."
-    )
-    return best_model, rationale
+def _ensure_model(client: LLMClient, model: str) -> bool:
+    """Verifica Ollama y descarga el modelo si falta. False si no se puede usar."""
+    if not client.is_available():
+        log.error("Ollama no disponible para modelo %s", model)
+        return False
+    if not _model_available(model, client.list_models()):
+        log.info("Modelo %s no encontrado, descargando...", model)
+        client.pull_model(model)
+    return True
 
 
 def evaluate_models(
@@ -156,129 +158,83 @@ def evaluate_models(
     queries: list[dict[str, Any]] | None = None,
     output_path: Path | None = None,
     embedder: Embedder | None = None,
+    judge_model: str | None = None,
+    n_runs: int = DEFAULT_N_RUNS,
+    latency_penalty: float = LATENCY_PENALTY_PER_DOUBLING,
+    min_faithfulness: float | None = None,
+    max_false_abstention: float | None = MAX_FALSE_ABSTENTION,
+    max_hallucination: float | None = MAX_HALLUCINATION,
 ) -> EvaluationReport:
     """Evalúa cada modelo contra el set de queries, arma el resumen y selecciona el mejor."""
     queries = queries or EVAL_QUERIES
     report = EvaluationReport(models_evaluated=models)
     prompt_builder = PromptBuilder()
+    judge_client: LLMClient | None = None
+    if judge_model:
+        if judge_model in models:
+            log.warning(
+                "El judge (%s) está entre los evaluados: se juzgaría a sí mismo.",
+                judge_model,
+            )
+        candidate = LLMClient(
+            LLMConfig(
+                model=judge_model,
+                temperature=JUDGE_TEMPERATURE,
+                think=False if judge_model.startswith("qwen3") else None,
+            )
+        )
+        if _ensure_model(candidate, judge_model):
+            judge_client = candidate
+    else:
+        log.info("Sin judge_model: se omite LLM-as-judge (abstención por patrones).")
 
     for model_name in models:
         log.info("Evaluando modelo: %s", model_name)
         print(f"\n[Evaluando {model_name}...]")
 
-        config = LLMConfig(model=model_name, temperature=0.1)
+        config = LLMConfig(model=model_name, temperature=EVAL_MODEL_TEMPERATURE)
         client = LLMClient(config)
 
-        if not client.is_available():
-            log.error("Ollama no disponible para modelo %s", model_name)
+        if not _ensure_model(client, model_name):
             continue
-
-        # Verificar que el modelo esté descargado
-        available = client.list_models()
-        if model_name not in available:
-            log.info("Modelo %s no encontrado, descargando...", model_name)
-            client.pull_model(model_name)
 
         pipeline = RAGPipeline(
             retriever=retriever,
             llm_client=client,
             prompt_builder=prompt_builder,
-            config=RAGConfig(top_k=5, min_score=0.2),
+            config=RAGConfig(top_k=RETRIEVAL_TOP_K, min_score=RETRIEVAL_MIN_SCORE),
         )
 
+        # Warm-up: carga el modelo en memoria para que no contamine la latencia medida
+        try:
+            log.info("Warm-up de %s...", model_name)
+            pipeline.query(queries[0]["query"])
+        except Exception as e:
+            log.warning("Warm-up falló para %s: %s", model_name, e)
+
         for q in queries:
-            print(f"  → {q['id']}: {q['query'][:50]}...")
-
-            try:
-                t0 = time.perf_counter()
-                rag_resp = pipeline.query(q["query"])
-                elapsed = time.perf_counter() - t0
-
-                hits, score = _score_keywords(
-                    rag_resp.answer,
-                    q.get("expected_keywords", []),
+            for run in range(1, n_runs + 1):
+                report.results.append(
+                    _evaluate_one(pipeline, q, model_name, run, embedder)
                 )
 
-                sem_sim = _semantic_similarity(
-                    rag_resp.answer,
-                    q.get("reference_answer"),
-                    embedder,
-                )
-
-                result = ModelEvalResult(
-                    model=model_name,
-                    query_id=q["id"],
-                    query=q["query"],
-                    response=rag_resp.answer,
-                    elapsed_sec=round(elapsed, 2),
-                    response_length=len(rag_resp.answer),
-                    keyword_hits=hits,
-                    keyword_total=len(q.get("expected_keywords", [])),
-                    keyword_score=round(score, 4),
-                    is_no_info_response=_is_no_info_response(rag_resp.answer),
-                    semantic_similarity=sem_sim,
-                )
-
-            except Exception as e:
-                result = ModelEvalResult(
-                    model=model_name,
-                    query_id=q["id"],
-                    query=q["query"],
-                    response="",
-                    elapsed_sec=0.0,
-                    response_length=0,
-                    keyword_hits=0,
-                    keyword_total=len(q.get("expected_keywords", [])),
-                    keyword_score=0.0,
-                    error=str(e),
-                    is_no_info_response=False,
-                )
-                log.error("Error evaluando %s en %s: %s", model_name, q["id"], e)
-
-            report.results.append(result)
+    # Fase 2: el juez corre al final, una sola vez, para no mezclar su carga con los
+    # tiempos de los modelos evaluados ni forzar recargas de modelos en cada consulta.
+    if judge_client is not None and report.results:
+        _judge_all(report.results, queries, judge_client)
 
     for model_name in models:
         model_results = [r for r in report.results if r.model == model_name]
-        if not model_results:
-            continue
-
-        ok_results = [r for r in model_results if r.ok]
-        sim_values = [
-            r.semantic_similarity
-            for r in ok_results
-            if r.semantic_similarity is not None
-        ]
-        no_info_count = sum(1 for r in ok_results if r.is_no_info_response)
-
-        report.summary[model_name] = {
-            "avg_elapsed_sec": (
-                round(sum(r.elapsed_sec for r in ok_results) / len(ok_results), 2)
-                if ok_results
-                else 0.0
-            ),
-            "avg_keyword_score": (
-                round(sum(r.keyword_score for r in ok_results) / len(ok_results), 4)
-                if ok_results
-                else 0.0
-            ),
-            "avg_semantic_similarity": (
-                round(sum(sim_values) / len(sim_values), 4) if sim_values else 0.0
-            ),
-            "avg_response_length": (
-                round(sum(r.response_length for r in ok_results) / len(ok_results), 1)
-                if ok_results
-                else 0.0
-            ),
-            "no_info_rate": (
-                round(no_info_count / len(ok_results), 4) if ok_results else 0.0
-            ),
-            "error_count": len([r for r in model_results if not r.ok]),
-            "total_queries": len(model_results),
-        }
+        if model_results:
+            report.summary[model_name] = _summarize(model_results)
 
     if report.summary:
         report.selected_model, report.selection_rationale = _select_best_model(
-            report.summary
+            report.summary,
+            latency_penalty=latency_penalty,
+            min_faithfulness=min_faithfulness,
+            max_false_abstention=max_false_abstention,
+            max_hallucination=max_hallucination,
         )
 
     if output_path:

@@ -65,11 +65,27 @@ make lint-check     # solo reporta errores de lint
 make evaluate
 ```
 
-### Evaluación de llm
+### Evaluación de LLM
 
 ```bash
 make evaluate-llm
 ```
+
+Para personalizarla, pasa los parámetros con `ARGS`:
+
+```bash
+make evaluate-llm ARGS="--models <modelos> --judge-model <juez> --n-runs <n> --min-faithfulness <min> --latency-penalty <penalización> --persist-dir <carpeta> --output <ruta>"
+```
+
+Todos los parámetros son opcionales:
+
+- `--models`: modelos de Ollama a comparar, separados por espacio.
+- `--judge-model`: modelo juez, distinto de los evaluados e idealmente más grande. Sin él no se mide corrección ni fidelidad.
+- `--n-runs`: repeticiones por consulta, para promediar la variación (por defecto 3; usa 1 para pruebas rápidas).
+- `--min-faithfulness`: fidelidad mínima exigida (escala 1-5). Requiere `--judge-model`.
+- `--latency-penalty`: puntos de calidad (0-1) que se exigen por cada vez que un modelo tarda el doble que el más rápido. Más alto penaliza más a los modelos lentos.
+- `--persist-dir`: carpeta de la base vectorial (por defecto `data/vectorstore`).
+- `--output`: ruta del reporte JSON (por defecto `eval_results/report.json`).
 
 ## CI
 
