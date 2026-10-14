@@ -8,10 +8,19 @@ Las queries con `should_abstain: True` NO tienen respuesta en el corpus: lo corr
 es que el modelo se abstenga. VERIFICÁ que esos pozos/eventos realmente no existan
 en tus documentos.
 
-Corpus 1 (ids b*, nb*): libro "Introduction to natural gas plant LNG" (Hadžihafizović, 2024),
-en inglés. Las categorías de este corpus llevan el prefijo "lng_". Los keywords incluyen
-alternativas en español e inglés porque el libro está en inglés y los modelos pueden
-citar términos originales (tags de equipos, "wet flare", etc.).
+Corpus incluidos:
+
+Corpus 0 (ids q*, n*): "Detalle.pdf", especificación de un caso de uso RAG para
+    cuencas maduras, con documentos de ejemplo del yacimiento: perforación (EWR),
+    workover y partes diarios, estimulación, integridad y corrosión, fallas de BES,
+    reservorio/geología e inyección (secundaria y EOR). En español.
+
+Corpus 1 (ids b*, nb*): "Introduction to natural gas plant LNG"
+    (Hadžihafizović, 2024). En inglés. Categorías con prefijo "lng_".
+
+En el corpus 1 las preguntas y respuestas de referencia están en español, y
+los grupos de keywords incluyen variantes en español e inglés, porque los modelos
+pueden citar términos originales (tags de equipos, "wet flare", etc.).
 """
 
 from typing import Any
