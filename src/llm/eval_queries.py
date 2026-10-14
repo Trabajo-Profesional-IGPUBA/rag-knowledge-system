@@ -7,6 +7,11 @@ Los grupos que ya aparecen en la pregunta se ignoran automáticamente al puntuar
 Las queries con `should_abstain: True` NO tienen respuesta en el corpus: lo correcto
 es que el modelo se abstenga. VERIFICÁ que esos pozos/eventos realmente no existan
 en tus documentos.
+
+Corpus 1 (ids b*, nb*): libro "Introduction to natural gas plant LNG" (Hadžihafizović, 2024),
+en inglés. Las categorías de este corpus llevan el prefijo "lng_". Los keywords incluyen
+alternativas en español e inglés porque el libro está en inglés y los modelos pueden
+citar términos originales (tags de equipos, "wet flare", etc.).
 """
 
 from typing import Any
@@ -217,6 +222,182 @@ EVAL_QUERIES: list[dict[str, Any]] = [
             "destruido por extrusión química y térmica."
         ),
         "category": "workover",
+    },
+    # ── Libro "Introduction to natural gas plant LNG" ─────────────────────────────
+    # ── Conceptos generales y seguridad ──
+    {
+        "id": "b1",
+        "query": "¿A qué temperatura se licúa el gas natural a presión atmosférica y cuánto se reduce su volumen?",
+        "expected_keywords": [
+            ["-160", "−160", "–160", "160 °C", "160 ºC", "160°C"],
+            ["1/600", "600"],
+            ["45%", "menos de la mitad", "mitad"],
+        ],
+        "reference_answer": (
+            "A presión atmosférica el gas natural se condensa a aproximadamente "
+            "-160 °C (-256 °F) y pasa a ser LNG. Un volumen de líquido ocupa "
+            "alrededor de 1/600 del volumen del gas, y el LNG pesa cerca del 45% "
+            "que el agua (menos de la mitad). Es inodoro, incoloro, no corrosivo "
+            "y no tóxico."
+        ),
+        "category": "lng_conceptos",
+    },
+    # ── Separación de entrada, medición y NGL ──
+    {
+        "id": "b2",
+        "query": "¿Qué métodos se usan para medir el caudal del gas de alimentación y cuál es el menos exacto?",
+        "expected_keywords": [
+            ["ultrasónico", "ultrasonico", "ultrasonic"],
+            ["placa orificio", "placa de orificio", "orifice"],
+            "venturi",
+            ["tobera", "flow nozzle", "nozzle"],
+        ],
+        "reference_answer": (
+            "La cantidad se mide con un medidor ultrasónico, una placa orificio, "
+            "un tubo Venturi o una tobera de flujo (flow nozzle). La placa "
+            "orificio es la más común, de bajo costo y fácil de instalar o "
+            "reemplazar, pero es la menos exacta y la que produce la mayor "
+            "pérdida de presión permanente."
+        ),
+        "category": "lng_medición",
+    },
+    # ── Remoción de gas ácido (AGRU) ──
+    {
+        "id": "b3",
+        "query": "¿Qué solvente se usa para remover CO2 y H2S y por qué se eligió?",
+        "expected_keywords": [
+            [
+                "DGA",
+                "diglicolamina",
+                "diglycolamine",
+                "diglicol amina",
+                "diglycol amine",
+            ],
+            ["amina primaria", "primary amine"],
+            ["COS", "mercaptanos", "mercaptans"],
+            ["50%", "50 %"],
+        ],
+        "reference_answer": (
+            "Se usa DGA (diglicolamina), una amina primaria, en solución al 50% "
+            "en peso con un caudal de 116 m³/h. Se eligió por su eficiencia y "
+            "capacidad para bajar el CO2 a menos de 100 ppmv a un costo "
+            "competitivo, y además remueve COS y algunos mercaptanos."
+        ),
+        "category": "lng_gas_ácido",
+    },
+    # ── Deshidratación y mercurio ──
+    {
+        "id": "b4",
+        "query": "¿Cuántos secadores de tamiz molecular tiene la unidad de deshidratación y cuánto dura cada etapa de la regeneración?",
+        "expected_keywords": [
+            ["tres", "three", "3 secadores"],
+            ["4.5", "4,5"],
+            ["287.8", "287,8", "287"],
+            ["3 horas", "3 h", "tres horas", "3 hrs"],
+        ],
+        "reference_answer": (
+            "Hay tres secadores de tamiz molecular (V-1302 A/B/C): dos en servicio "
+            "y uno en regeneración o en espera. La regeneración térmica comienza "
+            "con un paso de calentamiento de 4,5 horas con gas seco calentado "
+            "hasta 287,8 °C, seguido de un paso de enfriamiento de 3 horas con "
+            "gas sin calentar. La unidad reduce el agua a menos de 1 ppmv."
+        ),
+        "category": "lng_deshidratación",
+    },
+    # ── Refrigeración en cascada y licuefacción ──
+    {
+        "id": "b5",
+        "query": "¿Cómo funciona la cascada de refrigeración de la planta y a qué temperatura llega el gas?",
+        "expected_keywords": [
+            ["Phillips"],
+            "propano",
+            "etileno",
+            "metano",
+            ["-161", "−161", "–161"],
+        ],
+        "reference_answer": (
+            "La planta usa el proceso Phillips Cascade con tres circuitos de "
+            "refrigeración: propano, etileno y metano, que enfrían el gas por "
+            "etapas hasta -161 °C. El propano enfría la alimentación antes y "
+            "después de la deshidratación; el gas de la última etapa de propano "
+            "junto con una corriente de reciclo de metano se enfría y condensa en "
+            "el circuito de etileno; y el condensado entra a un ciclo abierto de "
+            "metano que produce el LNG, enviado a tanques. El boil-off de los "
+            "tanques se comprime y vuelve al reciclo."
+        ),
+        "category": "lng_refrigeración",
+    },
+    # ── Pesados y NGL ──
+    {
+        "id": "b6",
+        "query": "¿Para qué sirve la columna de remoción de pesados y qué corrientes maneja?",
+        "expected_keywords": [
+            ["aromáticos", "aromaticos", "aromatics"],
+            ["congel", "freez"],
+            ["reflujo", "reflux"],
+            ["-76.4", "−76.4", "–76.4", "-76,4", "40.9", "40,9"],
+        ],
+        "reference_answer": (
+            "La columna de remoción de pesados (HRC, V-1701) es una columna "
+            "empacada que separa etano y componentes más pesados (incluidos "
+            "aromáticos) para evitar congelamiento y bloqueos en la sección de "
+            "licuefacción. La mayor parte del gas se enfría a -76,4 °C y 40,9 bar "
+            "antes de entrar a la zona media; el resto, enfriado en el "
+            "intercambiador E-1704, entra por el fondo. El reflujo es metano "
+            "totalmente condensado desde E-1504A/B. Los fondos pasan a la columna "
+            "de recuperación de NGL (V-1702) que separa los pesados (C5+) para "
+            "enviarlos al almacenamiento de NGL."
+        ),
+        "category": "lng_pesados_NGL",
+    },
+    # ── Antorchas, combustible, refrigerantes ──
+    {
+        "id": "b7",
+        "query": "¿Cuántos sistemas de antorcha tiene la planta y qué maneja cada uno?",
+        "expected_keywords": [
+            ["húmeda", "humeda", "wet"],
+            ["seca", "dry"],
+            ["marina", "marine"],
+            ["criogénic", "criogenic", "cryogenic"],
+        ],
+        "reference_answer": (
+            "Hay tres antorchas separadas. La antorcha de gas húmedo (wet flare, "
+            "K-1901, de acero al carbono) maneja hidrocarburos tibios saturados con "
+            "agua o con líquidos libres. La antorcha de gas seco (dry flare, "
+            "K-1902, de acero inoxidable) maneja vapores y líquidos de "
+            "hidrocarburos criogénicos. La antorcha marina (K-1903) está cerca "
+            "del área de carga de buques y maneja los vapores de LNG flasheado "
+            "durante la carga o ante disparo de los compresores de BOG. Todas "
+            "tienen ignición electrónica por chispa."
+        ),
+        "category": "lng_antorchas",
+    },
+    # ── Almacenamiento y carga de LNG ──
+    {
+        "id": "b8",
+        "query": "¿Cuántos tanques de LNG hay, qué capacidad tienen y de qué material es el tanque interno?",
+        "expected_keywords": [
+            ["140,000", "140.000", "140 000", "140000"],
+            ["dos", "two", "T-2401"],
+            ["9% níquel", "9% niquel", "9% nickel", "níquel", "nickel"],
+            [
+                "conexiones superiores",
+                "top connections",
+                "parte superior",
+                "llenado por arriba",
+                "top-fill",
+                "top filling",
+            ],
+        ],
+        "reference_answer": (
+            "Hay dos tanques de LNG (T-2401A/B), cada uno de 140.000 m³, con "
+            "tanque interno de acero al 9% de níquel y el espacio hasta la pared "
+            "exterior relleno de aislación. Sólo tienen conexiones por la parte "
+            "superior (ninguna cañería ni instrumento penetra lados o fondo) y se "
+            "llenan por arriba mediante una placa deflectora (splash plate). Cada "
+            "tanque tiene cuatro bombas de carga sumergidas."
+        ),
+        "category": "lng_almacenamiento",
     },
     # ── Queries negativas: no hay respuesta en el corpus → el modelo debe abstenerse ──
     {
