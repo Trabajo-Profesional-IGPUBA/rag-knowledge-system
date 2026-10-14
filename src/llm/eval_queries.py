@@ -223,6 +223,35 @@ EVAL_QUERIES: list[dict[str, Any]] = [
         ),
         "category": "workover",
     },
+    # ── Queries negativas: no hay respuesta en el corpus → el modelo debe abstenerse ──
+    {
+        "id": "n1",
+        "query": "¿Qué pasó con la bomba de cavidad progresiva en el pozo ZZ-999?",
+        "expected_keywords": [],
+        "should_abstain": True,
+        "category": "sin_respuesta",
+    },
+    {
+        "id": "n2",
+        "query": "¿Hubo un blowout durante la perforación del pozo XQ-777?",
+        "expected_keywords": [],
+        "should_abstain": True,
+        "category": "sin_respuesta",
+    },
+    {
+        "id": "n3",
+        "query": "¿Qué resultado tuvo la inyección de polímeros en el inyector PI-99?",
+        "expected_keywords": [],
+        "should_abstain": True,
+        "category": "sin_respuesta",
+    },
+    {
+        "id": "n4",
+        "query": "¿Por qué falló el compresor del pozo GL-310 en 2022?",
+        "expected_keywords": [],
+        "should_abstain": True,
+        "category": "sin_respuesta",
+    },
     # ── Libro "Introduction to natural gas plant LNG" ─────────────────────────────
     # ── Conceptos generales y seguridad ──
     {
@@ -399,31 +428,17 @@ EVAL_QUERIES: list[dict[str, Any]] = [
         ),
         "category": "lng_almacenamiento",
     },
-    # ── Queries negativas: no hay respuesta en el corpus → el modelo debe abstenerse ──
+    # ── Queries negativas del libro LNG (Skikda y CAPEX no aparecen en el libro) ──
     {
-        "id": "n1",
-        "query": "¿Qué pasó con la bomba de cavidad progresiva en el pozo ZZ-999?",
+        "id": "nb1",
+        "query": "¿Qué pasó en el accidente de la planta de LNG de Skikda en 2004?",
         "expected_keywords": [],
         "should_abstain": True,
         "category": "sin_respuesta",
     },
     {
-        "id": "n2",
-        "query": "¿Hubo un blowout durante la perforación del pozo XQ-777?",
-        "expected_keywords": [],
-        "should_abstain": True,
-        "category": "sin_respuesta",
-    },
-    {
-        "id": "n3",
-        "query": "¿Qué resultado tuvo la inyección de polímeros en el inyector PI-99?",
-        "expected_keywords": [],
-        "should_abstain": True,
-        "category": "sin_respuesta",
-    },
-    {
-        "id": "n4",
-        "query": "¿Por qué falló el compresor del pozo GL-310 en 2022?",
+        "id": "nb2",
+        "query": "¿Cuál fue el CAPEX total de construcción de la planta de LNG?",
         "expected_keywords": [],
         "should_abstain": True,
         "category": "sin_respuesta",
