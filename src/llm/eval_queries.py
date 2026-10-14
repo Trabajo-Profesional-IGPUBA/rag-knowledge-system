@@ -22,10 +22,12 @@ Corpus 2 (ids lng*, lngn*): "Handbook of Liquefied Natural Gas"
     (Mokhatab, Mak, Valappil, Wood; Elsevier, 2014). En inglés.
     Categorías con prefijo "lng_".
 
-En el corpus 1 las preguntas y respuestas de referencia están en español, y
+En los corpus 1 y 2 las preguntas y respuestas de referencia están en español, y
 los grupos de keywords incluyen variantes en español e inglés, porque los modelos
 pueden citar términos originales (tags de equipos, "wet flare", etc.).
 
+Con los corpus 1 y 2 en el mismo índice, las preguntas del corpus 1 hablan de
+"la planta" y las del corpus 2 usan formulaciones genéricas, para evitar ambigüedad.
 """
 
 from typing import Any
