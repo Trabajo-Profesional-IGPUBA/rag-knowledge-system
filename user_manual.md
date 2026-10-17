@@ -41,3 +41,52 @@ ollama pull mistral:7b
 - RAM: 16 GB o más
 - Espacio en disco: 20 GB libres (modelos + vectorstore)
 - CPU: 4 núcleos o más (el procesamiento de PDFs es intensivo)
+
+## 3. Instalación y configuración
+
+### Clonar el repositorio
+
+```bash
+git clone https://github.com/Trabajo-Profesional-IGPUBA/rag-knowledge-system.git
+cd rag-knowledge-system
+```
+
+### Construir las imágenes Docker
+
+```bash
+make build
+```
+
+Este comando construye la imagen de producción. La primera vez puede tardar varios minutos porque descarga las dependencias y los modelos de OCR.
+
+Para construir la imagen de desarrollo y tests:
+
+```bash
+make build-test
+```
+
+### Variables de entorno
+
+Copiá el archivo de ejemplo y ajustá si es necesario:
+
+```bash
+cp .env.example .env
+```
+
+La única variable relevante en la mayoría de los casos es:
+
+| Variable | Valor por defecto | Descripción |
+| --- | --- | --- |
+| `OLLAMA_BASE_URL` | `http://host.docker.internal:11434` | URL del servidor Ollama |
+
+Si Ollama corre en otra máquina o puerto, modificá esa variable en `.env`.
+
+### Verificar que Ollama está corriendo
+
+Antes de usar el sistema, Ollama tiene que estar activo:
+
+```bash
+ollama serve
+```
+
+Dejá este proceso corriendo en una terminal aparte.
