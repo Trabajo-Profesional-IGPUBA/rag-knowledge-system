@@ -90,3 +90,59 @@ ollama serve
 ```
 
 Dejá este proceso corriendo en una terminal aparte.
+
+## 4. Ingesta de documentos
+
+La ingesta procesa los PDFs técnicos, extrae su texto, genera embeddings y los carga en la base de datos vectorial. Este paso es necesario antes de poder hacer consultas.
+
+### Estructura de carpetas
+
+Los documentos deben colocarse en `data/raw/`, organizados por tipo:
+
+```
+data/raw/
+├── ewrs/              # Informes finales de perforación
+├── workovers/         # Informes de workover
+├── partes_diarios/    # Partes diarios de operaciones
+├── estimulaciones/    # Informes de estimulación y fractura
+├── fallas_bes/        # Análisis de fallas de BES
+├── fallas_integridad/ # Fallas de integridad
+├── reservorio/        # Estudios de reservorio y geología
+└── sedimentologia/    # Estudios sedimentológicos
+```
+
+El tipo de carpeta determina cómo se clasifica el documento en el sistema.
+
+### Ejecutar la ingesta
+
+```bash
+make run
+```
+
+Este comando procesa todos los PDFs en `data/raw/` y sus subcarpetas.
+
+Para procesar un archivo o carpeta específica:
+
+```bash
+docker run --rm -v ./data:/app/data rag-app python ingest_files.py data/raw/ewrs/
+```
+
+Para controlar la cantidad de procesos paralelos (por defecto usa hasta 4):
+
+```bash
+docker run --rm -v ./data:/app/data rag-app python ingest_files.py --max-workers 2
+```
+
+### Verificar que la ingesta funcionó
+
+Al finalizar, el sistema imprime un resumen en los logs:
+
+```
+Ingesta finalizada. Procesados=17 | OK=17 | Fallidos=0
+```
+
+Los logs detallados se guardan en `logs/rag_pipeline.log`. Si algún documento falló, el nombre del archivo y el error aparecen en ese archivo.
+
+### Reingestión incremental
+
+Si ejecutás la ingesta nuevamente sobre documentos ya procesados, el sistema los detecta y los saltea automáticamente. Solo procesa los archivos nuevos.
