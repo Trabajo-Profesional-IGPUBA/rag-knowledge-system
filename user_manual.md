@@ -222,3 +222,61 @@ Parámetros disponibles:
 | `--output` | Ruta del reporte JSON |
 
 El reporte se guarda en `eval_results/report.json` por defecto.
+
+## 7. Solución de problemas frecuentes
+
+### "Ollama no está corriendo"
+
+La app muestra este error si no puede conectarse al servidor de Ollama.
+
+**Solución:** Abrí una terminal y ejecutá:
+
+```bash
+ollama serve
+```
+
+Si Ollama corre en una máquina diferente, actualizá la variable `OLLAMA_BASE_URL` en `.env`.
+
+### La app carga pero no responde preguntas
+
+Puede que el vectorstore esté vacío — nunca se corrió la ingesta o se borró `data/vectorstore/`.
+
+**Solución:** Ejecutar la ingesta:
+
+```bash
+make run
+```
+
+### Error de permisos con Docker
+
+En Linux, Docker puede requerir `sudo`.
+
+**Solución (permanente):** Agregá tu usuario al grupo docker:
+
+```bash
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+### `make build` falla con error en `/cache`
+
+En algunas máquinas el directorio `/cache/huggingface` no se crea automáticamente.
+
+**Solución:** En el `Dockerfile`, agregá esta línea antes del `RUN chmod -R 777 /cache`:
+
+```dockerfile
+RUN mkdir -p /cache/huggingface
+```
+
+### La ingesta es muy lenta
+
+El procesamiento de PDFs con Docling es intensivo. Los tiempos normales son:
+
+- PDFs simples (1–5 páginas): 2–10 segundos
+- PDFs complejos con tablas o imágenes: 5–15 minutos
+
+Podés aumentar el paralelismo si tenés más núcleos disponibles:
+
+```bash
+docker run --rm -v ./data:/app/data rag-app python ingest_files.py --max-workers 4
+```
