@@ -181,3 +181,44 @@ El historial de la conversación se mantiene durante la sesión, por lo que pod�
 ### Cerrar la aplicación
 
 Presioná `Ctrl + C` en la terminal donde corre `make app`.
+
+## 6. Evaluación de modelos
+
+El sistema incluye dos scripts de evaluación opcionales para medir la calidad del pipeline.
+
+### Evaluación de embeddings
+
+Mide la calidad del modelo de embeddings para recuperar documentos relevantes:
+
+```bash
+make evaluate
+```
+
+El resultado se guarda en `evaluation_results.json`.
+
+### Evaluación comparativa de LLMs
+
+Compara el rendimiento de distintos modelos de lenguaje sobre consultas reales del dominio:
+
+```bash
+make evaluate-llm
+```
+
+Por defecto compara `llama3.1:8b` y `mistral:7b`. Para personalizar:
+
+```bash
+make evaluate-llm ARGS="--models llama3.1:8b qwen3:8b --judge-model qwen3:8b --n-runs 3 --output eval_results/mi_reporte.json"
+```
+
+Parámetros disponibles:
+
+| Parámetro | Descripción |
+| --- | --- |
+| `--models` | Modelos a comparar (separados por espacio) |
+| `--judge-model` | Modelo juez para medir corrección y fidelidad |
+| `--n-runs` | Repeticiones por consulta (1 para pruebas rápidas) |
+| `--min-faithfulness` | Fidelidad mínima exigida (escala 1–5) |
+| `--latency-penalty` | Penalización por latencia alta |
+| `--output` | Ruta del reporte JSON |
+
+El reporte se guarda en `eval_results/report.json` por defecto.
