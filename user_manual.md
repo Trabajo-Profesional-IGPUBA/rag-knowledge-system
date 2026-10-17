@@ -146,3 +146,38 @@ Los logs detallados se guardan en `logs/rag_pipeline.log`. Si algún documento f
 ### Reingestión incremental
 
 Si ejecutás la ingesta nuevamente sobre documentos ya procesados, el sistema los detecta y los saltea automáticamente. Solo procesa los archivos nuevos.
+
+## 5. Interfaz de consulta
+
+### Levantar la aplicación
+
+Asegurate de que Ollama está corriendo (`ollama serve`) y luego:
+
+```bash
+make app
+```
+
+Abrir en el navegador: <http://localhost:8501>
+
+### Hacer una consulta
+
+1. Escribí tu pregunta en el campo de texto inferior.
+2. Presioná **Enter** o el botón de envío.
+3. El sistema busca en los documentos indexados y genera una respuesta.
+
+**Ejemplos de consultas útiles:**
+
+- *¿Qué problemas de circulación se registraron en el pozo PM-104?*
+- *¿Cuáles son las recomendaciones para pozos con pérdida de circulación en Quintuco?*
+- *¿Qué causó la falla del BES en el pozo LL-112?*
+- *¿Qué presión de inyección se usó en la recuperación secundaria del bloque sur?*
+
+### Entender las respuestas
+
+El sistema genera respuestas basadas exclusivamente en los documentos indexados. Si no encuentra información relevante, responde indicando que no encontró datos suficientes — no inventa información.
+
+El historial de la conversación se mantiene durante la sesión, por lo que podés hacer preguntas de seguimiento sobre el mismo tema.
+
+### Cerrar la aplicación
+
+Presioná `Ctrl + C` en la terminal donde corre `make app`.
