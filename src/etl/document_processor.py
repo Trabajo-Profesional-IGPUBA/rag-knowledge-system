@@ -2,6 +2,7 @@ import logging
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from itertools import batched
 
 import transformers
 from transformers import AutoTokenizer
@@ -21,6 +22,7 @@ logging.getLogger("MatchingPostProcessor").setLevel(logging.ERROR)
 # El modelo tiene un límite de 512 tokens; el texto contextualizado puede superarlo.
 _TOKENIZER = AutoTokenizer.from_pretrained(DEFAULT_MODEL)
 _MAX_TOKENS = 500
+_CHUNK_BATCH_SIZE = 16
 
 
 def _truncate(text: str) -> str:
@@ -96,6 +98,7 @@ class DocumentProcessor:
         logger.info("Processing: %s", file_path.name)
 
         t0 = time.perf_counter()
+        chunks_iter = self.chunker.chunk(file_path)
         chunks = list(self.chunker.chunk(file_path))
         metrics.n_well_ids_extracted = sum(c.wells is not None for c in chunks)
         metrics.time_chunking_s = time.perf_counter() - t0
@@ -105,20 +108,21 @@ class DocumentProcessor:
             logger.warning("[%s] No chunks generated — skipping", file_path.name)
             return metrics
 
-        t0 = time.perf_counter()
-        embeddings = self.embedder.embed_batch(
-            [_truncate(c.contextualized_text) for c in chunks]
-        )
-        metrics.time_embedding_s = time.perf_counter() - t0
+        for chunk_batch in batched(chunks_iter, _CHUNK_BATCH_SIZE):
+            t0 = time.perf_counter()
+            embeddings = self.embedder.embed_batch(
+                [_truncate(c.contextualized_text) for c in chunk_batch]
+            )
+            metrics.time_embedding_s += time.perf_counter() - t0
 
-        t0 = time.perf_counter()
-        self.vector_repository.add_batch(
-            chunk_ids=[c.chunk_id for c in chunks],
-            texts=[c.text for c in chunks],
-            embeddings=embeddings,
-            metadatas=[c.meta for c in chunks],
-        )
-        metrics.time_indexing_s = time.perf_counter() - t0
+            t0 = time.perf_counter()
+            self.vector_repository.add_batch(
+                chunk_ids=[c.chunk_id for c in chunk_batch],
+                texts=[c.text for c in chunk_batch],
+                embeddings=embeddings,
+                metadatas=[c.meta for c in chunk_batch],
+            )
+            metrics.time_indexing_s += time.perf_counter() - t0
 
         metrics.log()
         return metrics
