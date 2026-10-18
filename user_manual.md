@@ -204,7 +204,7 @@ Compara el rendimiento de distintos modelos de lenguaje sobre consultas reales d
 make evaluate-llm
 ```
 
-Por defecto compara `llama3.1:8b` y `mistral:7b`. Para personalizar:
+Por defecto compara `llama3.1:8b`, `mistral:7b`, `qwen3:8b`, `llama3.2:3b` y `gemma2:9b`. Para personalizar:
 
 ```bash
 make evaluate-llm ARGS="--models llama3.1:8b qwen3:8b --judge-model qwen3:8b --n-runs 3 --output eval_results/mi_reporte.json"
