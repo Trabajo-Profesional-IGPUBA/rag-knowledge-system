@@ -66,6 +66,7 @@ class DoclingHybridChunker:
         self,
         embedding_model: str = DEFAULT_EMBEDDING_MODEL,
         max_tokens: int = MAX_TOKENS,
+        no_well_extraction: list[Path] = [],
     ):
         """
         Inicializa el chunker
@@ -78,7 +79,15 @@ class DoclingHybridChunker:
         )
         self._chunker = HybridChunker(tokenizer=tokenizer, merge_peers=True)
         self._converter = DocumentConverter()
+        self._no_well_extraction = [Path(p).resolve() for p in no_well_extraction]
         logger.debug("Chunker initialized successfully")
+
+    def _should_extract_well(self, filename: Path) -> bool:
+        resolved = Path(filename).resolve()
+        return not any(
+            resolved == excluded or excluded in resolved.parents
+            for excluded in self._no_well_extraction
+        )
 
     def chunk(self, filename: Path):
         """
@@ -86,6 +95,7 @@ class DoclingHybridChunker:
         """
 
         doc = self._converter.convert(filename).document
+        should_extract_well_ids = self._should_extract_well(filename)
         for index, chunk in enumerate(self._chunker.chunk(dl_doc=doc)):
             contextualized_text = self._chunker.contextualize(chunk)
             # al contener datos de la jerarquia del documento conviene usar el texto contextualizado
@@ -101,7 +111,7 @@ class DoclingHybridChunker:
                 contextualized_text=contextualized_text,
                 chunk_index=index,
                 page=page,
-                wells=wells,
+                wells=wells if should_extract_well_ids else None,
             )
 
     @staticmethod

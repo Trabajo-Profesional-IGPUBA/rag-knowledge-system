@@ -17,6 +17,7 @@ VECTOR_STORE_PATH = ROOT_DIR / "data" / "vectorstore"
 LOG_DIR = ROOT_DIR / "logs"
 
 DEFAULT_MAX_WORKERS = min(os.cpu_count() or 4, 4)
+DEFAULT_THEORETICAL_DATA_DIR = DEFAULT_DATA_DIR / "libros"
 type PositiveInt = Annotated[int, "must be > 0"]
 
 
@@ -92,6 +93,15 @@ def parse_args():
         help="Number de procesos usados en el procesamiento de SOURCES",
     )
 
+    parser.add_argument(
+        "--skip-well-extraction",
+        nargs="*",
+        type=existing_dir,
+        default=[DEFAULT_THEORETICAL_DATA_DIR],
+        metavar="PATH",
+        help="Directorios o archivos donde no se extraen identificadores de pozo.",
+    )
+
     args = parser.parse_args()
     return args
 
@@ -107,6 +117,7 @@ def file_iterator(sources):
 def run(
     sources: list[Path] = [DEFAULT_DATA_DIR],
     max_workers: PositiveInt = DEFAULT_MAX_WORKERS,
+    no_well_extraction: list[Path] = [DEFAULT_THEORETICAL_DATA_DIR],
 ):
     from src.embeddings.embedder import Embedder
     from src.etl import DoclingHybridChunker, DocumentProcessor
@@ -122,7 +133,7 @@ def run(
     # Esto NO limita la RAM usada dentro de cada worker; solamente
     # evita crear un Future por cada PDF del corpus.
     max_in_flight = max_workers * 2
-    chunker = DoclingHybridChunker()
+    chunker = DoclingHybridChunker(no_well_extraction=no_well_extraction)
     vector_store = VectorStore(VECTOR_STORE_PATH)
     embedder = Embedder()
     write_lock = threading.Lock()
