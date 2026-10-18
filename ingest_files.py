@@ -102,6 +102,12 @@ def parse_args():
         help="Directorios o archivos donde no se extraen identificadores de pozo.",
     )
 
+    parser.add_argument(
+        "--do-ocr",
+        action="store_true",
+        help="Habilitar OCR para documentos escaneados (deshabilitado por defecto)",
+    )
+
     args = parser.parse_args()
     return args
 
@@ -118,6 +124,7 @@ def run(
     sources: list[Path] = [DEFAULT_DATA_DIR],
     max_workers: PositiveInt = DEFAULT_MAX_WORKERS,
     no_well_extraction: list[Path] = [DEFAULT_THEORETICAL_DATA_DIR],
+    do_ocr: bool = False,
 ):
     from src.embeddings.embedder import Embedder
     from src.etl import DoclingHybridChunker, DocumentProcessor
@@ -133,7 +140,10 @@ def run(
     # Esto NO limita la RAM usada dentro de cada worker; solamente
     # evita crear un Future por cada PDF del corpus.
     max_in_flight = max_workers * 2
-    chunker = DoclingHybridChunker(no_well_extraction=no_well_extraction)
+    chunker = DoclingHybridChunker(
+        no_well_extraction=no_well_extraction,
+        do_ocr=do_ocr,
+    )
     vector_store = VectorStore(VECTOR_STORE_PATH)
     embedder = Embedder()
     write_lock = threading.Lock()
@@ -217,4 +227,9 @@ def run(
 if __name__ == "__main__":
     setup_logging(LOG_DIR)
     args = parse_args()
-    run(args.sources, args.max_workers)
+    run(
+        args.sources,
+        args.max_workers,
+        args.skip_well_extraction,
+        args.do_ocr,
+    )

@@ -9,7 +9,9 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-from docling.document_converter import DocumentConverter
+from docling.datamodel.base_models import InputFormat
+from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling_core.transforms.chunker.hybrid_chunker import HybridChunker
 from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
 from transformers import AutoTokenizer
@@ -67,6 +69,7 @@ class DoclingHybridChunker:
         embedding_model: str = DEFAULT_EMBEDDING_MODEL,
         max_tokens: int = MAX_TOKENS,
         no_well_extraction: list[Path] = [],
+        do_ocr: bool = False,
     ):
         """
         Inicializa el chunker
@@ -77,8 +80,18 @@ class DoclingHybridChunker:
             tokenizer=AutoTokenizer.from_pretrained(embedding_model),
             max_tokens=max_tokens,
         )
+
+        pipeline_options = PdfPipelineOptions()
+        pipeline_options.do_ocr = do_ocr
+
         self._chunker = HybridChunker(tokenizer=tokenizer, merge_peers=True)
-        self._converter = DocumentConverter()
+        self._converter = DocumentConverter(
+            format_options={
+                InputFormat.PDF: PdfFormatOption(
+                    pipeline_options=pipeline_options,
+                ),
+            }
+        )
         self._no_well_extraction = [Path(p).resolve() for p in no_well_extraction]
         logger.debug("Chunker initialized successfully")
 
@@ -101,7 +114,6 @@ class DoclingHybridChunker:
             # al contener datos de la jerarquia del documento conviene usar el texto contextualizado
             # para extraer la metadata
             wells = extract_wells(contextualized_text) or None
-            logger.info(f"Chunk meta: {wells} {filename}")
             page = self.extract_page_no(chunk)
 
             yield Chunk(
