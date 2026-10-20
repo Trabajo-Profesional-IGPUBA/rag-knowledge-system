@@ -1,8 +1,8 @@
 import logging
 import time
 from dataclasses import dataclass
-from pathlib import Path
 from itertools import batched
+from pathlib import Path
 
 import transformers
 from transformers import AutoTokenizer
@@ -97,18 +97,16 @@ class DocumentProcessor:
         metrics = ProcessingMetrics(filename=file_path.name)
         logger.info("Processing: %s", file_path.name)
 
-        t0 = time.perf_counter()
         chunks_iter = self.chunker.chunk(file_path)
-        chunks = list(self.chunker.chunk(file_path))
-        metrics.n_well_ids_extracted = sum(c.wells is not None for c in chunks)
-        metrics.time_chunking_s = time.perf_counter() - t0
-        metrics.n_chunks = len(chunks)
 
-        if not chunks:
+        if not chunks_iter:
             logger.warning("[%s] No chunks generated — skipping", file_path.name)
             return metrics
 
+        t0 = time.perf_counter()
         for chunk_batch in batched(chunks_iter, _CHUNK_BATCH_SIZE):
+            metrics.time_chunking_s += time.perf_counter() - t0
+
             t0 = time.perf_counter()
             embeddings = self.embedder.embed_batch(
                 [_truncate(c.contextualized_text) for c in chunk_batch]
@@ -123,6 +121,11 @@ class DocumentProcessor:
                 metadatas=[c.meta for c in chunk_batch],
             )
             metrics.time_indexing_s += time.perf_counter() - t0
+            metrics.n_chunks += len(chunk_batch)
+            metrics.n_well_ids_extracted += sum(
+                c.wells is not None for c in chunk_batch
+            )
+            t0 = time.perf_counter()
 
         metrics.log()
         return metrics
