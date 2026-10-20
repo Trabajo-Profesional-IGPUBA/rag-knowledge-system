@@ -9,6 +9,7 @@ qdrant-client
 
 # Utilidades
 python-dotenv>=1.0.0
+pypdf
 
 # Interfaz web
 streamlit>=1.30.0
