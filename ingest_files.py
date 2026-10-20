@@ -60,15 +60,15 @@ class _SerializedVectorStore:
         return getattr(self._inner, name)
 
 
-def validate_max_workers(max_workers_raw: str) -> int:
+def parse_positive_int(value: str) -> int:
     try:
-        max_workers = int(max_workers_raw)
+        parsed_value = int(value)
     except ValueError:
-        raise argparse.ArgumentTypeError("MAX_WORKERS debe ser un entero positivo")
-    if max_workers < 1:
-        raise argparse.ArgumentTypeError("MAX_WORKERS debe ser un entero positivo")
+        raise argparse.ArgumentTypeError("debe ser un entero positivo")
+    if parsed_value < 1:
+        raise argparse.ArgumentTypeError("debe ser un entero positivo")
 
-    return max_workers
+    return parsed_value
 
 
 def existing_dir(path_str: str) -> Path:
@@ -94,7 +94,7 @@ def parse_args():
     parser.add_argument(
         "--max-workers",
         "-w",
-        type=validate_max_workers,
+        type=parse_positive_int,
         default=DEFAULT_MAX_WORKERS,
         help="Number de procesos usados en el procesamiento de SOURCES",
     )
@@ -116,7 +116,7 @@ def parse_args():
 
     parser.add_argument(
         "--split-threshold",
-        type=int,
+        type=parse_positive_int,
         default=DEFAULT_SPLIT_THRESHOLD,
         metavar="PAGES",
         help=f"Páginas máximas antes de partir el PDF (default: {DEFAULT_SPLIT_THRESHOLD})",
@@ -124,7 +124,7 @@ def parse_args():
 
     parser.add_argument(
         "--split-size",
-        type=int,
+        type=parse_positive_int,
         default=DEFAULT_SPLIT_SIZE,
         metavar="PAGES",
         help=f"Páginas por fragmento al partir (default: {DEFAULT_SPLIT_SIZE})",
@@ -179,8 +179,8 @@ def run(
     max_workers: PositiveInt = DEFAULT_MAX_WORKERS,
     no_well_extraction: list[Path] = [DEFAULT_THEORETICAL_DATA_DIR],
     do_ocr: bool = False,
-    split_size: int = DEFAULT_SPLIT_SIZE,
-    split_threshold: int = DEFAULT_SPLIT_THRESHOLD,
+    split_size: PositiveInt = DEFAULT_SPLIT_SIZE,
+    split_threshold: PositiveInt = DEFAULT_SPLIT_THRESHOLD,
 ):
     from src.embeddings.embedder import Embedder
     from src.etl import DoclingHybridChunker, DocumentProcessor

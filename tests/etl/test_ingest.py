@@ -1,6 +1,6 @@
 import pytest
 
-from ingest_files import DEFAULT_MAX_WORKERS, existing_dir, validate_max_workers
+from ingest_files import DEFAULT_MAX_WORKERS, existing_dir, parse_positive_int
 
 """
 Cubren "Paralelizar la ingesta de documentos (ETL)":
@@ -52,7 +52,7 @@ class TestConfigurableConcurrency:
     def test_allows_configuring_number_of_concurrent_files(self):
         """CA-1.1: El sistema debe permitir configurar cuántos archivos se
         procesan al mismo tiempo."""
-        assert validate_max_workers("3") == 3
+        assert parse_positive_int("3") == 3
 
     def test_missing_config_uses_reasonable_default(self, monkeypatch):
         """CA-1.2: Si no se proporciona ninguna configuración, el sistema
@@ -66,7 +66,7 @@ class TestConfigurableConcurrency:
         import argparse
 
         with pytest.raises(argparse.ArgumentTypeError):
-            validate_max_workers("abc")
+            parse_positive_int("abc")
 
     def test_explicit_zero_workers_is_rejected(self):
         """CA-1.5: Si se solicita explícitamente un valor de concurrencia
@@ -74,14 +74,14 @@ class TestConfigurableConcurrency:
         import argparse
 
         with pytest.raises(argparse.ArgumentTypeError):
-            validate_max_workers("0")
+            parse_positive_int("0")
 
     def test_explicit_negative_workers_is_rejected(self):
         """CA-1.5: ídem, con un valor negativo."""
         import argparse
 
         with pytest.raises(argparse.ArgumentTypeError):
-            validate_max_workers("-5")
+            parse_positive_int("-5")
 
     def test_never_submits_more_concurrent_tasks_than_available_files(
         self, tmp_path, monkeypatch
