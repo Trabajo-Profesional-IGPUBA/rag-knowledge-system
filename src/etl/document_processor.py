@@ -83,13 +83,16 @@ class DocumentProcessor:
         self.embedder = embedder
         self.vector_repository = vector_repository
 
-    def process_file(self, file_path: Path) -> ProcessingMetrics:
+    def process_file(
+        self, file_path: Path, source_file: Path | None = None
+    ) -> ProcessingMetrics:
         """
         Procesa un archivo desde el parseo y chunking hasta el embedding
         y almacenamiento en la base de datos vectorial.
 
         Args:
             file_path: ruta al archivo a procesar.
+            source_file: nombre original de archivos grandes cuando se lo recibe partido.
 
         Returns:
             ProcessingMetrics con los tiempos y cantidad de chunks generados.
@@ -97,7 +100,7 @@ class DocumentProcessor:
         metrics = ProcessingMetrics(filename=file_path.name)
         logger.info("Processing: %s", file_path.name)
 
-        chunks_iter = self.chunker.chunk(file_path)
+        chunks_iter = self.chunker.chunk(file_path, source_file)
 
         if not chunks_iter:
             logger.warning("[%s] No chunks generated — skipping", file_path.name)
@@ -128,4 +131,8 @@ class DocumentProcessor:
             t0 = time.perf_counter()
 
         metrics.log()
+
+        if source_file is not None and file_path != source_file:
+            file_path.unlink(missing_ok=True)
+
         return metrics

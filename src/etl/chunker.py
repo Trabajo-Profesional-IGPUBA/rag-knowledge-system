@@ -102,9 +102,11 @@ class DoclingHybridChunker:
             for excluded in self._no_well_extraction
         )
 
-    def chunk(self, filename: Path):
+    def chunk(self, filename: Path, source_file: Path | None = None):
         """
         Parsea un PDF y genera Chunks con metadatos.
+
+        Para archivos grandes que son partidos previamente, se usa `source_file` en la metadata.
         """
 
         doc = self._converter.convert(filename).document
@@ -117,7 +119,7 @@ class DoclingHybridChunker:
             page = self.extract_page_no(chunk)
 
             yield Chunk(
-                source_file=str(filename.name),
+                source_file=str((source_file or filename).name),
                 source_hash=str(chunk.meta.origin.binary_hash),  # type: ignore
                 text=normalize(chunk.text),
                 contextualized_text=contextualized_text,
