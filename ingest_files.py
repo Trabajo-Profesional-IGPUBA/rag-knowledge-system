@@ -1,10 +1,13 @@
 import argparse
 import logging
 import os
+import tempfile
 import threading
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from pathlib import Path
 from typing import Annotated, Any
+
+from pypdf import PdfReader, PdfWriter
 
 # tope del archivo, antes de cualquier otro import propio
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
@@ -16,7 +19,11 @@ DEFAULT_DATA_DIR = ROOT_DIR / "data" / "raw"
 VECTOR_STORE_PATH = ROOT_DIR / "data" / "vectorstore"
 LOG_DIR = ROOT_DIR / "logs"
 
-DEFAULT_MAX_WORKERS = min(os.cpu_count() or 4, 4)
+DEFAULT_MAX_WORKERS = 1
+DEFAULT_THEORETICAL_DATA_DIR = DEFAULT_DATA_DIR / "libros"
+DEFAULT_SPLIT_THRESHOLD = 100  # páginas
+DEFAULT_SPLIT_SIZE = 50  # páginas por fragmento
+
 type PositiveInt = Annotated[int, "must be > 0"]
 
 
@@ -53,15 +60,15 @@ class _SerializedVectorStore:
         return getattr(self._inner, name)
 
 
-def validate_max_workers(max_workers_raw: str) -> int:
+def parse_positive_int(value: str) -> int:
     try:
-        max_workers = int(max_workers_raw)
+        parsed_value = int(value)
     except ValueError:
-        raise argparse.ArgumentTypeError("MAX_WORKERS debe ser un entero positivo")
-    if max_workers < 1:
-        raise argparse.ArgumentTypeError("MAX_WORKERS debe ser un entero positivo")
+        raise argparse.ArgumentTypeError("debe ser un entero positivo")
+    if parsed_value < 1:
+        raise argparse.ArgumentTypeError("debe ser un entero positivo")
 
-    return max_workers
+    return parsed_value
 
 
 def existing_dir(path_str: str) -> Path:
@@ -87,26 +94,93 @@ def parse_args():
     parser.add_argument(
         "--max-workers",
         "-w",
-        type=validate_max_workers,
+        type=parse_positive_int,
         default=DEFAULT_MAX_WORKERS,
         help="Number de procesos usados en el procesamiento de SOURCES",
+    )
+
+    parser.add_argument(
+        "--skip-well-extraction",
+        nargs="*",
+        type=existing_dir,
+        default=[DEFAULT_THEORETICAL_DATA_DIR],
+        metavar="PATH",
+        help="Directorios o archivos donde no se extraen identificadores de pozo.",
+    )
+
+    parser.add_argument(
+        "--do-ocr",
+        action="store_true",
+        help="Habilitar OCR para documentos escaneados (deshabilitado por defecto)",
+    )
+
+    parser.add_argument(
+        "--split-threshold",
+        type=parse_positive_int,
+        default=DEFAULT_SPLIT_THRESHOLD,
+        metavar="PAGES",
+        help=f"Páginas máximas antes de partir el PDF (default: {DEFAULT_SPLIT_THRESHOLD})",
+    )
+
+    parser.add_argument(
+        "--split-size",
+        type=parse_positive_int,
+        default=DEFAULT_SPLIT_SIZE,
+        metavar="PAGES",
+        help=f"Páginas por fragmento al partir (default: {DEFAULT_SPLIT_SIZE})",
     )
 
     args = parser.parse_args()
     return args
 
 
-def file_iterator(sources):
+def file_iterator(
+    sources: list[Path],
+    split_threshold: int = DEFAULT_SPLIT_THRESHOLD,
+    split_size: int = DEFAULT_SPLIT_SIZE,
+):
+    """
+    Itera sobre los PDFs de las fuentes. Los PDFs que superan
+    split_threshold páginas se parten en fragmentos de split_size páginas.
+
+    Yields: (path_a_procesar, path_original)
+      - path_a_procesar: el archivo real que leerá Docling (puede ser temporal)
+      - path_original:   el archivo fuente para trazabilidad en los metadatos
+    """
     for s in sources:
-        if s.is_file():
-            yield s
-        else:
-            yield from s.rglob("*.pdf")
+        pdfs = [s] if s.is_file() else sorted(s.rglob("*.pdf"))
+        for pdf in pdfs:
+            try:
+                reader = PdfReader(pdf)
+                n_pages = len(reader.pages)
+                if n_pages <= split_threshold:
+                    yield pdf, pdf
+                else:
+                    for inicio in range(0, n_pages, split_size):
+                        writer = PdfWriter()
+                        for page in reader.pages[inicio : inicio + split_size]:
+                            writer.add_page(page)
+
+                        with tempfile.NamedTemporaryFile(
+                            suffix=".pdf", delete=False, prefix=f"{pdf.stem}_part_"
+                        ) as tmp:
+                            writer.write(tmp)
+
+                        yield (Path(tmp.name), pdf)
+
+            except Exception:
+                # Si no se puede leer, dejarlo pasar — Docling reportará el error
+                yield pdf, pdf
+                continue
 
 
 def run(
     sources: list[Path] = [DEFAULT_DATA_DIR],
     max_workers: PositiveInt = DEFAULT_MAX_WORKERS,
+    no_well_extraction: list[Path] = [DEFAULT_THEORETICAL_DATA_DIR],
+    do_ocr: bool = False,
+    split_size: PositiveInt = DEFAULT_SPLIT_SIZE,
+    split_threshold: PositiveInt = DEFAULT_SPLIT_THRESHOLD,
 ):
     from src.embeddings.embedder import Embedder
     from src.etl import DoclingHybridChunker, DocumentProcessor
@@ -122,7 +196,10 @@ def run(
     # Esto NO limita la RAM usada dentro de cada worker; solamente
     # evita crear un Future por cada PDF del corpus.
     max_in_flight = max_workers * 2
-    chunker = DoclingHybridChunker()
+    chunker = DoclingHybridChunker(
+        no_well_extraction=no_well_extraction,
+        do_ocr=do_ocr,
+    )
     vector_store = VectorStore(VECTOR_STORE_PATH)
     embedder = Embedder()
     write_lock = threading.Lock()
@@ -138,21 +215,26 @@ def run(
     chunks_processed = 0
     well_ids_extracted = 0
 
-    files_iter = file_iterator(sources)
+    files_iter = file_iterator(sources, split_threshold, split_size)
     in_flight: dict = {}
     try:
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             for _ in range(max_in_flight):
-                file = next(files_iter, None)
-                if file is None:
+                item = next(files_iter, None)
+                if item is None:
                     break
-                future = executor.submit(document_processor.process_file, file)
-                in_flight[future] = file
+                next_file, source_file = item
+                future = executor.submit(
+                    document_processor.process_file,
+                    next_file,
+                    source_file,
+                )
+                in_flight[future] = item
 
             while in_flight:
                 done, _ = wait(in_flight, return_when=FIRST_COMPLETED)
                 for future in done:
-                    file = in_flight.pop(future)
+                    file, _ = in_flight.pop(future)
                     try:
                         metrics = future.result()
                     except Exception:
@@ -175,14 +257,16 @@ def run(
                     # de tareas en vuelo, y con suficientes fallas el pool se vacía
                     # antes de agotar files_iter, dejando el resto del corpus sin
                     # procesar de forma silenciosa.
-                    next_file = next(files_iter, None)
+                    item = next(files_iter, None)
 
-                    if next_file is not None:
+                    if item is not None:
+                        next_file, source_file = item
                         next_future = executor.submit(
                             document_processor.process_file,
                             next_file,
+                            source_file,
                         )
-                        in_flight[next_future] = next_file
+                        in_flight[next_future] = item
 
                     if (docs_processed + docs_failed) % 50 == 0:
                         logger.info(
@@ -195,15 +279,21 @@ def run(
         vector_store.close()
 
     logger.info(
-        "Ingesta finalizada. Procesados=%d | OK=%d | Fallidos=%d | %% Chunks con Well IDs extraidos=%.2f%%",
+        "Ingesta finalizada. Procesados=%d | OK=%d | Fallidos=%d",
         docs_processed + docs_failed,
         docs_processed,
         docs_failed,
-        100 * well_ids_extracted / chunks_processed,
     )
 
 
 if __name__ == "__main__":
     setup_logging(LOG_DIR)
     args = parse_args()
-    run(args.sources, args.max_workers)
+    run(
+        args.sources,
+        args.max_workers,
+        args.skip_well_extraction,
+        args.do_ocr,
+        args.split_size,
+        args.split_threshold,
+    )

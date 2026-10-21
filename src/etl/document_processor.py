@@ -1,6 +1,7 @@
 import logging
 import time
 from dataclasses import dataclass
+from itertools import batched
 from pathlib import Path
 
 import transformers
@@ -21,6 +22,7 @@ logging.getLogger("MatchingPostProcessor").setLevel(logging.ERROR)
 # El modelo tiene un límite de 512 tokens; el texto contextualizado puede superarlo.
 _TOKENIZER = AutoTokenizer.from_pretrained(DEFAULT_MODEL)
 _MAX_TOKENS = 500
+_CHUNK_BATCH_SIZE = 16
 
 
 def _truncate(text: str) -> str:
@@ -81,13 +83,16 @@ class DocumentProcessor:
         self.embedder = embedder
         self.vector_repository = vector_repository
 
-    def process_file(self, file_path: Path) -> ProcessingMetrics:
+    def process_file(
+        self, file_path: Path, source_file: Path | None = None
+    ) -> ProcessingMetrics:
         """
         Procesa un archivo desde el parseo y chunking hasta el embedding
         y almacenamiento en la base de datos vectorial.
 
         Args:
             file_path: ruta al archivo a procesar.
+            source_file: nombre original de archivos grandes cuando se lo recibe partido.
 
         Returns:
             ProcessingMetrics con los tiempos y cantidad de chunks generados.
@@ -95,30 +100,39 @@ class DocumentProcessor:
         metrics = ProcessingMetrics(filename=file_path.name)
         logger.info("Processing: %s", file_path.name)
 
-        t0 = time.perf_counter()
-        chunks = list(self.chunker.chunk(file_path))
-        metrics.n_well_ids_extracted = sum(c.wells is not None for c in chunks)
-        metrics.time_chunking_s = time.perf_counter() - t0
-        metrics.n_chunks = len(chunks)
+        chunks_iter = self.chunker.chunk(file_path, source_file)
 
-        if not chunks:
+        if not chunks_iter:
             logger.warning("[%s] No chunks generated — skipping", file_path.name)
             return metrics
 
         t0 = time.perf_counter()
-        embeddings = self.embedder.embed_batch(
-            [_truncate(c.contextualized_text) for c in chunks]
-        )
-        metrics.time_embedding_s = time.perf_counter() - t0
+        for chunk_batch in batched(chunks_iter, _CHUNK_BATCH_SIZE):
+            metrics.time_chunking_s += time.perf_counter() - t0
 
-        t0 = time.perf_counter()
-        self.vector_repository.add_batch(
-            chunk_ids=[c.chunk_id for c in chunks],
-            texts=[c.text for c in chunks],
-            embeddings=embeddings,
-            metadatas=[c.meta for c in chunks],
-        )
-        metrics.time_indexing_s = time.perf_counter() - t0
+            t0 = time.perf_counter()
+            embeddings = self.embedder.embed_batch(
+                [_truncate(c.contextualized_text) for c in chunk_batch]
+            )
+            metrics.time_embedding_s += time.perf_counter() - t0
+
+            t0 = time.perf_counter()
+            self.vector_repository.add_batch(
+                chunk_ids=[c.chunk_id for c in chunk_batch],
+                texts=[c.text for c in chunk_batch],
+                embeddings=embeddings,
+                metadatas=[c.meta for c in chunk_batch],
+            )
+            metrics.time_indexing_s += time.perf_counter() - t0
+            metrics.n_chunks += len(chunk_batch)
+            metrics.n_well_ids_extracted += sum(
+                c.wells is not None for c in chunk_batch
+            )
+            t0 = time.perf_counter()
 
         metrics.log()
+
+        if source_file is not None and file_path != source_file:
+            file_path.unlink(missing_ok=True)
+
         return metrics
