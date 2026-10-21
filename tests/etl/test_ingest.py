@@ -14,7 +14,7 @@ Cubren "Paralelizar la ingesta de documentos (ETL)":
 
 def make_fake_processor(processed_files=None, fail_on=None):
     class _FakeProcessor:
-        def process_file(self, file):
+        def process_file(self, file, source_file=None):
             if fail_on and file.name in fail_on:
                 raise RuntimeError("fallo simulado")
             if processed_files is not None:
@@ -42,7 +42,7 @@ def patch_dependencies(monkeypatch, processor, close_calls=None):
         "src.retrieval.vectorstore.VectorStore", lambda *a, **k: fake_store
     )
     monkeypatch.setattr("src.embeddings.embedder.Embedder", lambda: object())
-    monkeypatch.setattr("src.etl.DoclingHybridChunker", lambda: object())
+    monkeypatch.setattr("src.etl.DoclingHybridChunker", lambda **kwargs: object())
     monkeypatch.setattr("src.etl.DocumentProcessor", lambda **kwargs: processor)
     return fake_store
 

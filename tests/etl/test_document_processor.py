@@ -80,7 +80,7 @@ class TestProcessFile:
         processor, chunker, *_ = make_processor()
         path = Path("data/ewr/sample.pdf")
         processor.process_file(path)
-        chunker.chunk.assert_called_once_with(path)
+        chunker.chunk.assert_called_once_with(path, None)
 
     def test_embedder_receives_contextualized_texts(self):
         chunks = [
