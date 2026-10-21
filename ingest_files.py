@@ -223,8 +223,12 @@ def run(
                 item = next(files_iter, None)
                 if item is None:
                     break
-                next_file, _ = item
-                future = executor.submit(document_processor.process_file, next_file)
+                next_file, source_file = item
+                future = executor.submit(
+                    document_processor.process_file,
+                    next_file,
+                    source_file,
+                )
                 in_flight[future] = item
 
             while in_flight:
@@ -256,10 +260,11 @@ def run(
                     item = next(files_iter, None)
 
                     if item is not None:
-                        next_file, _ = item
+                        next_file, source_file = item
                         next_future = executor.submit(
                             document_processor.process_file,
                             next_file,
+                            source_file,
                         )
                         in_flight[next_future] = item
 
@@ -274,11 +279,10 @@ def run(
         vector_store.close()
 
     logger.info(
-        "Ingesta finalizada. Procesados=%d | OK=%d | Fallidos=%d | %% Chunks con Well IDs extraidos=%.2f%%",
+        "Ingesta finalizada. Procesados=%d | OK=%d | Fallidos=%d",
         docs_processed + docs_failed,
         docs_processed,
         docs_failed,
-        100 * well_ids_extracted / chunks_processed,
     )
 
 
