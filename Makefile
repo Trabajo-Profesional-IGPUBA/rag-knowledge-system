@@ -20,7 +20,10 @@ build-test:
 	docker build --target test -t $(TEST_IMAGE) .
 
 run: build
-	docker run --rm $(USER_FLAG) -v ./data:/app/data -v ./logs:/app/logs $(IMAGE) python ingest_files.py
+	docker run --rm $(USER_FLAG) \
+		-v ./data:/app/data \
+		-v ./logs:/app/logs \
+		$(IMAGE) python ingest_files.py $(ARGS)
 
 test: build-test
 	docker run --rm $(USER_FLAG) $(TEST_IMAGE) pytest -q
