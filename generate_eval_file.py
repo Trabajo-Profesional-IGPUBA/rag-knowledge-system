@@ -48,10 +48,10 @@ def generate_file(output: Path, data_dir: Path, max_chunks: int | None):
             for chunk in chunker.chunk(pdf):
                 line = {
                     "text": chunk.contextualized_text,
-                    "well": chunk.well,
+                    "well": chunk.wells,
                     "source": Path(chunk.source_file),
                 }
-                f.write(json.dumps(line, ensure_ascii=False) + "\n")
+                f.write(json.dumps(line, ensure_ascii=False, default=str) + "\n")
                 count += 1
                 if max_chunks and count >= max_chunks:
                     break
