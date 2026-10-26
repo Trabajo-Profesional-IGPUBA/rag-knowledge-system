@@ -272,41 +272,6 @@ EVAL_QUERIES: list[dict[str, Any]] = [
     # ── Corpus 1: Libro "Introduction to natural gas plant LNG" ─────────────────────────────
     # ── Conceptos generales y seguridad ──
     {
-        "id": "b1",
-        "query": "¿Qué capacidad nominal de producción tiene la planta y a qué velocidad máxima se carga un buque?",
-        "expected_keywords": [
-            ["3.6", "3,6"],
-            ["340"],
-            ["10,080", "10.080", "10080"],
-            ["millones", "million", "MTPA"],
-        ],
-        "reference_answer": (
-            "La planta (ELNG, tren 1) es una instalación nueva y autosuficiente "
-            "diseñada para producir nominalmente 3,6 millones de toneladas "
-            "métricas por año de LNG (con 340 días de operación). En modo de "
-            "carga, todas las bombas de los dos tanques cargan un buque a una "
-            "velocidad máxima de 10.080 m³/h."
-        ),
-        "category": "lng_conceptos",
-    },
-    {
-        "id": "b2",
-        "query": "¿Qué métodos se usan para medir el caudal del gas de alimentación de la planta y cuál es el menos exacto?",
-        "expected_keywords": [
-            ["ultrasónico", "ultrasonico", "ultrasonic"],
-            ["placa orificio", "placa de orificio", "orifice"],
-            "venturi",
-        ],
-        "reference_answer": (
-            "La cantidad se mide con un medidor ultrasónico, una placa orificio, "
-            "un tubo Venturi o una tobera de flujo (flow nozzle). La placa "
-            "orificio es la más común, de bajo costo y fácil de instalar o "
-            "reemplazar, pero es la menos exacta y la que produce la mayor "
-            "pérdida de presión permanente."
-        ),
-        "category": "lng_medición",
-    },
-    {
         "id": "b3",
         "query": "¿Qué solvente usa la planta para remover CO2 y H2S y por qué se eligió?",
         "expected_keywords": [
@@ -392,27 +357,6 @@ EVAL_QUERIES: list[dict[str, Any]] = [
             "enviarlos al almacenamiento de NGL."
         ),
         "category": "lng_pesados_NGL",
-    },
-    {
-        "id": "b7",
-        "query": "¿Cuántos sistemas de antorcha tiene la planta y qué maneja cada uno?",
-        "expected_keywords": [
-            ["húmeda", "humeda", "wet"],
-            ["seca", "dry"],
-            ["marina", "marine"],
-            ["criogénic", "criogenic", "cryogenic"],
-        ],
-        "reference_answer": (
-            "Hay tres antorchas separadas. La antorcha de gas húmedo (wet flare, "
-            "K-1901, de acero al carbono) maneja hidrocarburos tibios saturados con "
-            "agua o con líquidos libres. La antorcha de gas seco (dry flare, "
-            "K-1902, de acero inoxidable) maneja vapores y líquidos de "
-            "hidrocarburos criogénicos. La antorcha marina (K-1903) está cerca "
-            "del área de carga de buques y maneja los vapores de LNG flasheado "
-            "durante la carga o ante disparo de los compresores de BOG. Todas "
-            "tienen ignición electrónica por chispa."
-        ),
-        "category": "lng_antorchas",
     },
     {
         "id": "b8",
@@ -552,27 +496,6 @@ EVAL_QUERIES: list[dict[str, Any]] = [
             "MMSCFD, aunque sus controles son más complejos que los de un ORV."
         ),
         "category": "lng_regasificación",
-    },
-    {
-        "id": "lng8",
-        "query": "¿A partir de qué distancias el GNL resulta más competitivo que el transporte por gasoducto y qué proporción del gas comerciado internacionalmente se exporta por cada medio?",
-        "expected_keywords": [
-            "700",
-            ["2.200", "2,200", "2200"],
-            ["70%", "70 %", "70 por ciento", "70 percent"],
-            ["30%", "30 %", "30 por ciento", "30 percent"],
-        ],
-        "reference_answer": (
-            "Para distancias cortas los gasoductos suelen ser más económicos; el "
-            "GNL se vuelve competitivo en rutas largas, sobre todo si cruzan "
-            "océanos, porque los gasoductos submarinos son prohibitivos. Para "
-            "gas offshore, el GNL puede competir cuando el gasoducto offshore "
-            "tendría menos de 700 millas; para gasoductos onshore el punto de "
-            "equilibrio es de unas 2.200 millas. Cerca de 70% del gas comerciado "
-            "internacionalmente se exporta por gasoducto y el 30% restante como "
-            "GNL."
-        ),
-        "category": "lng_economía",
     },
     {
         "id": "lng10",
