@@ -54,6 +54,7 @@ evaluate-llm: build
 app: build
 	docker run --rm \
 		$(USER_FLAG) \
+		--add-host=host.docker.internal:host-gateway \
 		-v ./data:/app/data \
 		-v ./logs:/app/logs \
 		-p 8501:8501 \
