@@ -65,21 +65,19 @@ Para construir la imagen de desarrollo y tests:
 make build-test
 ```
 
-### Variables de entorno
+### Dirección del servidor Ollama
 
-Copiá el archivo de ejemplo y ajustá si es necesario:
-
-```bash
-cp .env.example .env
-```
-
-La única variable relevante en la mayoría de los casos es:
+Por defecto, los contenedores se conectan a Ollama corriendo en la misma máquina:
 
 | Variable | Valor por defecto | Descripción |
 | --- | --- | --- |
 | `OLLAMA_BASE_URL` | `http://host.docker.internal:11434` | URL del servidor Ollama |
 
-Si Ollama corre en otra máquina o puerto, modificá esa variable en `.env`.
+Si Ollama corre en otra máquina o puerto, pasá la URL al ejecutar el comando:
+
+```bash
+make app OLLAMA_BASE_URL=http://<host>:<puerto>
+```
 
 ### Verificar que Ollama está corriendo
 
