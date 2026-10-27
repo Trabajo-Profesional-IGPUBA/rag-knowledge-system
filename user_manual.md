@@ -122,16 +122,10 @@ make run
 
 Este comando procesa todos los PDFs en `data/raw/` y sus subcarpetas.
 
-Para procesar un archivo o carpeta específica:
+Para pasar parámetros a la ingesta, usá `ARGS`. Por ejemplo, para procesar solo una carpeta:
 
 ```bash
-docker run --rm -v ./data:/app/data rag-app python ingest_files.py data/raw/ewrs/
-```
-
-Para controlar la cantidad de procesos paralelos (por defecto usa hasta 4):
-
-```bash
-docker run --rm -v ./data:/app/data rag-app python ingest_files.py --max-workers 2
+make run ARGS="data/raw/ewrs/"
 ```
 
 ### Verificar que la ingesta funcionó
