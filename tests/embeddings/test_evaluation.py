@@ -1,19 +1,23 @@
 """
 Tests para src/embeddings/evaluation.py
 
-Cubren "Pruebas de modelos candidatos":
-  - Integración de modelos candidatos       -> CA-5.1, CA-5.2
-  - Generación de embeddings de prueba      -> CA-6.3, CA-6.4
+Cubre "Pruebas de modelos candidatos":
+  - Integración de modelos candidatos       -> CA-5.1 y CA-5.2
+  - Generación de embeddings de prueba      -> CA-6.3 y CA-6.4
     (CA-6.1 y CA-6.2 pertenecen a extract_test_texts en corpus_loader.py,
     y se testean en test_corpus_loader.py)
-  - Ejecución de consultas de evaluación    -> CA-7.1, CA-7.2
-  - Registro de resultados obtenidos        -> CA-8.1, CA-8.2
+  - Ejecución de consultas de evaluación    -> CA-7.1 y CA-7.2
+  - Registro de resultados obtenidos        -> CA-8.1 y CA-8.2
 
-Cubren "Comparación y selección":
+Cubre "Comparación y selección":
   - Comparación de calidad semántica              -> CA-9.1
   - Comparación de velocidad de generación        -> CA-10.1
   - Comparación de consumo de recursos            -> CA-11.1
-  - Documentación y justificación de la selección -> CA-12.1, CA-12.2
+  - Documentación y justificación de la selección -> CA-12.1 y CA-12.2
+
+ Cubre Fix: Corregir la evaluación de embeddings: agregar candidatos de recuperación
+ y aplicar prefijos query/passage de e5:
+ - Soporte de prefijos y ampliación de modelos de recuperación en evaluación -> CA-13.3 y CA-13.4
 
 También incluye un test de CA-1.2 (definido en "Definición de criterios de
 evaluación"), porque necesita el mock del modelo para poder verificar el
@@ -457,3 +461,61 @@ def test_measure_quality_computes_avg_margin_as_mean_difference():
     fake_model = make_fake_model(accuracy_correct_wins=True)
     result = measure_quality(fake_model, EVAL_QUERIES)
     assert result["avg_margin"] > 0  # correcto siempre gana => margen promedio positivo
+
+
+E5_BASE = "intfloat/multilingual-e5-base"
+
+
+def make_recording_model(dim=8):
+    """Mock que devuelve vectores constantes; sirve para inspeccionar con qué
+    textos se llamó a encode()."""
+    model = MagicMock()
+
+    def fake_encode(texts, convert_to_numpy=True):
+        return np.ones((len(texts), dim))
+
+    model.encode.side_effect = fake_encode
+    return model
+
+
+def make_prefix_sensitive_model():
+    """Mock que solo rinde bien si la query lleva 'query: ' y los documentos
+    'passage: ', como e5. Sin prefijos, el doc incorrecto queda más cerca."""
+    model = MagicMock()
+
+    def fake_encode(texts, convert_to_numpy=True):
+        out = []
+        for t in texts:
+            if t.startswith("passage: incorrecto"):
+                v = [-1, 0, 0, 0]
+            elif t.startswith("passage: correcto"):
+                v = [1, 0, 0, 0]
+            elif t.startswith("correcto"):  # sin prefijo: rinde mal
+                v = [-1, 0, 0, 0]
+            else:  # query (con o sin prefijo) y doc incorrecto sin prefijo
+                v = [1, 0, 0, 0]
+            out.append(v)
+        return np.array(out, dtype=float)
+
+    model.encode.side_effect = fake_encode
+    return model
+
+
+def test_evaluate_candidate_model_applies_passage_prefix_to_speed_texts():
+    """CA-13.3: Se deben evaluar los modelos candidatos midiendo la velocidad sobre textos
+    con el prefijo de documento del modelo.
+    """
+    model = make_recording_model()
+    with patch("src.embeddings.evaluation.SentenceTransformer", return_value=model):
+        evaluate_candidate_model(E5_BASE, ["t1", "t2"], [], n_repeticiones=1)
+    warmup_texts = model.encode.call_args_list[0].args[0]
+    assert warmup_texts == ["passage: t1", "passage: t2"]
+
+
+def test_measure_quality_with_prefixes_fixes_prefix_sensitive_model():
+    """CA-13.4: Con los prefijos, un modelo tipo e5 acierta, sin ellos (modelo sin prefijos) falla."""
+    model = make_prefix_sensitive_model()
+    con_prefijos = measure_quality(model, EVAL_QUERIES, E5_BASE)
+    sin_prefijos = measure_quality(model, EVAL_QUERIES, "modelo-sin-prefijos")
+    assert con_prefijos["retrieval_accuracy"] == 1.0
+    assert sin_prefijos["retrieval_accuracy"] == 0.0

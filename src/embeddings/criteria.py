@@ -85,24 +85,24 @@ Modelos como all-MiniLM-L6-v2, se consideraron pero al ser solo inglés, quedo d
 
 CANDIDATE_MODELS = [
     {
-        "name": "paraphrase-multilingual-MiniLM-L12-v2",
-        "notes": "Candidato actual: liviano, multilingüe.",
-    },
-    {
         "name": "intfloat/multilingual-e5-base",
         "notes": "Fuerte en retrieval multilingüe según benchmarks MTEB.",
     },
     {
-        "name": "paraphrase-multilingual-mpnet-base-v2",
-        "notes": "Mayor calidad esperada, ~2x más pesado que el actual.",
+        "name": "intfloat/multilingual-e5-large",
+        "notes": "Versión grande de la familia e5.",
+    },
+    {
+        "name": "BAAI/bge-m3",
+        "notes": "Multilingüe de recuperación, contexto de hasta 8K tokens.",
     },
 ]
 
 # Tamaño en disco, ya que medirlo en runtime requiere acceso al cache dir y no es 100% portable.
 APPROX_DISK_SIZE_MB = {
-    "paraphrase-multilingual-MiniLM-L12-v2": 470,
     "intfloat/multilingual-e5-base": 1100,
-    "paraphrase-multilingual-mpnet-base-v2": 970,
+    "intfloat/multilingual-e5-large": 2240,
+    "BAAI/bge-m3": 2270,
 }
 
 # Dataset query -> doc correcto / doc incorrecto, usado para medir calidad semántica

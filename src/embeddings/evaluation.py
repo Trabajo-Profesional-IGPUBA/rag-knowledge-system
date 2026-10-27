@@ -40,6 +40,12 @@ except ImportError:  # medición de RAM es opcional, no bloquea el resto
 
 log = logging.getLogger(__name__)
 
+# e5 requiere estos prefijos
+PREFIXES = {
+    "intfloat/multilingual-e5-base": ("query: ", "passage: "),
+    "intfloat/multilingual-e5-large": ("query: ", "passage: "),
+}
+
 
 @dataclass
 class ModelEvaluationResult:
@@ -76,7 +82,11 @@ def _current_ram_mb() -> float | None:
     return psutil.Process().memory_info().rss / (1024 * 1024)
 
 
-def measure_quality(model: SentenceTransformer, evaluation_queries: list[dict]) -> dict:
+def measure_quality(
+    model: SentenceTransformer,
+    evaluation_queries: list[dict],
+    model_name: str = "",
+) -> dict:
     """
     Para cada consulta de evaluación, vectoriza query + doc correcto +
     doc incorrecto y verifica si el modelo asigna mayor similitud al
@@ -89,13 +99,19 @@ def measure_quality(model: SentenceTransformer, evaluation_queries: list[dict]) 
             "avg_similarity_correct": None,
         }
 
+    qp, dp = PREFIXES.get(model_name, ("", ""))
+
     aciertos = 0
     margenes = []
     similitudes_correctas = []
 
     for caso in evaluation_queries:
         vs = model.encode(
-            [caso["query"], caso["doc_correcto"], caso["doc_incorrecto"]],
+            [
+                qp + caso["query"],
+                dp + caso["doc_correcto"],
+                dp + caso["doc_incorrecto"],
+            ],
             convert_to_numpy=True,
         )
         sim_ok = float(cosine_similarity([vs[0]], [vs[1]])[0][0])
@@ -129,15 +145,18 @@ def evaluate_candidate_model(
         model = SentenceTransformer(model_name)
         load_time = time.perf_counter() - t0
 
+        # Textos con el prefijo de documento del modelo (si lo usa)
+        textos = [PREFIXES.get(model_name, ("", ""))[1] + t for t in test_texts]
+
         # Warmup: no se mide, solo "calienta" el modelo (carga de kernels,
         # threads de PyTorch, cachés internas)
-        model.encode(test_texts, convert_to_numpy=True)
+        model.encode(textos, convert_to_numpy=True)
 
         # Corridas medidas
         tiempos = []
         for _ in range(n_repeticiones):
             t0 = time.perf_counter()
-            vectors = model.encode(test_texts, convert_to_numpy=True)
+            vectors = model.encode(textos, convert_to_numpy=True)
             tiempos.append(time.perf_counter() - t0)
 
         encode_time = statistics.median(tiempos)
@@ -149,7 +168,7 @@ def evaluate_candidate_model(
             else None
         )
 
-        calidad = measure_quality(model, evaluation_queries)
+        calidad = measure_quality(model, evaluation_queries, model_name)
 
         result = ModelEvaluationResult(
             model_name=model_name,
@@ -157,7 +176,7 @@ def evaluate_candidate_model(
             load_time_sec=round(load_time, 3),
             encode_time_sec=round(encode_time, 3),
             texts_per_sec=(
-                round(len(test_texts) / encode_time, 1) if encode_time > 0 else None
+                round(len(textos) / encode_time, 1) if encode_time > 0 else None
             ),
             peak_ram_mb=peak_ram,
             approx_disk_size_mb=APPROX_DISK_SIZE_MB.get(model_name),

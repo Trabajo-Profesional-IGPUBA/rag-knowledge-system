@@ -27,7 +27,7 @@ from docling.document_converter import DocumentConverter
 from sentence_transformers import SentenceTransformer
 
 DocumentConverter()
-SentenceTransformer("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+SentenceTransformer("intfloat/multilingual-e5-base")
 EOF
 
 RUN chmod -R 777 /cache && chmod -R 777 /usr/local/lib/python3.12/site-packages/rapidocr
