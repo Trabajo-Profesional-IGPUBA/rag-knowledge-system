@@ -457,3 +457,61 @@ def test_measure_quality_computes_avg_margin_as_mean_difference():
     fake_model = make_fake_model(accuracy_correct_wins=True)
     result = measure_quality(fake_model, EVAL_QUERIES)
     assert result["avg_margin"] > 0  # correcto siempre gana => margen promedio positivo
+
+
+E5_BASE = "intfloat/multilingual-e5-base"
+
+
+def make_recording_model(dim=8):
+    """Mock que devuelve vectores constantes; sirve para inspeccionar con qué
+    textos se llamó a encode()."""
+    model = MagicMock()
+
+    def fake_encode(texts, convert_to_numpy=True):
+        return np.ones((len(texts), dim))
+
+    model.encode.side_effect = fake_encode
+    return model
+
+
+def make_prefix_sensitive_model():
+    """Mock que solo rinde bien si la query lleva 'query: ' y los documentos
+    'passage: ', como e5. Sin prefijos, el doc incorrecto queda más cerca."""
+    model = MagicMock()
+
+    def fake_encode(texts, convert_to_numpy=True):
+        out = []
+        for t in texts:
+            if t.startswith("passage: incorrecto"):
+                v = [-1, 0, 0, 0]
+            elif t.startswith("passage: correcto"):
+                v = [1, 0, 0, 0]
+            elif t.startswith("correcto"):  # sin prefijo: rinde mal
+                v = [-1, 0, 0, 0]
+            else:  # query (con o sin prefijo) y doc incorrecto sin prefijo
+                v = [1, 0, 0, 0]
+            out.append(v)
+        return np.array(out, dtype=float)
+
+    model.encode.side_effect = fake_encode
+    return model
+
+
+def test_evaluate_candidate_model_applies_passage_prefix_to_speed_texts():
+    """CA-13.3: Se deben evaluar los modelos candidatos midiendo la velocidad sobre textos
+    con el prefijo de documento del modelo.
+    """
+    model = make_recording_model()
+    with patch("src.embeddings.evaluation.SentenceTransformer", return_value=model):
+        evaluate_candidate_model(E5_BASE, ["t1", "t2"], [], n_repeticiones=1)
+    warmup_texts = model.encode.call_args_list[0].args[0]
+    assert warmup_texts == ["passage: t1", "passage: t2"]
+
+
+def test_measure_quality_with_prefixes_fixes_prefix_sensitive_model():
+    """CA-13.4: Con los prefijos, un modelo tipo e5 acierta, sin ellos (modelo sin prefijos) falla."""
+    model = make_prefix_sensitive_model()
+    con_prefijos = measure_quality(model, EVAL_QUERIES, E5_BASE)
+    sin_prefijos = measure_quality(model, EVAL_QUERIES, "modelo-sin-prefijos")
+    assert con_prefijos["retrieval_accuracy"] == 1.0
+    assert sin_prefijos["retrieval_accuracy"] == 0.0
