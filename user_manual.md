@@ -293,5 +293,7 @@ El procesamiento de PDFs con Docling es intensivo. Los tiempos normales son:
 Podés aumentar el paralelismo si tenés más núcleos disponibles:
 
 ```bash
-docker run --rm -v ./data:/app/data rag-app python ingest_files.py --max-workers 4
+make run ARGS="--max-workers 4"
 ```
+
+Si no necesitás OCR (los documentos tienen texto seleccionable), no uses `--do-ocr`: es la etapa más costosa. Para PDFs muy grandes, reducir `--split-size` baja el consumo de memoria.
