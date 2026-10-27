@@ -1,0 +1,44 @@
+{
+  "intfloat/multilingual-e5-base": {
+    "model_name": "intfloat/multilingual-e5-base",
+    "ok": true,
+    "error": null,
+    "embedding_dim": 768,
+    "load_time_sec": 6.081,
+    "encode_time_sec": 10.741,
+    "texts_per_sec": 3.7,
+    "peak_ram_mb": 818.7,
+    "approx_disk_size_mb": 1100,
+    "retrieval_accuracy": 0.8,
+    "avg_margin": 0.0283,
+    "avg_similarity_correct": 0.8596
+  },
+  "intfloat/multilingual-e5-large": {
+    "model_name": "intfloat/multilingual-e5-large",
+    "ok": true,
+    "error": null,
+    "embedding_dim": 1024,
+    "load_time_sec": 32.137,
+    "encode_time_sec": 35.503,
+    "texts_per_sec": 1.1,
+    "peak_ram_mb": 1235.4,
+    "approx_disk_size_mb": 2240,
+    "retrieval_accuracy": 0.8,
+    "avg_margin": 0.0322,
+    "avg_similarity_correct": 0.8597
+  },
+  "BAAI/bge-m3": {
+    "model_name": "BAAI/bge-m3",
+    "ok": true,
+    "error": null,
+    "embedding_dim": 1024,
+    "load_time_sec": 40.425,
+    "encode_time_sec": 35.944,
+    "texts_per_sec": 1.1,
+    "peak_ram_mb": 1680.1,
+    "approx_disk_size_mb": 2270,
+    "retrieval_accuracy": 0.8,
+    "avg_margin": 0.0795,
+    "avg_similarity_correct": 0.5666
+  }
+}
