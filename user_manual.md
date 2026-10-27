@@ -34,6 +34,8 @@ Para la evaluación comparativa de LLMs (opcional), podés agregar otros modelos
 ```bash
 ollama pull llama3.1:8b
 ollama pull mistral:7b
+ollama pull llama3.2:3b
+ollama pull gemma2:9b
 ```
 
 ### Recursos de hardware recomendados
@@ -78,6 +80,8 @@ Si Ollama corre en otra máquina o puerto, pasá la URL al ejecutar el comando:
 ```bash
 make app OLLAMA_BASE_URL=http://<host>:<puerto>
 ```
+
+Lo mismo aplica a la evaluación de LLMs: `make evaluate-llm OLLAMA_BASE_URL=http://<host>:<puerto>`.
 
 ### Verificar que Ollama está corriendo
 
@@ -212,13 +216,21 @@ El sistema incluye dos scripts de evaluación opcionales para medir la calidad d
 
 ### Evaluación de embeddings
 
-Mide la calidad del modelo de embeddings para recuperar documentos relevantes:
+Mide la calidad de distintos modelos de embeddings para recuperar documentos relevantes.
+
+Primero, generá el archivo de fragmentos de evaluación a partir de los PDFs de `data/raw/`:
+
+```bash
+docker run --rm --user $(id -u):$(id -g) -v ./data:/app/data rag-app python generate_eval_file.py
+```
+
+Luego, ejecutá la evaluación:
 
 ```bash
 make evaluate
 ```
 
-El resultado se guarda en `evaluation_results.json`.
+El reporte comparativo se muestra en la terminal al finalizar.
 
 ### Evaluación comparativa de LLMs
 
@@ -231,8 +243,10 @@ make evaluate-llm
 Por defecto compara `llama3.1:8b`, `mistral:7b`, `qwen3:8b`, `llama3.2:3b` y `gemma2:9b`. Para personalizar:
 
 ```bash
-make evaluate-llm ARGS="--models llama3.1:8b qwen3:8b --judge-model qwen3:8b --n-runs 3 --output eval_results/mi_reporte.json"
+make evaluate-llm ARGS="--models llama3.1:8b qwen3:8b --judge-model gemma2:9b --n-runs 3 --output eval_results/mi_reporte.json"
 ```
+
+El modelo juez debe ser distinto de los modelos evaluados.
 
 Parámetros disponibles:
 
