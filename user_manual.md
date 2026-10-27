@@ -244,7 +244,8 @@ Parámetros disponibles:
 | `--judge-model` | Modelo juez para medir corrección y fidelidad |
 | `--n-runs` | Repeticiones por consulta (1 para pruebas rápidas) |
 | `--min-faithfulness` | Fidelidad mínima exigida (escala 1–5) |
-| `--latency-penalty` | Penalización por latencia alta |
+| `--latency-penalty` | Puntos de calidad (0–1) que se exigen por cada vez que un modelo tarda el doble (por defecto `0.05`) |
+| `--persist-dir` | Carpeta de la base vectorial a usar (por defecto `data/vectorstore`) |
 | `--output` | Ruta del reporte JSON |
 
 El reporte se guarda en `eval_results/report.json` por defecto.
