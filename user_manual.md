@@ -128,6 +128,37 @@ Para pasar parámetros a la ingesta, usá `ARGS`. Por ejemplo, para procesar sol
 make run ARGS="data/raw/ewrs/"
 ```
 
+### Parámetros de la ingesta
+
+Todos los parámetros son opcionales:
+
+| Parámetro | Valor por defecto | Descripción |
+| --- | --- | --- |
+| `SOURCES` (posicional) | `data/raw/` | Una o más carpetas a procesar |
+| `--max-workers`, `-w` | `1` | Cantidad de procesos en paralelo |
+| `--do-ocr` | deshabilitado | Habilita el OCR para documentos escaneados |
+| `--skip-well-extraction` | `data/raw/libros/` | Carpetas en las que no se extraen identificadores de pozo |
+| `--split-threshold` | `100` | Cantidad de páginas a partir de la cual un PDF se divide en partes |
+| `--split-size` | `50` | Cantidad de páginas de cada parte al dividir un PDF |
+
+**OCR:** por defecto está deshabilitado para acelerar la ingesta. Si los documentos son escaneados (imágenes sin texto seleccionable), habilitalo:
+
+```bash
+make run ARGS="--do-ocr"
+```
+
+**Documentos grandes:** los PDFs de más de `--split-threshold` páginas se dividen automáticamente en partes de `--split-size` páginas para limitar el consumo de memoria. Por ejemplo, para dividir a partir de 200 páginas en partes de 100:
+
+```bash
+make run ARGS="--split-threshold 200 --split-size 100"
+```
+
+Los parámetros se pueden combinar:
+
+```bash
+make run ARGS="data/raw/partes_diarios/ data/raw/ewrs/ --do-ocr --max-workers 2"
+```
+
 ### Verificar que la ingesta funcionó
 
 Al finalizar, el sistema imprime un resumen en los logs:
