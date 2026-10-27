@@ -260,7 +260,7 @@ La app muestra este error si no puede conectarse al servidor de Ollama.
 ollama serve
 ```
 
-Si Ollama corre en una máquina diferente, actualizá la variable `OLLAMA_BASE_URL` en `.env`.
+Si Ollama corre en una máquina diferente, indicá su dirección con `make app OLLAMA_BASE_URL=http://<host>:<puerto>`.
 
 ### La app carga pero no responde preguntas
 
