@@ -41,7 +41,7 @@ alternativas evaluadas.
 |---|---|---|---|---|---|---|
 | intfloat/multilingual-e5-base | 768 | 3.7 | 818.7 | 1100 | 0.8 | 0.0283 |
 | intfloat/multilingual-e5-large | 1024 | 1.1 | 1235.4 | 2240 | 0.8 | 0.0322 |
-| BAAI/bge-m3 | 1024 | 1.1 | 84.7 | 2270 | 0.8 | 0.0795 |
+| BAAI/bge-m3 | 1024 | 1.1 | 1680.1 | 2270 | 0.8 | 0.0795 |
 
 ## Justificación
 
