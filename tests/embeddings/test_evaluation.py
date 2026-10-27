@@ -1,19 +1,23 @@
 """
 Tests para src/embeddings/evaluation.py
 
-Cubren "Pruebas de modelos candidatos":
-  - Integración de modelos candidatos       -> CA-5.1, CA-5.2
-  - Generación de embeddings de prueba      -> CA-6.3, CA-6.4
+Cubre "Pruebas de modelos candidatos":
+  - Integración de modelos candidatos       -> CA-5.1 y CA-5.2
+  - Generación de embeddings de prueba      -> CA-6.3 y CA-6.4
     (CA-6.1 y CA-6.2 pertenecen a extract_test_texts en corpus_loader.py,
     y se testean en test_corpus_loader.py)
-  - Ejecución de consultas de evaluación    -> CA-7.1, CA-7.2
-  - Registro de resultados obtenidos        -> CA-8.1, CA-8.2
+  - Ejecución de consultas de evaluación    -> CA-7.1 y CA-7.2
+  - Registro de resultados obtenidos        -> CA-8.1 y CA-8.2
 
-Cubren "Comparación y selección":
+Cubre "Comparación y selección":
   - Comparación de calidad semántica              -> CA-9.1
   - Comparación de velocidad de generación        -> CA-10.1
   - Comparación de consumo de recursos            -> CA-11.1
-  - Documentación y justificación de la selección -> CA-12.1, CA-12.2
+  - Documentación y justificación de la selección -> CA-12.1 y CA-12.2
+
+ Cubre Fix: Corregir la evaluación de embeddings: agregar candidatos de recuperación
+ y aplicar prefijos query/passage de e5:
+ - Soporte de prefijos y ampliación de modelos de recuperación en evaluación -> CA-13.3 y CA-13.4
 
 También incluye un test de CA-1.2 (definido en "Definición de criterios de
 evaluación"), porque necesita el mock del modelo para poder verificar el
