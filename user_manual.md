@@ -283,16 +283,6 @@ sudo usermod -aG docker $USER
 newgrp docker
 ```
 
-### `make build` falla con error en `/cache`
-
-En algunas máquinas el directorio `/cache/huggingface` no se crea automáticamente.
-
-**Solución:** En el `Dockerfile`, agregá esta línea antes del `RUN chmod -R 777 /cache`:
-
-```dockerfile
-RUN mkdir -p /cache/huggingface
-```
-
 ### La ingesta es muy lenta
 
 El procesamiento de PDFs con Docling es intensivo. Los tiempos normales son:
