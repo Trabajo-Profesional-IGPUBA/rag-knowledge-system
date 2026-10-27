@@ -108,10 +108,11 @@ data/raw/
 ├── fallas_bes/        # Análisis de fallas de BES
 ├── fallas_integridad/ # Fallas de integridad
 ├── reservorio/        # Estudios de reservorio y geología
-└── sedimentologia/    # Estudios sedimentológicos
+├── sedimentologia/    # Estudios sedimentológicos
+└── libros/            # Bibliografía técnica de referencia (manuales, libros)
 ```
 
-El tipo de carpeta determina cómo se clasifica el documento en el sistema.
+El tipo de carpeta determina cómo se clasifica el documento en el sistema. En la carpeta `libros/` no se extraen identificadores de pozo, ya que se trata de material teórico.
 
 ### Ejecutar la ingesta
 
